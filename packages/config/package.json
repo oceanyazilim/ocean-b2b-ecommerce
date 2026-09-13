@@ -1,0 +1,29 @@
+{
+  "name": "@ocean/config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared tsconfig, ESLint, and Tailwind presets",
+  "type": "module",
+  "exports": {
+    "./tsconfig/*.json": "./tsconfig/*.json",
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/next": "./eslint/next.js",
+    "./eslint/nest": "./eslint/nest.js",
+    "./eslint/react": "./eslint/react.js",
+    "./tailwind/preset": "./tailwind/preset.js"
+  },
+  "files": [
+    "tsconfig",
+    "eslint",
+    "tailwind"
+  ],
+  "dependencies": {
+    "@eslint/js": "^9.35.0",
+    "@next/eslint-plugin-next": "^15.5.3",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.4.0",
+    "typescript-eslint": "^8.44.0"
+  }
+}

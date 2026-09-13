@@ -1,0 +1,35 @@
+{
+  "name": "@ocean/db",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Prisma schema, migrations, and PrismaClient singleton",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "generated",
+    "prisma"
+  ],
+  "scripts": {
+    "generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:status": "prisma migrate status",
+    "studio": "prisma studio",
+    "clean": "rimraf dist generated"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.1"
+  },
+  "devDependencies": {
+    "@ocean/config": "workspace:*",
+    "@types/node": "^24.5.2",
+    "prisma": "^6.16.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@ocean/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Ocean Commerce API — NestJS modular monolith (Admin, Storefront and Platform APIs)",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@ocean/db": "workspace:*",
+    "@ocean/permissions": "workspace:*",
+    "@ocean/types": "workspace:*",
+    "@ocean/utils": "workspace:*",
+    "helmet": "^8.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/schematics": "^11.0.7",
+    "@nestjs/testing": "^11.1.6",
+    "@ocean/config": "workspace:*",
+    "@swc/core": "^1.13.5",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2",
+    "unplugin-swc": "^1.5.7",
+    "vitest": "^3.2.4"
+  }
+}

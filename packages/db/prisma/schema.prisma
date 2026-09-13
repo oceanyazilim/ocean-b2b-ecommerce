@@ -1,0 +1,17 @@
+// Ocean Commerce — PostgreSQL schema
+//
+// Phase 0: datasource + generator only. Domain models land phase by phase
+// (Phase 1 adds users / organizations / stores / memberships / roles).
+// See docs/architecture/06-database-schema-plan.md for the full entity map
+// and docs/architecture/08-multi-tenant-model.md for the organization_id /
+// store_id scoping rules every tenant-owned table must follow.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

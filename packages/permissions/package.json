@@ -1,0 +1,25 @@
+{
+  "name": "@ocean/permissions",
+  "version": "0.0.1",
+  "private": true,
+  "description": "RBAC permission vocabulary and evaluation engine shared by API and UIs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "@ocean/config": "workspace:*",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

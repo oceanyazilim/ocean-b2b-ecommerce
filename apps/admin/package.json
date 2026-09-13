@@ -1,0 +1,33 @@
+{
+  "name": "@ocean/admin",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "clean": "rimraf .next"
+  },
+  "dependencies": {
+    "@ocean/permissions": "workspace:*",
+    "@ocean/types": "workspace:*",
+    "@ocean/ui": "workspace:*",
+    "@ocean/utils": "workspace:*",
+    "next": "^15.5.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@ocean/config": "workspace:*",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.2"
+  }
+}

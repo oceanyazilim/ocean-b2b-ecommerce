@@ -1,0 +1,26 @@
+{
+  "name": "@ocean/types",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared zod schemas and API contract types (Admin/Storefront/Platform APIs)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@ocean/config": "workspace:*",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2"
+  }
+}
