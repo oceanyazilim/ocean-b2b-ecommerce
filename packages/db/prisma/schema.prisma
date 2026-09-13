@@ -1,10 +1,8 @@
 // Ocean Commerce — PostgreSQL schema
 //
-// Phase 0: datasource + generator only. Domain models land phase by phase
-// (Phase 1 adds users / organizations / stores / memberships / roles).
-// See docs/architecture/06-database-schema-plan.md for the full entity map
-// and docs/architecture/08-multi-tenant-model.md for the organization_id /
-// store_id scoping rules every tenant-owned table must follow.
+// Tenant-owned tables carry organizationId (+ storeId when store-scoped). Every repository
+// method must filter by them; see docs/architecture/08-multi-tenant-model.md.
+// Sessions are stored in Redis, not here (docs/architecture/07-auth-and-rbac.md).
 
 generator client {
   provider = "prisma-client-js"
@@ -14,4 +12,228 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  active
+  suspended
+}
+
+enum UserTokenPurpose {
+  email_verification
+  password_reset
+}
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique
+  name            String
+  passwordHash    String     @map("password_hash")
+  status          UserStatus @default(active)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tokens              UserToken[]
+  organizationMembers OrganizationMember[]
+  storeMembers        StoreMember[]
+  sentInvitations     Invitation[]
+
+  @@map("users")
+}
+
+model UserToken {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  purpose   UserTokenPurpose
+  tokenHash String           @unique @map("token_hash")
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?        @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@map("user_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy: Organization -> Store
+// ---------------------------------------------------------------------------
+
+enum OrganizationStatus {
+  active
+  suspended
+}
+
+enum OrganizationRole {
+  owner
+  admin
+  billing
+  member
+}
+
+enum MembershipStatus {
+  active
+  removed
+}
+
+model Organization {
+  id        String             @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String             @unique
+  status    OrganizationStatus @default(active)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members      OrganizationMember[]
+  stores       Store[]
+  storeMembers StoreMember[]
+  invitations  Invitation[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+enum StoreStatus {
+  setup
+  active
+  paused
+  closed
+}
+
+enum StoreRole {
+  store_owner
+  admin
+  store_manager
+  product_manager
+  order_manager
+  marketing
+  finance
+  developer
+  viewer
+}
+
+model Store {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  name            String
+  slug            String      @unique
+  defaultCurrency String      @map("default_currency") @db.Char(3)
+  defaultLocale   String      @map("default_locale")
+  timezone        String
+  status          StoreStatus @default(setup)
+  businessType    String?     @map("business_type")
+  industry        String?
+  onboardingState Json        @default("{}") @map("onboarding_state")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      StoreMember[]
+  invitations  Invitation[]
+  auditLogs    AuditLog[]
+
+  @@index([organizationId])
+  @@map("stores")
+}
+
+model StoreMember {
+  id             String           @id @default(uuid()) @db.Uuid
+  storeId        String           @map("store_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           StoreRole
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("store_members")
+}
+
+model Invitation {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @map("organization_id") @db.Uuid
+  storeId          String?           @map("store_id") @db.Uuid
+  email            String
+  organizationRole OrganizationRole? @map("organization_role")
+  storeRole        StoreRole?        @map("store_role")
+  tokenHash        String            @unique @map("token_hash")
+  invitedById      String            @map("invited_by_id") @db.Uuid
+  expiresAt        DateTime          @map("expires_at") @db.Timestamptz(6)
+  acceptedAt       DateTime?         @map("accepted_at") @db.Timestamptz(6)
+  revokedAt        DateTime?         @map("revoked_at") @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedById], references: [id])
+
+  @@index([storeId, email])
+  @@index([organizationId])
+  @@map("invitations")
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+enum ActorType {
+  user
+  platform
+  system
+}
+
+model AuditLog {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String?   @map("organization_id") @db.Uuid
+  storeId        String?   @map("store_id") @db.Uuid
+  actorType      ActorType @map("actor_type")
+  actorId        String?   @map("actor_id") @db.Uuid
+  action         String
+  resourceType   String    @map("resource_type")
+  resourceId     String?   @map("resource_id")
+  before         Json?
+  after          Json?
+  ip             String?
+  userAgent      String?   @map("user_agent")
+  sessionId      String?   @map("session_id")
+  metadata       Json?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  store        Store?        @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("audit_logs")
 }

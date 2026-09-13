@@ -17,7 +17,8 @@
     "@ocean/utils": "workspace:*",
     "next": "^15.5.3",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@ocean/config": "workspace:*",

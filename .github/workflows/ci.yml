@@ -35,6 +35,9 @@ jobs:
       DATABASE_URL: postgresql://ocean:ocean@localhost:5432/ocean_test?schema=public
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
+      OCEAN_INTEGRATION: "1"
+      SESSION_SECRET: ci-only-session-secret-0123456789abcdef
+      ADMIN_URL: http://localhost:3001
 
     steps:
       - uses: actions/checkout@v4

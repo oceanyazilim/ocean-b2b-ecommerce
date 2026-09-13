@@ -36,11 +36,19 @@ export interface ApiFieldError {
   message: string;
 }
 
+export interface ApiErrorBody {
+  code: ApiErrorCode;
+  message: string;
+  requestId: string;
+  fields?: ApiFieldError[];
+  // forbidden: which permissions the caller lacks
+  missing?: string[];
+  // rate_limited
+  retryAfterSeconds?: number;
+  // not_found
+  resource?: string;
+}
+
 export interface ApiError {
-  error: {
-    code: ApiErrorCode;
-    message: string;
-    requestId: string;
-    fields?: ApiFieldError[];
-  };
+  error: ApiErrorBody;
 }

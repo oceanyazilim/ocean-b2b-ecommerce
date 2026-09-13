@@ -12,17 +12,22 @@
   ],
   "scripts": {
     "generate": "prisma generate",
-    "build": "prisma generate && tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src prisma",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:status": "prisma migrate status",
+    "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
     "clean": "rimraf dist generated"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "^6.16.1"
   },
   "devDependencies": {
@@ -30,6 +35,7 @@
     "@types/node": "^24.5.2",
     "prisma": "^6.16.1",
     "rimraf": "^6.0.1",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }

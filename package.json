@@ -13,10 +13,12 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:integration": "OCEAN_INTEGRATION=1 turbo run test --filter=@ocean/api",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
     "db:generate": "pnpm --filter @ocean/db generate",
     "db:migrate": "pnpm --filter @ocean/db migrate:dev",
+    "db:seed": "pnpm --filter @ocean/db seed",
     "db:studio": "pnpm --filter @ocean/db studio",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down"

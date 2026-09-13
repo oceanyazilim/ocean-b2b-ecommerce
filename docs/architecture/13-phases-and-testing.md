@@ -12,8 +12,9 @@ isolation, responsive UI, error/loading/empty states, security review.
 
 | Phase | Scope                                                                                                                                         | Status                 |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 0     | Monorepo, architecture docs, standards, CI, DB bootstrap, design system bootstrap, auth scaffolding                                           | **done** (this commit) |
-| 1     | SaaS core: users, auth (sessions, verification, reset, MFA), organizations, stores, memberships, RBAC guards, audit log, onboarding checklist | next                   |
+| 0     | Monorepo, architecture docs, standards, CI, DB bootstrap, design system bootstrap, auth scaffolding                                           | **done**               |
+| 1     | SaaS core: users, auth (sessions, verification, reset), organizations, stores, memberships, invitations, RBAC guards, audit log, onboarding checklist, admin UI | **code complete** — DB-backed verification (migrate, seed, integration suite, browser journey) pending local Docker |
+| 1b    | TOTP MFA + recovery codes, session list/revoke UI, login events, suspicious-login step-up                                                     | next                   |
 | 2     | Product catalog: products, options, variants, media, collections (manual + automated), metafields, tags, SEO                                  |                        |
 | 3     | Inventory: locations, items, levels, movements ledger, transfers                                                                              |                        |
 | 4     | Customers & B2B: customers, companies, locations, company users, applications                                                                 |                        |
