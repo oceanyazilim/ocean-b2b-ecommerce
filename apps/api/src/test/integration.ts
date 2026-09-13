@@ -47,7 +47,7 @@ export interface TestApp {
 export async function createTestApp(): Promise<TestApp> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
-  configureApp(app, []);
+  configureApp(app, { corsOrigins: [] });
   await app.init();
   // Each agent presents a distinct client IP (trust proxy is on) so per-IP auth rate limits
   // apply per simulated user rather than to the whole suite.

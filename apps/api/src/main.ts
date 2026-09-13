@@ -1,5 +1,7 @@
 import "reflect-metadata";
 
+import { isAbsolute, resolve } from "node:path";
+
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
@@ -13,14 +15,44 @@ import type { Env } from "./config/env";
 
 export const ADMIN_API_PREFIX = "admin/v1";
 
-export function configureApp(app: NestExpressApplication, corsOrigins: string[]): void {
+export interface AppOptions {
+  corsOrigins: string[];
+  // When set, files under this directory are served at /media (local storage driver).
+  localMediaDir?: string | undefined;
+}
+
+export function configureApp(app: NestExpressApplication, options: AppOptions): void {
   app.set("trust proxy", 1);
-  app.use(helmet());
+  app.use(
+    helmet({
+      // Media is embedded by admin/storefront pages on other origins.
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
   app.use(cookieParser());
   app.use(requestIdMiddleware);
-  app.enableCors({ origin: corsOrigins, credentials: true });
+  app.enableCors({ origin: options.corsOrigins, credentials: true });
+  if (options.localMediaDir) {
+    app.useStaticAssets(options.localMediaDir, {
+      prefix: "/media/",
+      maxAge: "365d",
+      immutable: true,
+      index: false,
+      dotfiles: "deny",
+    });
+  }
   app.setGlobalPrefix(ADMIN_API_PREFIX, { exclude: ["health", "health/ready"] });
   app.enableShutdownHooks();
+}
+
+export function optionsFromEnv(config: ConfigService<Env, true>): AppOptions {
+  const driver = config.get("STORAGE_DRIVER", { infer: true });
+  const dir = config.get("STORAGE_LOCAL_DIR", { infer: true });
+  return {
+    corsOrigins: config.get("API_CORS_ORIGINS", { infer: true }),
+    localMediaDir:
+      driver === "local" ? (isAbsolute(dir) ? dir : resolve(process.cwd(), dir)) : undefined,
+  };
 }
 
 async function bootstrap(): Promise<void> {
@@ -28,7 +60,7 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService<Env, true>);
   const logger = new Logger("Bootstrap");
 
-  configureApp(app, config.get("API_CORS_ORIGINS", { infer: true }));
+  configureApp(app, optionsFromEnv(config));
 
   const port = config.get("API_PORT", { infer: true });
   await app.listen(port);

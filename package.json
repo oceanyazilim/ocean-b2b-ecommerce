@@ -35,7 +35,8 @@
       "@prisma/engines",
       "@swc/core",
       "esbuild",
-      "prisma"
+      "prisma",
+      "sharp"
     ]
   }
 }

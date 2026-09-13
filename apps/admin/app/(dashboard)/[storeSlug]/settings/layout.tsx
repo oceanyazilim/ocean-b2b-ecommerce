@@ -19,6 +19,8 @@ export default async function SettingsLayout({
           items={[
             { label: "General", href: `${base}/general` },
             { label: "Team", href: `${base}/team` },
+            { label: "Metafields", href: `${base}/metafields` },
+            { label: "Files", href: `${base}/files` },
             { label: "Audit log", href: `${base}/audit` },
           ]}
         />

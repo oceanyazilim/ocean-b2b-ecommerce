@@ -4,9 +4,9 @@ import { cn } from "./cn";
 
 export interface EmptyStateProps {
   title: string;
-  description?: string;
+  description?: string | undefined;
   action?: ReactNode;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function EmptyState({ title, description, action, className }: EmptyStateProps) {

@@ -40,3 +40,6 @@ test-results/
 
 # Local infra data
 .docker-data/
+
+# Local media storage (STORAGE_DRIVER=local)
+.storage/

@@ -25,7 +25,12 @@ export default async function StoreLayout({
   const items: NavItem[] = [
     { label: "Home", href: base },
     { label: "Orders", href: `${base}/orders`, disabled: true },
-    { label: "Products", href: `${base}/products`, disabled: true },
+    { label: "Products", href: `${base}/products`, disabled: !can(store, "products.read") },
+    {
+      label: "Collections",
+      href: `${base}/collections`,
+      disabled: !can(store, "collections.read"),
+    },
     { label: "Inventory", href: `${base}/inventory`, disabled: true },
     { label: "Customers", href: `${base}/customers`, disabled: true },
     { label: "Companies", href: `${base}/companies`, disabled: true },

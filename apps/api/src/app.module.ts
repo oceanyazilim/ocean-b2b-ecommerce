@@ -12,8 +12,15 @@ import { HealthModule } from "./health/health.module";
 import { MailModule } from "./infrastructure/mail/mail.module";
 import { PrismaModule } from "./infrastructure/prisma/prisma.module";
 import { RedisModule } from "./infrastructure/redis/redis.module";
+import { StorageModule } from "./infrastructure/storage/storage.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { CategoriesModule } from "./modules/catalog/categories/categories.module";
+import { CollectionsModule } from "./modules/catalog/collections/collections.module";
+import { MetafieldsModule } from "./modules/catalog/metafields/metafields.module";
+import { ProductsModule } from "./modules/catalog/products/products.module";
+import { EventsModule } from "./modules/events/events.module";
+import { MediaModule } from "./modules/media/media.module";
 import { MembershipsModule } from "./modules/memberships/memberships.module";
 import { OrganizationsModule } from "./modules/organizations/organizations.module";
 import { StoresModule } from "./modules/stores/stores.module";
@@ -31,6 +38,8 @@ import { UsersModule } from "./modules/users/users.module";
     PrismaModule,
     RedisModule,
     MailModule,
+    StorageModule,
+    EventsModule,
     TenantModule,
     AuditModule,
     HealthModule,
@@ -39,6 +48,11 @@ import { UsersModule } from "./modules/users/users.module";
     OrganizationsModule,
     StoresModule,
     MembershipsModule,
+    MediaModule,
+    MetafieldsModule,
+    CategoriesModule,
+    CollectionsModule,
+    ProductsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },
