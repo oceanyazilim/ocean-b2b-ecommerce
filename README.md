@@ -41,6 +41,25 @@ pnpm dev               # all apps via Turborepo
 
 Or run a single app: `pnpm --filter @ocean/api dev`.
 
+### Without Docker (native Windows)
+
+Install PostgreSQL 16 and Memurai (Redis-compatible) natively, then run a user-owned cluster —
+no service or admin rights needed:
+
+```powershell
+$pg = "C:\Program Files\PostgreSQL\16\bin"; $data = "$env:USERPROFILE\ocean-pgdata"
+& "$pg\initdb.exe" -D $data -U ocean --pwfile=<(echo ocean) -E UTF8   # first time only
+Start-Process "$pg\pg_ctl.exe" -ArgumentList "-D `"$data`" -l `"$data\server.log`" start" -WindowStyle Hidden
+& "$pg\psql.exe" -h localhost -U ocean -d postgres -c "CREATE DATABASE ocean_dev"   # first time only
+```
+
+Memurai installs as a Windows service on port 6379. `.env` defaults already match both.
+
+### Integration tests
+
+`pnpm test` runs unit tests only. `pnpm test:integration` additionally runs the API suite against
+`DATABASE_URL` / `REDIS_URL` (opt-in via `OCEAN_INTEGRATION=1`; CI sets it).
+
 ## Everyday commands
 
 | Command           | What it does                         |
