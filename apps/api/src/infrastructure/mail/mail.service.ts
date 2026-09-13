@@ -45,6 +45,18 @@ export class MailService {
     });
   }
 
+  async sendNewDeviceSignIn(
+    to: string,
+    name: string,
+    details: { ip: string | null; userAgent: string | null; at: Date },
+  ): Promise<void> {
+    await this.adapter.send({
+      to,
+      subject: "New sign-in to your Ocean Commerce account",
+      text: `Hi ${name},\n\nYour account was just signed into from a device or location we have not seen before.\n\nWhen: ${details.at.toISOString()}\nIP: ${details.ip ?? "unknown"}\nDevice: ${details.userAgent ?? "unknown"}\n\nIf this was you, no action is needed. If not, reset your password at ${this.adminUrl}/forgot-password and enable two-factor authentication under Account → Security.`,
+    });
+  }
+
   async sendInvitation(
     to: string,
     invitedBy: string,

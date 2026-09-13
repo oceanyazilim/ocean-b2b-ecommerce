@@ -53,14 +53,10 @@ describe.skipIf(!INTEGRATION_ENABLED)("organizations, stores and tenant isolatio
   it("generates unique slugs and rejects a taken explicit slug", async () => {
     const agent = t.http();
     await signupVerified(t, agent);
-    const first = await agent
-      .post("/admin/v1/organizations")
-      .send({ name: "Slug Test" })
-      .expect(201);
-    const second = await agent
-      .post("/admin/v1/organizations")
-      .send({ name: "Slug Test" })
-      .expect(201);
+    // Unique per run so leftovers from earlier runs in the same database don't shift the suffix.
+    const name = `Slug Test ${Date.now()}`;
+    const first = await agent.post("/admin/v1/organizations").send({ name }).expect(201);
+    const second = await agent.post("/admin/v1/organizations").send({ name }).expect(201);
     expect(second.body.data.slug).toBe(`${first.body.data.slug}-2`);
 
     const taken = await agent

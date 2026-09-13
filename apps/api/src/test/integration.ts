@@ -51,10 +51,13 @@ export async function createTestApp(): Promise<TestApp> {
   await app.init();
   // Each agent presents a distinct client IP (trust proxy is on) so per-IP auth rate limits
   // apply per simulated user rather than to the whole suite.
+  // A random /24 per test app so per-IP rate-limit counters left in Redis by earlier runs
+  // (they live for up to an hour) never bleed into this one.
+  const block = randomBytes(2);
   let clientCounter = 0;
   const nextIp = () => {
     clientCounter += 1;
-    return `10.${(clientCounter >> 16) & 255}.${(clientCounter >> 8) & 255}.${clientCounter & 255}`;
+    return `10.${block[0]}.${block[1]}.${clientCounter & 255}`;
   };
   return {
     app,

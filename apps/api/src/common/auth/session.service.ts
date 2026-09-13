@@ -10,6 +10,14 @@ import { MERCHANT_SESSION_COOKIE, type SessionRealm, type SessionRecord } from "
 
 const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
+// Sessions written before Phase 1b have no mfaVerified field.
+type StoredSession = Omit<SessionRecord, "mfaVerified"> & { mfaVerified?: boolean };
+
+function parseRecord(raw: string): SessionRecord {
+  const stored = JSON.parse(raw) as StoredSession;
+  return { ...stored, mfaVerified: stored.mfaVerified ?? false };
+}
+
 export function signSessionId(id: string, secret: string): string {
   return createHmac("sha256", secret).update(id).digest("base64url");
 }
@@ -54,6 +62,7 @@ export class SessionService {
     realm: SessionRealm,
     userId: string,
     meta: { ip: string | null; userAgent: string | null },
+    options: { mfaVerified?: boolean } = {},
   ): Promise<SessionRecord> {
     const now = Date.now();
     const record: SessionRecord = {
@@ -64,6 +73,7 @@ export class SessionService {
       lastSeenAt: now,
       ip: meta.ip,
       userAgent: meta.userAgent,
+      mfaVerified: options.mfaVerified ?? false,
     };
     await this.redis.client
       .multi()
@@ -77,7 +87,7 @@ export class SessionService {
   async load(realm: SessionRealm, id: string): Promise<SessionRecord | null> {
     const raw = await this.redis.client.get(this.key(realm, id));
     if (!raw) return null;
-    const record = JSON.parse(raw) as SessionRecord;
+    const record = parseRecord(raw);
     if (Date.now() - record.createdAt > this.absoluteTtl * 1000) {
       await this.revoke(realm, id, record.userId);
       return null;
@@ -89,6 +99,21 @@ export class SessionService {
     return record;
   }
 
+  async listForUser(realm: SessionRealm, userId: string): Promise<SessionRecord[]> {
+    const ids = await this.redis.client.smembers(this.userIndexKey(realm, userId));
+    if (ids.length === 0) return [];
+    const raws = await this.redis.client.mget(ids.map((id) => this.key(realm, id)));
+    const alive: SessionRecord[] = [];
+    const stale: string[] = [];
+    raws.forEach((raw, i) => {
+      const id = ids[i] as string;
+      if (raw) alive.push(parseRecord(raw));
+      else stale.push(id);
+    });
+    if (stale.length) await this.redis.client.srem(this.userIndexKey(realm, userId), ...stale);
+    return alive.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+  }
+
   async revoke(realm: SessionRealm, id: string, userId: string): Promise<void> {
     await this.redis.client
       .multi()
@@ -97,12 +122,14 @@ export class SessionService {
       .exec();
   }
 
-  async revokeAllForUser(realm: SessionRealm, userId: string): Promise<number> {
-    const ids = await this.redis.client.smembers(this.userIndexKey(realm, userId));
+  async revokeAllForUser(realm: SessionRealm, userId: string, keepId?: string): Promise<number> {
+    const ids = (await this.redis.client.smembers(this.userIndexKey(realm, userId))).filter(
+      (id) => id !== keepId,
+    );
     if (ids.length === 0) return 0;
     const multi = this.redis.client.multi();
     for (const id of ids) multi.del(this.key(realm, id));
-    multi.del(this.userIndexKey(realm, userId));
+    multi.srem(this.userIndexKey(realm, userId), ...ids);
     await multi.exec();
     return ids.length;
   }

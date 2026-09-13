@@ -34,11 +34,73 @@ export const resetPasswordSchema = z.object({
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
+// ---- MFA ------------------------------------------------------------------------------------
+
+// A 6-digit TOTP or a recovery code (XXXXX-XXXXX); the API decides which it is.
+export const mfaCodeSchema = z.string().trim().min(6, "Enter the code").max(16);
+
+export const mfaVerifySchema = z.object({
+  challengeToken: tokenSchema,
+  code: mfaCodeSchema,
+});
+export type MfaVerifyInput = z.infer<typeof mfaVerifySchema>;
+
+export const mfaEnableSchema = z.object({ code: mfaCodeSchema });
+export type MfaEnableInput = z.infer<typeof mfaEnableSchema>;
+
+export const mfaDisableSchema = z.object({
+  password: z.string().min(1, "Password is required").max(128),
+  code: mfaCodeSchema,
+});
+export type MfaDisableInput = z.infer<typeof mfaDisableSchema>;
+
+export const passwordConfirmSchema = z.object({
+  password: z.string().min(1, "Password is required").max(128),
+});
+export type PasswordConfirmInput = z.infer<typeof passwordConfirmSchema>;
+
+export interface MfaStatus {
+  enabled: boolean;
+  enabledAt: string | null;
+  recoveryCodesRemaining: number;
+}
+
+export interface MfaSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+  qrDataUrl: string;
+}
+
+// ---- Responses ------------------------------------------------------------------------------
+
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   emailVerified: boolean;
+  createdAt: string;
+  mfaEnabled?: boolean;
+}
+
+export type LoginResponse =
+  { user: AuthUser; mfaRequired?: undefined } | { mfaRequired: true; challengeToken: string };
+
+export interface SessionSummary {
+  id: string;
+  current: boolean;
+  createdAt: string;
+  lastSeenAt: string;
+  ip: string | null;
+  userAgent: string | null;
+  mfaVerified: boolean;
+}
+
+export interface LoginEventSummary {
+  id: string;
+  outcome: "success" | "failed_password" | "failed_mfa" | "mfa_required" | "locked";
+  ip: string | null;
+  userAgent: string | null;
+  riskFlags: string[];
   createdAt: string;
 }
 

@@ -26,6 +26,22 @@ export const envSchema = z
       .transform((v) => (v === undefined ? undefined : v === "true")),
     ADMIN_URL: z.string().url(),
     MAIL_FROM: z.string().min(3).default("Ocean Commerce <no-reply@localhost>"),
+    // 32 bytes hex — encrypts secrets at rest (TOTP seeds, app tokens). Rotate via versioned prefix.
+    ENCRYPTION_KEY: z
+      .string()
+      .regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY must be 64 hex characters (32 bytes)"),
+    STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+    STORAGE_LOCAL_DIR: z.string().default(".storage"),
+    MEDIA_PUBLIC_URL: z.string().url().default("http://localhost:4000/media"),
+    S3_ENDPOINT: z.string().url().optional(),
+    S3_REGION: z.string().default("us-east-1"),
+    S3_BUCKET: z.string().optional(),
+    S3_ACCESS_KEY: z.string().optional(),
+    S3_SECRET_KEY: z.string().optional(),
+    S3_FORCE_PATH_STYLE: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((v) => v === "true"),
   })
   .transform((env) => ({
     ...env,

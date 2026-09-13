@@ -11,11 +11,12 @@
     "prisma"
   ],
   "scripts": {
-    "generate": "prisma generate",
+    "generate": "node scripts/generate.mjs",
+    "generate:force": "node scripts/generate.mjs --force",
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src prisma",
+    "lint": "eslint src prisma scripts",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:status": "prisma migrate status",

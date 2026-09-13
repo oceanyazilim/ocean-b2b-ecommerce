@@ -42,8 +42,49 @@ model User {
   organizationMembers OrganizationMember[]
   storeMembers        StoreMember[]
   sentInvitations     Invitation[]
+  mfa                 UserMfa?
+  loginEvents         LoginEvent[]
 
   @@map("users")
+}
+
+model UserMfa {
+  userId             String    @id @map("user_id") @db.Uuid
+  totpSecretEnc      String    @map("totp_secret_enc")
+  enabledAt          DateTime? @map("enabled_at") @db.Timestamptz(6)
+  recoveryCodeHashes String[]  @default([]) @map("recovery_code_hashes")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_mfa")
+}
+
+enum LoginOutcome {
+  success
+  failed_password
+  failed_mfa
+  mfa_required
+  locked
+}
+
+model LoginEvent {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String?      @map("user_id") @db.Uuid
+  email     String
+  ip        String?
+  userAgent String?      @map("user_agent")
+  outcome   LoginOutcome
+  riskFlags String[]     @default([]) @map("risk_flags")
+  sessionId String?      @map("session_id")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([email, createdAt(sort: Desc)])
+  @@map("login_events")
 }
 
 model UserToken {

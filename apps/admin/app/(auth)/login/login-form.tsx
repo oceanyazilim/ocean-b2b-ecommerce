@@ -1,5 +1,6 @@
 "use client";
 
+import type { LoginResponse } from "@ocean/types";
 import {
   Alert,
   Button,
@@ -20,17 +21,75 @@ import { useSubmit } from "@/lib/use-submit";
 
 export function LoginForm({ next }: { next?: string | undefined }) {
   const router = useRouter();
-  const { pending, error, fieldErrors, run } = useSubmit();
+  const { pending, error, fieldErrors, run, reset } = useSubmit();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+
+  function finish() {
+    router.replace(next ?? "/");
+    router.refresh();
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await run(() => api("/auth/login", { body: { email, password } }));
-    if (ok !== undefined) {
-      router.replace(next ?? "/");
-      router.refresh();
-    }
+    const res = await run(() =>
+      api<{ data: LoginResponse }>("/auth/login", { body: { email, password } }),
+    );
+    if (!res) return;
+    if (res.data.mfaRequired) setChallengeToken(res.data.challengeToken);
+    else finish();
+  }
+
+  async function onVerify(e: React.FormEvent) {
+    e.preventDefault();
+    const ok = await run(() => api("/auth/mfa/verify", { body: { challengeToken, code } }));
+    if (ok !== undefined) finish();
+  }
+
+  if (challengeToken) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Two-factor authentication</CardTitle>
+          <CardDescription>
+            Enter the 6-digit code from your authenticator app, or one of your recovery codes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onVerify} className="flex flex-col gap-4" noValidate>
+            {error && <Alert variant="error">{error}</Alert>}
+            <FormField id="code" label="Code" error={fieldErrors["code"]}>
+              <Input
+                id="code"
+                autoComplete="one-time-code"
+                inputMode="text"
+                autoFocus
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                invalid={!!fieldErrors["code"]}
+              />
+            </FormField>
+            <Button type="submit" loading={pending} className="w-full">
+              Verify
+            </Button>
+            <button
+              type="button"
+              className="text-center text-sm text-muted-foreground hover:underline"
+              onClick={() => {
+                setChallengeToken(null);
+                setCode("");
+                reset();
+              }}
+            >
+              Back to sign in
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

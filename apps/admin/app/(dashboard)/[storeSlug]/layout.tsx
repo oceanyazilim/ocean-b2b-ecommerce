@@ -76,7 +76,9 @@ export default async function StoreLayout({
             )}
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="hidden sm:inline">{me.user.name}</span>
+            <Link href="/account/security" className="hidden hover:underline sm:inline">
+              {me.user.name}
+            </Link>
             <LogoutButton />
           </div>
         </header>
