@@ -84,6 +84,33 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog: products, collections, media, me
     expect(third.body.data.handle).toBe("industrial-glove-2");
   });
 
+  it("leaves fields untouched when a patch omits them", async () => {
+    const created = (
+      await owner
+        .post(`/admin/v1/stores/${storeId}/products`)
+        .send(
+          glove({
+            title: "Partial Patch Jacket",
+            tags: ["outerwear"],
+            variants: glove().variants.map((v) => ({ ...v, sku: `PPJ-${v.sku}` })),
+          }),
+        )
+        .expect(201)
+    ).body.data;
+    const patched = (
+      await owner
+        .patch(`/admin/v1/stores/${storeId}/products/${created.id}`)
+        .send({ version: created.version, title: "Partial Patch Jacket II" })
+        .expect(200)
+    ).body.data;
+    expect(patched.title).toBe("Partial Patch Jacket II");
+    expect(patched.status).toBe("active");
+    expect(patched.tags).toEqual(["outerwear"]);
+    expect(patched.descriptionHtml).toBe("<p>Tough gloves</p>");
+    expect(patched.options).toHaveLength(2);
+    expect(patched.variants).toHaveLength(6);
+  });
+
   it("keeps variant ids across edits, enforces versions and status transitions", async () => {
     const created = (
       await owner

@@ -31,7 +31,7 @@ export default async function StoreLayout({
       href: `${base}/collections`,
       disabled: !can(store, "collections.read"),
     },
-    { label: "Inventory", href: `${base}/inventory`, disabled: true },
+    { label: "Inventory", href: `${base}/inventory`, disabled: !can(store, "inventory.read") },
     { label: "Customers", href: `${base}/customers`, disabled: true },
     { label: "Companies", href: `${base}/companies`, disabled: true },
     { label: "Catalogs", href: `${base}/catalogs`, disabled: true },

@@ -5,6 +5,7 @@ export * from "./audit";
 export * from "./auth";
 export * from "./categories";
 export * from "./collections";
+export * from "./inventory";
 export * from "./media";
 export * from "./memberships";
 export * from "./metafields";

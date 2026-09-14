@@ -39,31 +39,43 @@ export const variantInputSchema = z.object({
 });
 export type VariantInput = z.infer<typeof variantInputSchema>;
 
-export const productInputSchema = z.object({
+const tagsSchema = z.array(z.string().trim().min(1).max(40)).max(50);
+const optionsSchema = z.array(productOptionInputSchema).max(MAX_OPTIONS);
+
+// Default-free shape shared by create and update. Zod 4 applies `.default()` inside
+// `.partial()`, so defaults live only on the create schema or a PATCH would reset fields.
+const productFields = z.object({
   title: z.string().trim().min(1, "Title is required").max(255),
   handle: slugSchema.optional(),
-  descriptionHtml: z.string().max(100_000).default(""),
+  descriptionHtml: z.string().max(100_000),
   vendor: optionalText(120),
   productType: optionalText(120),
   categoryId: idSchema.nullable().optional(),
-  status: productStatusSchema.default("draft"),
-  tags: z.array(z.string().trim().min(1).max(40)).max(50).default([]),
+  status: productStatusSchema,
+  tags: tagsSchema,
   seoTitle: optionalText(70),
   seoDescription: optionalText(320),
   templateSuffix: optionalText(60),
-  options: z.array(productOptionInputSchema).max(MAX_OPTIONS).default([]),
+  options: optionsSchema,
   variants: z
     .array(variantInputSchema)
     .min(1, "A product needs at least one variant")
     .max(MAX_VARIANTS),
   mediaIds: z.array(idSchema).max(50).optional(),
 });
+
+export const productInputSchema = productFields.extend({
+  descriptionHtml: z.string().max(100_000).default(""),
+  status: productStatusSchema.default("draft"),
+  tags: tagsSchema.default([]),
+  options: optionsSchema.default([]),
+});
 export type ProductInput = z.infer<typeof productInputSchema>;
 
 export const createProductSchema = productInputSchema;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
-export const updateProductSchema = productInputSchema
+export const updateProductSchema = productFields
   .partial()
   .extend({ version: z.number().int().positive() });
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
