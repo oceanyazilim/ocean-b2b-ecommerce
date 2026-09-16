@@ -1,10 +1,13 @@
 export { z } from "zod";
 
+export * from "./addresses";
 export * from "./api";
 export * from "./audit";
 export * from "./auth";
 export * from "./categories";
 export * from "./collections";
+export * from "./companies";
+export * from "./customers";
 export * from "./inventory";
 export * from "./media";
 export * from "./memberships";

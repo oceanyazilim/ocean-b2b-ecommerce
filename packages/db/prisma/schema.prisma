@@ -38,15 +38,17 @@ model User {
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tokens              UserToken[]
-  organizationMembers OrganizationMember[]
-  storeMembers        StoreMember[]
-  sentInvitations     Invitation[]
-  mfa                 UserMfa?
-  loginEvents         LoginEvent[]
-  inventoryMovements  InventoryMovement[]
-  transfersRequested  TransferRequest[]    @relation("TransferRequestedBy")
-  transfersApproved   TransferRequest[]    @relation("TransferApprovedBy")
+  tokens               UserToken[]
+  organizationMembers  OrganizationMember[]
+  storeMembers         StoreMember[]
+  sentInvitations      Invitation[]
+  mfa                  UserMfa?
+  loginEvents          LoginEvent[]
+  inventoryMovements   InventoryMovement[]
+  transfersRequested   TransferRequest[]    @relation("TransferRequestedBy")
+  transfersApproved    TransferRequest[]    @relation("TransferApprovedBy")
+  managedCompanies     Company[]            @relation("CompanyAccountManager")
+  reviewedApplications CompanyApplication[] @relation("ApplicationReviewer")
 
   @@map("users")
 }
@@ -134,18 +136,23 @@ model Organization {
   createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  members         OrganizationMember[]
-  stores          Store[]
-  storeMembers    StoreMember[]
-  invitations     Invitation[]
-  auditLogs       AuditLog[]
-  products        Product[]
-  collections     Collection[]
-  media           Media[]
-  locations       Location[]
-  inventoryItems  InventoryItem[]
-  inventoryLevels InventoryLevel[]
-  transfers       TransferRequest[]
+  members             OrganizationMember[]
+  stores              Store[]
+  storeMembers        StoreMember[]
+  invitations         Invitation[]
+  auditLogs           AuditLog[]
+  products            Product[]
+  collections         Collection[]
+  media               Media[]
+  locations           Location[]
+  inventoryItems      InventoryItem[]
+  inventoryLevels     InventoryLevel[]
+  transfers           TransferRequest[]
+  customers           Customer[]
+  companies           Company[]
+  companyLocations    CompanyLocation[]
+  companyUsers        CompanyUser[]
+  companyApplications CompanyApplication[]
 
   @@map("organizations")
 }
@@ -218,6 +225,11 @@ model Store {
   inventoryLevels      InventoryLevel[]
   movements            InventoryMovement[]
   transfers            TransferRequest[]
+  customers            Customer[]
+  companies            Company[]
+  companyLocations     CompanyLocation[]
+  companyUsers         CompanyUser[]
+  companyApplications  CompanyApplication[]
 
   @@index([organizationId])
   @@map("stores")
@@ -446,10 +458,11 @@ model Media {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store        Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  products     ProductMedia[]
-  collections  Collection[]
+  store                Store                        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization         Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products             ProductMedia[]
+  collections          Collection[]
+  applicationDocuments CompanyApplicationDocument[]
 
   @@index([storeId, kind, createdAt(sort: Desc)])
   @@map("media")
@@ -815,4 +828,274 @@ model TransferRequest {
   @@index([storeId, status])
   @@index([storeId, createdAt(sort: Desc)])
   @@map("transfer_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Customers & B2B companies
+// ---------------------------------------------------------------------------
+
+enum CustomerStatus {
+  active
+  disabled
+}
+
+enum MarketingConsent {
+  not_subscribed
+  subscribed
+  unsubscribed
+}
+
+// Shoppers and company buyers share one record; the buyer facet is the company membership.
+// Storefront login (Phase 8) fills password_hash / account_activated_at.
+model Customer {
+  id                      String           @id @default(uuid()) @db.Uuid
+  storeId                 String           @map("store_id") @db.Uuid
+  organizationId          String           @map("organization_id") @db.Uuid
+  email                   String
+  firstName               String?          @map("first_name")
+  lastName                String?          @map("last_name")
+  phone                   String?
+  status                  CustomerStatus   @default(active)
+  tags                    String[]         @default([])
+  note                    String?
+  locale                  String?
+  taxExempt               Boolean          @default(false) @map("tax_exempt")
+  emailMarketing          MarketingConsent @default(not_subscribed) @map("email_marketing")
+  emailMarketingUpdatedAt DateTime?        @map("email_marketing_updated_at") @db.Timestamptz(6)
+  passwordHash            String?          @map("password_hash")
+  accountActivatedAt      DateTime?        @map("account_activated_at") @db.Timestamptz(6)
+  ordersCount             Int              @default(0) @map("orders_count")
+  totalSpent              BigInt           @default(0) @map("total_spent")
+  lastOrderAt             DateTime?        @map("last_order_at") @db.Timestamptz(6)
+  version                 Int              @default(1)
+  deletedAt               DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  addresses    CustomerAddress[]
+  companyUsers CompanyUser[]
+  applications CompanyApplication[]
+
+  // Partial unique index on (store_id, email) WHERE deleted_at IS NULL lives in the migration.
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([storeId, status])
+  @@index([storeId, email])
+  @@index([storeId, lastName, firstName])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id                String   @id @default(uuid()) @db.Uuid
+  customerId        String   @map("customer_id") @db.Uuid
+  storeId           String   @map("store_id") @db.Uuid
+  // Validated postal address document (see addressSchema in @ocean/types).
+  address           Json
+  isDefaultShipping Boolean  @default(false) @map("is_default_shipping")
+  isDefaultBilling  Boolean  @default(false) @map("is_default_billing")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([storeId])
+  @@map("customer_addresses")
+}
+
+enum CompanyStatus {
+  active
+  suspended
+  archived
+}
+
+model Company {
+  id               String        @id @default(uuid()) @db.Uuid
+  storeId          String        @map("store_id") @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
+  legalName        String        @map("legal_name")
+  displayName      String        @map("display_name")
+  taxNumber        String?       @map("tax_number")
+  taxOffice        String?       @map("tax_office")
+  industry         String?
+  currency         String        @db.Char(3)
+  status           CompanyStatus @default(active)
+  accountManagerId String?       @map("account_manager_id") @db.Uuid
+  externalId       String?       @map("external_id")
+  website          String?
+  phone            String?
+  email            String?
+  note             String?
+  tags             String[]      @default([])
+  version          Int           @default(1)
+  deletedAt        DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store          Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accountManager User?                @relation("CompanyAccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
+  locations      CompanyLocation[]
+  users          CompanyUser[]
+  applications   CompanyApplication[]
+
+  // Partial unique index on (store_id, tax_number) WHERE tax_number IS NOT NULL AND deleted_at IS NULL in the migration.
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([storeId, status])
+  @@index([storeId, displayName])
+  @@index([storeId, accountManagerId])
+  @@map("companies")
+}
+
+// A branch / ship-to site of a company. Catalog, price list, payment terms and credit attach
+// here in Phases 5 and 12; the location itself carries only what every order needs.
+model CompanyLocation {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  storeId         String   @map("store_id") @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String
+  externalId      String?  @map("external_id")
+  phone           String?
+  email           String?
+  shippingAddress Json     @map("shipping_address")
+  // null = same as shipping
+  billingAddress  Json?    @map("billing_address")
+  // null = company currency
+  currency        String?  @db.Char(3)
+  taxExempt       Boolean  @default(false) @map("tax_exempt")
+  taxNumber       String?  @map("tax_number")
+  isDefault       Boolean  @default(false) @map("is_default")
+  isActive        Boolean  @default(true) @map("is_active")
+  note            String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  store        Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userAccess   CompanyUserLocation[]
+
+  // Partial unique index on (company_id) WHERE is_default = true in the migration.
+  @@unique([companyId, name])
+  @@index([storeId, companyId])
+  @@map("company_locations")
+}
+
+enum CompanyRole {
+  company_admin
+  buyer
+  approver
+  finance
+  viewer
+}
+
+enum CompanyUserStatus {
+  active
+  disabled
+}
+
+// Membership of a customer in a company. `allLocations` = false restricts the user to the
+// locations listed in company_user_locations.
+model CompanyUser {
+  id             String            @id @default(uuid()) @db.Uuid
+  companyId      String            @map("company_id") @db.Uuid
+  customerId     String            @map("customer_id") @db.Uuid
+  storeId        String            @map("store_id") @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  role           CompanyRole
+  status         CompanyUserStatus @default(active)
+  title          String?
+  allLocations   Boolean           @default(true) @map("all_locations")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer     Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  store        Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locations    CompanyUserLocation[]
+
+  @@unique([companyId, customerId])
+  @@index([storeId, customerId])
+  @@index([storeId, companyId])
+  @@map("company_users")
+}
+
+model CompanyUserLocation {
+  companyUserId     String @map("company_user_id") @db.Uuid
+  companyLocationId String @map("company_location_id") @db.Uuid
+
+  companyUser CompanyUser     @relation(fields: [companyUserId], references: [id], onDelete: Cascade)
+  location    CompanyLocation @relation(fields: [companyLocationId], references: [id], onDelete: Cascade)
+
+  @@id([companyUserId, companyLocationId])
+  @@index([companyLocationId])
+  @@map("company_user_locations")
+}
+
+enum CompanyApplicationStatus {
+  pending
+  under_review
+  approved
+  rejected
+}
+
+enum CompanyApplicationSource {
+  storefront
+  admin
+}
+
+// A wholesale-account request. Approval creates the company, its default location and the
+// contact as company admin; the application keeps a pointer to what it produced.
+model CompanyApplication {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  storeId               String                   @map("store_id") @db.Uuid
+  organizationId        String                   @map("organization_id") @db.Uuid
+  status                CompanyApplicationStatus @default(pending)
+  source                CompanyApplicationSource @default(storefront)
+  legalName             String                   @map("legal_name")
+  displayName           String?                  @map("display_name")
+  taxNumber             String?                  @map("tax_number")
+  taxOffice             String?                  @map("tax_office")
+  industry              String?
+  website               String?
+  expectedMonthlyVolume String?                  @map("expected_monthly_volume")
+  contactFirstName      String                   @map("contact_first_name")
+  contactLastName       String                   @map("contact_last_name")
+  contactEmail          String                   @map("contact_email")
+  contactPhone          String?                  @map("contact_phone")
+  address               Json?
+  message               String?
+  customerId            String?                  @map("customer_id") @db.Uuid
+  reviewerId            String?                  @map("reviewer_id") @db.Uuid
+  reviewedAt            DateTime?                @map("reviewed_at") @db.Timestamptz(6)
+  decisionNote          String?                  @map("decision_note")
+  companyId             String?                  @map("company_id") @db.Uuid
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store                        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?                    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  reviewer     User?                        @relation("ApplicationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  company      Company?                     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  documents    CompanyApplicationDocument[]
+
+  @@index([storeId, status, createdAt(sort: Desc)])
+  @@index([storeId, contactEmail])
+  @@map("company_applications")
+}
+
+model CompanyApplicationDocument {
+  applicationId String   @map("application_id") @db.Uuid
+  mediaId       String   @map("media_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application CompanyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  media       Media              @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, mediaId])
+  @@map("company_application_documents")
 }

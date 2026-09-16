@@ -82,15 +82,26 @@ inventory_transfer_items transfer_id, inventory_item_id, quantity, received_quan
 ### Customers & B2B (Phase 4)
 
 ```
-customers                store_id, email, first_name, last_name, phone, status, tags, notes,
-                         marketing_consent jsonb, tax_exempt, ltv_cache, deleted_at
-customer_addresses       customer_id, address jsonb, default_shipping, default_billing
-companies                store_id, legal_name, display_name, tax_number, tax_office, industry,
-                         currency, status, account_manager_user_id, notes, deleted_at
-company_locations        company_id, name, address jsonb, currency, tax_settings jsonb,
-                         shipping_settings jsonb, default
-company_users            company_id, customer_id, role, locations (jsonb ids or join table)
-company_applications     store_id, status, submitted jsonb, documents, reviewer_id, decided_at
+customers                store_id, email (unique per store while live), first_name, last_name,
+                         phone, status, tags[], note, locale, tax_exempt, email_marketing +
+                         email_marketing_updated_at, password_hash / account_activated_at (Phase 8
+                         login), orders_count, total_spent, last_order_at, version, deleted_at
+customer_addresses       customer_id, address jsonb, is_default_shipping, is_default_billing
+                         (one default of each per customer, partial unique indexes)
+companies                store_id, legal_name, display_name, tax_number (unique per store while
+                         live), tax_office, industry, currency, status (active|suspended|archived),
+                         account_manager_id -> users, external_id, website, phone, email, note,
+                         tags[], version, deleted_at
+company_locations        company_id, name (unique per company), external_id, phone, email,
+                         shipping_address jsonb, billing_address jsonb?, currency?, tax_exempt,
+                         tax_number, is_default (one per company), is_active, note
+company_users            company_id, customer_id (unique pair), role (company_admin|buyer|approver|
+                         finance|viewer), status, title, all_locations
+company_user_locations   company_user_id, company_location_id (explicit scope when all_locations=false)
+company_applications     store_id, status (pending|under_review|approved|rejected), source, legal_name,
+                         tax fields, contact_*, address jsonb, message, customer_id?, reviewer_id,
+                         reviewed_at, decision_note, company_id (set on approval)
+company_application_documents  application_id, media_id
 ```
 
 ### Catalog access & pricing (Phase 5)

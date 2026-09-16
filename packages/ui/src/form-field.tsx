@@ -8,7 +8,7 @@ export interface FormFieldProps {
   label: string;
   error?: string | undefined;
   hint?: string | undefined;
-  className?: string;
+  className?: string | undefined;
   children: ReactNode;
 }
 
