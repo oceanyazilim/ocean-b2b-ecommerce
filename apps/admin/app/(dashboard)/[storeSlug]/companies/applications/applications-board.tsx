@@ -38,13 +38,15 @@ import { CompaniesNav } from "../company-nav";
 
 type View = "open" | CompanyApplicationStatus;
 
-const STATUS_BADGE: Record<CompanyApplicationStatus, "warning" | "secondary" | "success" | "destructive"> =
-  {
-    pending: "warning",
-    under_review: "secondary",
-    approved: "success",
-    rejected: "destructive",
-  };
+const STATUS_BADGE: Record<
+  CompanyApplicationStatus,
+  "warning" | "secondary" | "success" | "destructive"
+> = {
+  pending: "warning",
+  under_review: "secondary",
+  approved: "success",
+  rejected: "destructive",
+};
 
 export function ApplicationsBoard({
   storeId,
@@ -161,8 +163,8 @@ export function ApplicationsBoard({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Companies</h1>
           <p className="text-sm text-muted-foreground">
-            Wholesale account requests. Approving one creates the company, its head office and
-            the contact as company admin.
+            Wholesale account requests. Approving one creates the company, its head office and the
+            contact as company admin.
           </p>
         </div>
       </div>
@@ -284,7 +286,9 @@ function ApplicationDialog({
   async function onReject(e: FormEvent) {
     e.preventDefault();
     await act(() =>
-      api<{ data: CompanyApplicationSummary }>(`${base}/${applicationId}/reject`, { body: { note } }),
+      api<{ data: CompanyApplicationSummary }>(`${base}/${applicationId}/reject`, {
+        body: { note },
+      }),
     );
   }
 
@@ -317,7 +321,9 @@ function ApplicationDialog({
                     loading={submit.pending}
                     onClick={() =>
                       void act(() =>
-                        api<{ data: CompanyApplicationSummary }>(`${base}/${a.id}/review`, { body: {} }),
+                        api<{ data: CompanyApplicationSummary }>(`${base}/${a.id}/review`, {
+                          body: {},
+                        }),
                       )
                     }
                   >
@@ -410,17 +416,38 @@ function ApplicationDialog({
         )}
 
         {mode === "approve" && (
-          <form id="application-decision" onSubmit={(e) => void onApprove(e)} className="flex flex-col gap-3">
+          <form
+            id="application-decision"
+            onSubmit={(e) => void onApprove(e)}
+            className="flex flex-col gap-3"
+          >
             <p className="text-muted-foreground">
               Creates <strong>{a.legalName}</strong> as an active company with {a.contactFirstName}{" "}
               {a.contactLastName} as company admin. Adjust the head office below if needed.
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField id="ap-loc" label="Head office name" error={submit.fieldErrors.locationName}>
-                <Input id="ap-loc" value={locationName} onChange={(e) => setLocationName(e.target.value)} maxLength={120} />
+              <FormField
+                id="ap-loc"
+                label="Head office name"
+                error={submit.fieldErrors.locationName}
+              >
+                <Input
+                  id="ap-loc"
+                  value={locationName}
+                  onChange={(e) => setLocationName(e.target.value)}
+                  maxLength={120}
+                />
               </FormField>
-              <FormField id="ap-manager" label="Account manager" error={submit.fieldErrors.accountManagerId}>
-                <Select id="ap-manager" value={accountManagerId} onChange={(e) => setAccountManagerId(e.target.value)}>
+              <FormField
+                id="ap-manager"
+                label="Account manager"
+                error={submit.fieldErrors.accountManagerId}
+              >
+                <Select
+                  id="ap-manager"
+                  value={accountManagerId}
+                  onChange={(e) => setAccountManagerId(e.target.value)}
+                >
                   <option value="">Unassigned</option>
                   {managers.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -439,13 +466,23 @@ function ApplicationDialog({
               showName={false}
             />
             <FormField id="ap-note" label="Internal note" error={submit.fieldErrors.note}>
-              <Textarea id="ap-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
+              <Textarea
+                id="ap-note"
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={2000}
+              />
             </FormField>
           </form>
         )}
 
         {mode === "reject" && (
-          <form id="application-decision" onSubmit={(e) => void onReject(e)} className="flex flex-col gap-3">
+          <form
+            id="application-decision"
+            onSubmit={(e) => void onReject(e)}
+            className="flex flex-col gap-3"
+          >
             <FormField
               id="rj-note"
               label="Reason"

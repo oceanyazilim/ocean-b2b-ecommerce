@@ -58,7 +58,12 @@ export function CustomerAddresses({
           <CardDescription>Shipping and billing addresses used at checkout.</CardDescription>
         </div>
         {!readOnly && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setEditing({ kind: "new" })}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setEditing({ kind: "new" })}
+          >
             Add address
           </Button>
         )}
@@ -79,9 +84,7 @@ export function CustomerAddresses({
                   {line}
                 </div>
               ))}
-              {a.address.phone && (
-                <div className="text-muted-foreground">{a.address.phone}</div>
-              )}
+              {a.address.phone && <div className="text-muted-foreground">{a.address.phone}</div>}
               <div className="mt-1 flex gap-1">
                 {a.isDefaultShipping && <Badge>Default shipping</Badge>}
                 {a.isDefaultBilling && <Badge variant="secondary">Default billing</Badge>}
@@ -105,7 +108,10 @@ export function CustomerAddresses({
                     loading={action.pending}
                     onClick={() =>
                       void mutate(() =>
-                        api(`${base}/${a.id}`, { method: "PATCH", body: { isDefaultShipping: true } }),
+                        api(`${base}/${a.id}`, {
+                          method: "PATCH",
+                          body: { isDefaultShipping: true },
+                        }),
                       )
                     }
                   >
@@ -120,7 +126,10 @@ export function CustomerAddresses({
                     loading={action.pending}
                     onClick={() =>
                       void mutate(() =>
-                        api(`${base}/${a.id}`, { method: "PATCH", body: { isDefaultBilling: true } }),
+                        api(`${base}/${a.id}`, {
+                          method: "PATCH",
+                          body: { isDefaultBilling: true },
+                        }),
                       )
                     }
                   >

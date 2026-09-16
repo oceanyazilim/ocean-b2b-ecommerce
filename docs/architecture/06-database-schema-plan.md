@@ -107,17 +107,27 @@ company_application_documents  application_id, media_id
 ### Catalog access & pricing (Phase 5)
 
 ```
-catalogs                 store_id, name, status
-catalog_products         catalog_id, product_id (or variant_id), included
-catalog_assignments      catalog_id, company_id | company_location_id | customer_group_id
-price_lists              store_id, name, currency, adjustment_type, adjustment_value, priority
-price_list_prices        price_list_id, variant_id, price, compare_at_price
-price_list_assignments   price_list_id, company_id | company_location_id | market_id | catalog_id
-volume_pricing_rules     store_id, scope (variant|product|collection), scope_id, price_list_id?,
-                         tiers jsonb [{min_qty, price | percent_off}]
-quantity_rules           store_id, scope, scope_id, min, max, increment, case_pack
-contract_prices          company_id | company_location_id, variant_id, price, valid_from, valid_to
+catalogs                 store_id, name (unique per store), description, status (draft|active|archived),
+                         version
+catalog_products         catalog_id, product_id
+catalog_assignments      catalog_id, company_id | company_location_id (exactly one; unique per pair).
+                         A buyer with >=1 active catalog sees only their union; none = public assortment.
+price_lists              store_id, name, currency (= store currency until Markets), status,
+                         adjustment_bps (negative = discount), priority, version
+price_list_prices        price_list_id, variant_id, price, compare_at_price (explicit price wins over bps)
+price_list_assignments   price_list_id, company_id | company_location_id; highest priority active list
+                         applies, location beats company on ties
+volume_pricing_rules     store_id, name, scope (variant|product|collection|store), scope_id?,
+                         price_list_id? (only with that list), tier_type (fixed_price|percent_off),
+                         tiers jsonb [{minQuantity, value}], is_active; most specific scope wins
+quantity_rules           store_id, scope (variant|product), scope_id, min_quantity, max_quantity, increment
+contract_prices          store_id, company_id, company_location_id?, variant_id, price, valid_from,
+                         valid_to, note; location beats company; beats every list and tier
 ```
+
+Resolution order (PricingService.quote): contract price → price list (explicit, else base
+adjusted by bps) → volume tier on that basis → base price. Quantity rules are validated per
+line with a suggested valid quantity.
 
 ### Commerce (Phase 6–7)
 

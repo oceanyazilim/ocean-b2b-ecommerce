@@ -137,7 +137,10 @@ export function CompaniesList({
   const sortState =
     sort === "name_asc" || sort === "name_desc"
       ? { key: "name", direction: sort === "name_asc" ? ("asc" as const) : ("desc" as const) }
-      : { key: "created", direction: sort === "created_asc" ? ("asc" as const) : ("desc" as const) };
+      : {
+          key: "created",
+          direction: sort === "created_asc" ? ("asc" as const) : ("desc" as const),
+        };
 
   const filtered = q.trim() !== "" || view !== "all";
 

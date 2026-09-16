@@ -24,7 +24,9 @@ import { CompaniesService } from "./companies.service";
 const include = {
   reviewer: { select: { id: true, name: true } },
   documents: {
-    include: { media: { select: { id: true, originalFilename: true, storageKey: true, mime: true } } },
+    include: {
+      media: { select: { id: true, originalFilename: true, storageKey: true, mime: true } },
+    },
     orderBy: { createdAt: "asc" as const },
   },
 } satisfies Prisma.CompanyApplicationInclude;

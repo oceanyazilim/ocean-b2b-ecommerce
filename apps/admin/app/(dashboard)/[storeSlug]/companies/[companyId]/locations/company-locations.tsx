@@ -77,7 +77,9 @@ export function CompanyLocations({
       header: "Billing",
       cell: (l) => (
         <span className="text-muted-foreground">
-          {l.billingAddress ? formatAddressLines(l.billingAddress).slice(0, 2).join(", ") : "Same as shipping"}
+          {l.billingAddress
+            ? formatAddressLines(l.billingAddress).slice(0, 2).join(", ")
+            : "Same as shipping"}
         </span>
       ),
     },
@@ -111,7 +113,11 @@ export function CompanyLocations({
             className: "text-right",
             cell: (l: CompanyLocationSummary) => (
               <div className="flex flex-wrap justify-end gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setEditing({ kind: "edit", location: l })}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditing({ kind: "edit", location: l })}
+                >
                   Edit
                 </Button>
                 {!l.isDefault && l.isActive && (
@@ -119,7 +125,9 @@ export function CompanyLocations({
                     size="sm"
                     variant="ghost"
                     loading={busyId === l.id}
-                    onClick={() => void mutate(l.id, () => api(`${base}/${l.id}/default`, { body: {} }))}
+                    onClick={() =>
+                      void mutate(l.id, () => api(`${base}/${l.id}/default`, { body: {} }))
+                    }
                   >
                     Make default
                   </Button>
@@ -131,7 +139,10 @@ export function CompanyLocations({
                     loading={busyId === l.id}
                     onClick={() =>
                       void mutate(l.id, () =>
-                        api(`${base}/${l.id}`, { method: "PATCH", body: { isActive: !l.isActive } }),
+                        api(`${base}/${l.id}`, {
+                          method: "PATCH",
+                          body: { isActive: !l.isActive },
+                        }),
                       )
                     }
                   >
@@ -329,7 +340,13 @@ function LocationDialog({
             />
           </FormField>
           <FormField id="cl-phone" label="Phone" error={submit.fieldErrors.phone}>
-            <Input id="cl-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} />
+            <Input
+              id="cl-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              maxLength={40}
+            />
           </FormField>
         </div>
 
@@ -346,7 +363,10 @@ function LocationDialog({
         </fieldset>
 
         <label className="flex items-center gap-2 text-sm">
-          <Checkbox checked={separateBilling} onChange={(e) => setSeparateBilling(e.target.checked)} />
+          <Checkbox
+            checked={separateBilling}
+            onChange={(e) => setSeparateBilling(e.target.checked)}
+          />
           Use a different billing address
         </label>
         {separateBilling && (
@@ -379,11 +399,22 @@ function LocationDialog({
             />
           </FormField>
           <FormField id="cl-tax" label="Location tax number" error={submit.fieldErrors.taxNumber}>
-            <Input id="cl-tax" value={taxNumber} onChange={(e) => setTaxNumber(e.target.value)} maxLength={40} />
+            <Input
+              id="cl-tax"
+              value={taxNumber}
+              onChange={(e) => setTaxNumber(e.target.value)}
+              maxLength={40}
+            />
           </FormField>
         </div>
         <FormField id="cl-note" label="Note" error={submit.fieldErrors.note}>
-          <Textarea id="cl-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} />
+          <Textarea
+            id="cl-note"
+            rows={2}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={1000}
+          />
         </FormField>
         <div className="flex flex-col gap-2 text-sm">
           <label className="flex items-center gap-2">
@@ -402,7 +433,11 @@ function LocationDialog({
             Default location
           </label>
           <label className="flex items-center gap-2">
-            <Checkbox checked={isActive} disabled={isDefault} onChange={(e) => setIsActive(e.target.checked)} />
+            <Checkbox
+              checked={isActive}
+              disabled={isDefault}
+              onChange={(e) => setIsActive(e.target.checked)}
+            />
             Active
           </label>
           {(submit.fieldErrors.isActive ?? submit.fieldErrors.isDefault) && (

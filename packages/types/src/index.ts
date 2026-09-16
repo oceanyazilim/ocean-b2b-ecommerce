@@ -13,6 +13,7 @@ export * from "./media";
 export * from "./memberships";
 export * from "./metafields";
 export * from "./organizations";
+export * from "./pricing";
 export * from "./primitives";
 export * from "./products";
 export * from "./stores";

@@ -323,7 +323,11 @@ export function CompanyForm({
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <FormField id="co-loc-name" label="Location name" error={fieldErrors["location.name"]}>
+                <FormField
+                  id="co-loc-name"
+                  label="Location name"
+                  error={fieldErrors["location.name"]}
+                >
                   <Input
                     id="co-loc-name"
                     value={locationName}

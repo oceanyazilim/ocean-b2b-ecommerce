@@ -80,7 +80,8 @@ export class CompanyApplicationsController {
   reject(
     @CurrentTenant() tenant: TenantContext,
     @Param("applicationId") id: string,
-    @Body(new ZodValidationPipe(rejectCompanyApplicationSchema)) body: RejectCompanyApplicationInput,
+    @Body(new ZodValidationPipe(rejectCompanyApplicationSchema))
+    body: RejectCompanyApplicationInput,
     @ReqMeta() meta: RequestMeta,
   ) {
     return this.applications.reject(tenant, id, body.note, meta);

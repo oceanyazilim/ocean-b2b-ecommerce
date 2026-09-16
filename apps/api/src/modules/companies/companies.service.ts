@@ -121,7 +121,11 @@ export class CompaniesService {
         select: { user: { select: { id: true, name: true, email: true } } },
       }),
       this.prisma.organizationMember.findMany({
-        where: { organizationId: ctx.organizationId, status: "active", role: { in: ["owner", "admin"] } },
+        where: {
+          organizationId: ctx.organizationId,
+          status: "active",
+          role: { in: ["owner", "admin"] },
+        },
         select: { user: { select: { id: true, name: true, email: true } } },
       }),
     ]);

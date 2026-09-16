@@ -153,6 +153,11 @@ model Organization {
   companyLocations    CompanyLocation[]
   companyUsers        CompanyUser[]
   companyApplications CompanyApplication[]
+  catalogs            Catalog[]
+  priceLists          PriceList[]
+  volumePricingRules  VolumePricingRule[]
+  quantityRules       QuantityRule[]
+  contractPrices      ContractPrice[]
 
   @@map("organizations")
 }
@@ -230,6 +235,11 @@ model Store {
   companyLocations     CompanyLocation[]
   companyUsers         CompanyUser[]
   companyApplications  CompanyApplication[]
+  catalogs             Catalog[]
+  priceLists           PriceList[]
+  volumePricingRules   VolumePricingRule[]
+  quantityRules        QuantityRule[]
+  contractPrices       ContractPrice[]
 
   @@index([organizationId])
   @@map("stores")
@@ -359,6 +369,7 @@ model Product {
   variants     ProductVariant[]
   media        ProductMedia[]
   collections  CollectionProduct[]
+  catalogs     CatalogProduct[]
 
   @@unique([storeId, handle])
   @@index([storeId, status, updatedAt(sort: Desc)])
@@ -413,10 +424,12 @@ model ProductVariant {
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  product        Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
-  store          Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  optionValues   VariantOptionValue[]
-  inventoryItems InventoryItem[]
+  product         Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store           Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  optionValues    VariantOptionValue[]
+  inventoryItems  InventoryItem[]
+  priceListPrices PriceListPrice[]
+  contractPrices  ContractPrice[]
 
   @@index([productId, position])
   @@index([storeId, sku])
@@ -933,12 +946,15 @@ model Company {
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store          Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  accountManager User?                @relation("CompanyAccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
-  locations      CompanyLocation[]
-  users          CompanyUser[]
-  applications   CompanyApplication[]
+  store                Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accountManager       User?                 @relation("CompanyAccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
+  locations            CompanyLocation[]
+  users                CompanyUser[]
+  applications         CompanyApplication[]
+  catalogAssignments   CatalogAssignment[]
+  priceListAssignments PriceListAssignment[]
+  contractPrices       ContractPrice[]
 
   // Partial unique index on (store_id, tax_number) WHERE tax_number IS NOT NULL AND deleted_at IS NULL in the migration.
   @@index([storeId, createdAt(sort: Desc)])
@@ -972,10 +988,13 @@ model CompanyLocation {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company      Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  store        Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userAccess   CompanyUserLocation[]
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  store                Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userAccess           CompanyUserLocation[]
+  catalogAssignments   CatalogAssignment[]
+  priceListAssignments PriceListAssignment[]
+  contractPrices       ContractPrice[]
 
   // Partial unique index on (company_id) WHERE is_default = true in the migration.
   @@unique([companyId, name])
@@ -1098,4 +1117,227 @@ model CompanyApplicationDocument {
 
   @@id([applicationId, mediaId])
   @@map("company_application_documents")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog access & pricing
+// ---------------------------------------------------------------------------
+
+enum CatalogStatus {
+  draft
+  active
+  archived
+}
+
+// Which products a company (or one of its locations) may see and buy. A buyer with at
+// least one active catalog assigned is restricted to the union of those catalogs; a buyer
+// with none sees the public assortment. Enforced server-side by CatalogAccessService.
+model Catalog {
+  id             String        @id @default(uuid()) @db.Uuid
+  storeId        String        @map("store_id") @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  name           String
+  description    String?
+  status         CatalogStatus @default(draft)
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     CatalogProduct[]
+  assignments  CatalogAssignment[]
+
+  @@unique([storeId, name])
+  @@index([storeId, status])
+  @@map("catalogs")
+}
+
+model CatalogProduct {
+  catalogId String   @map("catalog_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  catalog Catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([catalogId, productId])
+  @@index([productId])
+  @@map("catalog_products")
+}
+
+// Exactly one of company_id / company_location_id is set (CHECK in the migration).
+model CatalogAssignment {
+  id                String   @id @default(uuid()) @db.Uuid
+  catalogId         String   @map("catalog_id") @db.Uuid
+  storeId           String   @map("store_id") @db.Uuid
+  companyId         String?  @map("company_id") @db.Uuid
+  companyLocationId String?  @map("company_location_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  catalog  Catalog          @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  company  Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: Cascade)
+
+  @@index([catalogId])
+  @@index([storeId, companyId])
+  @@index([storeId, companyLocationId])
+  @@map("catalog_assignments")
+}
+
+enum PriceListStatus {
+  draft
+  active
+  archived
+}
+
+// A price list either fixes explicit variant prices or adjusts the base price by a
+// percentage (basis points, negative = discount); explicit prices win over the adjustment.
+// Multi-currency arrives with Markets (Phase 8): until then a list uses the store currency.
+model PriceList {
+  id             String          @id @default(uuid()) @db.Uuid
+  storeId        String          @map("store_id") @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  name           String
+  description    String?
+  currency       String          @db.Char(3)
+  status         PriceListStatus @default(draft)
+  adjustmentBps  Int             @default(0) @map("adjustment_bps")
+  priority       Int             @default(0)
+  version        Int             @default(1)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  prices       PriceListPrice[]
+  assignments  PriceListAssignment[]
+  volumeRules  VolumePricingRule[]
+
+  @@unique([storeId, name])
+  @@index([storeId, status, priority(sort: Desc)])
+  @@map("price_lists")
+}
+
+model PriceListPrice {
+  id             String   @id @default(uuid()) @db.Uuid
+  priceListId    String   @map("price_list_id") @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  variantId      String   @map("variant_id") @db.Uuid
+  price          BigInt
+  compareAtPrice BigInt?  @map("compare_at_price")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  priceList PriceList      @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([priceListId, variantId])
+  @@index([storeId, variantId])
+  @@map("price_list_prices")
+}
+
+model PriceListAssignment {
+  id                String   @id @default(uuid()) @db.Uuid
+  priceListId       String   @map("price_list_id") @db.Uuid
+  storeId           String   @map("store_id") @db.Uuid
+  companyId         String?  @map("company_id") @db.Uuid
+  companyLocationId String?  @map("company_location_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  priceList PriceList        @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  company   Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location  CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: Cascade)
+
+  @@index([priceListId])
+  @@index([storeId, companyId])
+  @@index([storeId, companyLocationId])
+  @@map("price_list_assignments")
+}
+
+enum PricingScope {
+  variant
+  product
+  collection
+  store
+}
+
+enum VolumeTierType {
+  fixed_price
+  percent_off
+}
+
+// Quantity breaks. `tiers` is a validated JSON array of { minQuantity, value } sorted by
+// minQuantity; value is a unit price in minor units (fixed_price) or basis points off
+// (percent_off). A rule bound to a price list only applies when that list was used.
+model VolumePricingRule {
+  id             String         @id @default(uuid()) @db.Uuid
+  storeId        String         @map("store_id") @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String
+  scope          PricingScope
+  scopeId        String?        @map("scope_id") @db.Uuid
+  priceListId    String?        @map("price_list_id") @db.Uuid
+  tierType       VolumeTierType @map("tier_type")
+  tiers          Json
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceList    PriceList?   @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, scope, scopeId])
+  @@index([storeId, isActive])
+  @@map("volume_pricing_rules")
+}
+
+// Minimum / maximum / increment per variant or product, enforced by carts and checkout.
+model QuantityRule {
+  id             String       @id @default(uuid()) @db.Uuid
+  storeId        String       @map("store_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  scope          PricingScope
+  scopeId        String       @map("scope_id") @db.Uuid
+  minQuantity    Int?         @map("min_quantity")
+  maxQuantity    Int?         @map("max_quantity")
+  increment      Int?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, scope, scopeId])
+  @@map("quantity_rules")
+}
+
+// A negotiated unit price for one company (or one of its locations) on one variant.
+// Beats every list and tier; optional validity window.
+model ContractPrice {
+  id                String    @id @default(uuid()) @db.Uuid
+  storeId           String    @map("store_id") @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  companyId         String    @map("company_id") @db.Uuid
+  companyLocationId String?   @map("company_location_id") @db.Uuid
+  variantId         String    @map("variant_id") @db.Uuid
+  price             BigInt
+  validFrom         DateTime? @map("valid_from") @db.Timestamptz(6)
+  validTo           DateTime? @map("valid_to") @db.Timestamptz(6)
+  note              String?
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company      Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: Cascade)
+  variant      ProductVariant   @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  // Partial unique indexes on (company_id, variant_id) / (company_location_id, variant_id) in the migration.
+  @@index([storeId, companyId])
+  @@index([storeId, companyLocationId])
+  @@index([storeId, variantId])
+  @@map("contract_prices")
 }

@@ -181,7 +181,10 @@ export function CustomersList({
       ? { key: "name", direction: sort === "name_asc" ? ("asc" as const) : ("desc" as const) }
       : sort === "spent_desc"
         ? { key: "spent", direction: "desc" as const }
-        : { key: "created", direction: sort === "created_asc" ? ("asc" as const) : ("desc" as const) };
+        : {
+            key: "created",
+            direction: sort === "created_asc" ? ("asc" as const) : ("desc" as const),
+          };
 
   const filtered = q.trim() !== "" || view !== "all";
 
@@ -296,7 +299,12 @@ export function CustomersList({
         }
       >
         <FormField id="bulk-tag" label="Tag">
-          <Input id="bulk-tag" value={tag} onChange={(e) => setTag(e.target.value)} maxLength={40} />
+          <Input
+            id="bulk-tag"
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            maxLength={40}
+          />
         </FormField>
       </Dialog>
 

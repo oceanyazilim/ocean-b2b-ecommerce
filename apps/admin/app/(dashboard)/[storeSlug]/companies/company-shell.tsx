@@ -51,6 +51,7 @@ export function CompanyShell({
           { label: "Overview", href: base, exact: true },
           { label: "Locations", href: `${base}/locations`, count: company.locationCount },
           { label: "Users", href: `${base}/users`, count: company.userCount },
+          { label: "Pricing", href: `${base}/pricing` },
         ]}
       />
       {children}

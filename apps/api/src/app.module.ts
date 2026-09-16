@@ -20,11 +20,13 @@ import { CollectionsModule } from "./modules/catalog/collections/collections.mod
 import { MetafieldsModule } from "./modules/catalog/metafields/metafields.module";
 import { ProductsModule } from "./modules/catalog/products/products.module";
 import { EventsModule } from "./modules/events/events.module";
+import { CatalogsModule } from "./modules/catalogs/catalogs.module";
 import { CompaniesModule } from "./modules/companies/companies.module";
 import { CustomersModule } from "./modules/customers/customers.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { MediaModule } from "./modules/media/media.module";
 import { MembershipsModule } from "./modules/memberships/memberships.module";
+import { PricingModule } from "./modules/pricing/pricing.module";
 import { OrganizationsModule } from "./modules/organizations/organizations.module";
 import { StoresModule } from "./modules/stores/stores.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -59,6 +61,8 @@ import { UsersModule } from "./modules/users/users.module";
     InventoryModule,
     CustomersModule,
     CompaniesModule,
+    CatalogsModule,
+    PricingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

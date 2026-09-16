@@ -37,7 +37,11 @@ export const companyLocationInclude = {
 export const companyDetailInclude = {
   accountManager: accountManagerSelect,
   locations: {
-    orderBy: [{ isDefault: "desc" as const }, { isActive: "desc" as const }, { name: "asc" as const }],
+    orderBy: [
+      { isDefault: "desc" as const },
+      { isActive: "desc" as const },
+      { name: "asc" as const },
+    ],
     include: companyLocationInclude,
   },
   _count: {

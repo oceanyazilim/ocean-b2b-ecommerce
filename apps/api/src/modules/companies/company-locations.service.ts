@@ -209,12 +209,7 @@ export class CompanyLocationsService {
         },
         tx,
       );
-      await this.events.publish(
-        ctx,
-        "company.location.deleted",
-        { companyId, locationId: id },
-        tx,
-      );
+      await this.events.publish(ctx, "company.location.deleted", { companyId, locationId: id }, tx);
     });
   }
 

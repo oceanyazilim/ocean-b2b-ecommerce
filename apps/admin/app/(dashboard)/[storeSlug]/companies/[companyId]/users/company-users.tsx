@@ -116,7 +116,11 @@ export function CompanyUsers({
             className: "text-right",
             cell: (u: CompanyUserSummary) => (
               <div className="flex justify-end gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setEditing({ kind: "edit", user: u })}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditing({ kind: "edit", user: u })}
+                >
                   Edit
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setRemoving(u)}>
@@ -133,8 +137,8 @@ export function CompanyUsers({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          People who buy, approve or view on behalf of {company.displayName}. Storefront logins
-          for them arrive with the customer portal.
+          People who buy, approve or view on behalf of {company.displayName}. Storefront logins for
+          them arrive with the customer portal.
         </p>
         {canWrite && <Button onClick={() => setEditing({ kind: "new" })}>Add user</Button>}
       </div>
@@ -294,7 +298,11 @@ function UserDialog({
         </>
       }
     >
-      <form id="company-user-form" onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
+      <form
+        id="company-user-form"
+        onSubmit={(e) => void onSubmit(e)}
+        className="flex flex-col gap-4"
+      >
         {submit.error && <Alert variant="error">{submit.error}</Alert>}
 
         {!current && (
@@ -310,13 +318,22 @@ function UserDialog({
                 Existing customer
               </label>
               <label className="flex items-center gap-2">
-                <input type="radio" name="mode" checked={mode === "new"} onChange={() => setMode("new")} />
+                <input
+                  type="radio"
+                  name="mode"
+                  checked={mode === "new"}
+                  onChange={() => setMode("new")}
+                />
                 New by email
               </label>
             </div>
             {mode === "existing" ? (
               <>
-                <FormField id="cu-search" label="Find customer" error={submit.fieldErrors.customerId}>
+                <FormField
+                  id="cu-search"
+                  label="Find customer"
+                  error={submit.fieldErrors.customerId}
+                >
                   <Input
                     id="cu-search"
                     placeholder="Name or email"
@@ -352,7 +369,12 @@ function UserDialog({
               </>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField id="cu-email" label="Email" error={submit.fieldErrors.email} className="sm:col-span-2">
+                <FormField
+                  id="cu-email"
+                  label="Email"
+                  error={submit.fieldErrors.email}
+                  className="sm:col-span-2"
+                >
                   <Input
                     id="cu-email"
                     type="email"
@@ -364,10 +386,20 @@ function UserDialog({
                   />
                 </FormField>
                 <FormField id="cu-first" label="First name">
-                  <Input id="cu-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={80} />
+                  <Input
+                    id="cu-first"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    maxLength={80}
+                  />
                 </FormField>
                 <FormField id="cu-last" label="Last name">
-                  <Input id="cu-last" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={80} />
+                  <Input
+                    id="cu-last"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    maxLength={80}
+                  />
                 </FormField>
               </div>
             )}
@@ -375,8 +407,17 @@ function UserDialog({
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField id="cu-role" label="Role" hint={ROLE_HINT[role]} error={submit.fieldErrors.role}>
-            <Select id="cu-role" value={role} onChange={(e) => setRole(e.target.value as CompanyRole)}>
+          <FormField
+            id="cu-role"
+            label="Role"
+            hint={ROLE_HINT[role]}
+            error={submit.fieldErrors.role}
+          >
+            <Select
+              id="cu-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as CompanyRole)}
+            >
               {COMPANY_ROLES.map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABEL[r]}
@@ -385,7 +426,12 @@ function UserDialog({
             </Select>
           </FormField>
           <FormField id="cu-title" label="Job title" error={submit.fieldErrors.title}>
-            <Input id="cu-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
+            <Input
+              id="cu-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={80}
+            />
           </FormField>
           {current && (
             <FormField id="cu-status" label="Membership status">
@@ -414,7 +460,10 @@ function UserDialog({
               )}
               {locations.map((l) => (
                 <label key={l.id} className="flex items-center gap-2">
-                  <Checkbox checked={locationIds.includes(l.id)} onChange={() => toggleLocation(l.id)} />
+                  <Checkbox
+                    checked={locationIds.includes(l.id)}
+                    onChange={() => toggleLocation(l.id)}
+                  />
                   {l.name}
                 </label>
               ))}
