@@ -27,6 +27,7 @@ import { InventoryModule } from "./modules/inventory/inventory.module";
 import { MediaModule } from "./modules/media/media.module";
 import { MembershipsModule } from "./modules/memberships/memberships.module";
 import { PricingModule } from "./modules/pricing/pricing.module";
+import { OrdersModule } from "./modules/orders/orders.module";
 import { OrganizationsModule } from "./modules/organizations/organizations.module";
 import { StoresModule } from "./modules/stores/stores.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -63,6 +64,7 @@ import { UsersModule } from "./modules/users/users.module";
     CompaniesModule,
     CatalogsModule,
     PricingModule,
+    OrdersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

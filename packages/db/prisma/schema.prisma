@@ -49,6 +49,8 @@ model User {
   transfersApproved    TransferRequest[]    @relation("TransferApprovedBy")
   managedCompanies     Company[]            @relation("CompanyAccountManager")
   reviewedApplications CompanyApplication[] @relation("ApplicationReviewer")
+  placedOrders         Order[]              @relation("OrderPlacedBy")
+  draftOrders          DraftOrder[]         @relation("DraftOrderCreatedBy")
 
   @@map("users")
 }
@@ -158,6 +160,9 @@ model Organization {
   volumePricingRules  VolumePricingRule[]
   quantityRules       QuantityRule[]
   contractPrices      ContractPrice[]
+  carts               Cart[]
+  orders              Order[]
+  draftOrders         DraftOrder[]
 
   @@map("organizations")
 }
@@ -210,6 +215,8 @@ model Store {
   businessType    String?     @map("business_type")
   industry        String?
   onboardingState Json        @default("{}") @map("onboarding_state")
+  orderSequence   Int         @default(1000) @map("order_sequence")
+  draftSequence   Int         @default(1000) @map("draft_sequence")
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -240,6 +247,10 @@ model Store {
   volumePricingRules   VolumePricingRule[]
   quantityRules        QuantityRule[]
   contractPrices       ContractPrice[]
+  carts                Cart[]
+  orders               Order[]
+  draftOrders          DraftOrder[]
+  idempotencyKeys      IdempotencyKey[]
 
   @@index([organizationId])
   @@map("stores")
@@ -430,6 +441,9 @@ model ProductVariant {
   inventoryItems  InventoryItem[]
   priceListPrices PriceListPrice[]
   contractPrices  ContractPrice[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  draftOrderItems DraftOrderItem[]
 
   @@index([productId, position])
   @@index([storeId, sku])
@@ -718,13 +732,14 @@ model Location {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store           Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store           Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inventoryLevels InventoryLevel[]
-  movementsFrom   InventoryMovement[] @relation("FromLocation")
-  movementsTo     InventoryMovement[] @relation("ToLocation")
-  transfersFrom   TransferRequest[]   @relation("FromLocation")
-  transfersTo     TransferRequest[]   @relation("ToLocation")
+  movementsFrom   InventoryMovement[]    @relation("FromLocation")
+  movementsTo     InventoryMovement[]    @relation("ToLocation")
+  transfersFrom   TransferRequest[]      @relation("FromLocation")
+  transfersTo     TransferRequest[]      @relation("ToLocation")
+  reservations    OrderItemReservation[]
 
   @@unique([storeId, name])
   @@index([storeId, isActive, isDefault])
@@ -747,12 +762,13 @@ model InventoryItem {
   createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store            Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  productVariant   ProductVariant?     @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  store            Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant?        @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
   levels           InventoryLevel[]
   movements        InventoryMovement[]
   transferRequests TransferRequest[]
+  reservations     OrderItemReservation[]
 
   // Partial unique indexes (WHERE ... IS NOT NULL) are added in the migration SQL.
   @@index([storeId, productVariantId])
@@ -890,6 +906,9 @@ model Customer {
   addresses    CustomerAddress[]
   companyUsers CompanyUser[]
   applications CompanyApplication[]
+  carts        Cart[]
+  orders       Order[]
+  draftOrders  DraftOrder[]
 
   // Partial unique index on (store_id, email) WHERE deleted_at IS NULL lives in the migration.
   @@index([storeId, createdAt(sort: Desc)])
@@ -955,6 +974,9 @@ model Company {
   catalogAssignments   CatalogAssignment[]
   priceListAssignments PriceListAssignment[]
   contractPrices       ContractPrice[]
+  carts                Cart[]
+  orders               Order[]
+  draftOrders          DraftOrder[]
 
   // Partial unique index on (store_id, tax_number) WHERE tax_number IS NOT NULL AND deleted_at IS NULL in the migration.
   @@index([storeId, createdAt(sort: Desc)])
@@ -995,6 +1017,9 @@ model CompanyLocation {
   catalogAssignments   CatalogAssignment[]
   priceListAssignments PriceListAssignment[]
   contractPrices       ContractPrice[]
+  carts                Cart[]
+  orders               Order[]
+  draftOrders          DraftOrder[]
 
   // Partial unique index on (company_id) WHERE is_default = true in the migration.
   @@unique([companyId, name])
@@ -1340,4 +1365,314 @@ model ContractPrice {
   @@index([storeId, companyLocationId])
   @@index([storeId, variantId])
   @@map("contract_prices")
+}
+
+// ---------------------------------------------------------------------------
+// Commerce: carts, orders, draft orders
+// ---------------------------------------------------------------------------
+
+enum CartStatus {
+  active
+  completed
+  abandoned
+}
+
+// A cart is a buyer intent, priced on read by PricingService; nothing in it is trusted at
+// checkout, which re-quotes every line before an order is written.
+model Cart {
+  id                String     @id @default(uuid()) @db.Uuid
+  storeId           String     @map("store_id") @db.Uuid
+  organizationId    String     @map("organization_id") @db.Uuid
+  status            CartStatus @default(active)
+  customerId        String?    @map("customer_id") @db.Uuid
+  companyId         String?    @map("company_id") @db.Uuid
+  companyLocationId String?    @map("company_location_id") @db.Uuid
+  email             String?
+  currency          String     @db.Char(3)
+  poNumber          String?    @map("po_number")
+  note              String?
+  shippingAddress   Json?      @map("shipping_address")
+  billingAddress    Json?      @map("billing_address")
+  completedOrderId  String?    @map("completed_order_id") @db.Uuid
+  expiresAt         DateTime?  @map("expires_at") @db.Timestamptz(6)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  company      Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
+  items        CartItem[]
+
+  @@index([storeId, status, updatedAt(sort: Desc)])
+  @@index([storeId, customerId])
+  @@index([storeId, companyId])
+  @@map("carts")
+}
+
+model CartItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  cartId     String   @map("cart_id") @db.Uuid
+  storeId    String   @map("store_id") @db.Uuid
+  variantId  String   @map("variant_id") @db.Uuid
+  quantity   Int
+  properties Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@map("cart_items")
+}
+
+enum OrderStatus {
+  pending_approval
+  confirmed
+  processing
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  authorized
+  paid
+  partially_paid
+  partially_refunded
+  refunded
+  voided
+}
+
+enum FulfillmentStatus {
+  unfulfilled
+  partially_fulfilled
+  fulfilled
+}
+
+enum OrderSource {
+  storefront
+  draft_order
+  admin
+  api
+}
+
+enum PriceSourceKind {
+  contract
+  price_list
+  volume
+  base
+  custom
+}
+
+// Immutable commercial record. Money columns are minor units in `currency`; the item rows
+// snapshot title/sku/price so later catalog edits never rewrite history.
+model Order {
+  id                String            @id @default(uuid()) @db.Uuid
+  storeId           String            @map("store_id") @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  number            Int
+  name              String
+  status            OrderStatus       @default(confirmed)
+  paymentStatus     PaymentStatus     @default(pending) @map("payment_status")
+  fulfillmentStatus FulfillmentStatus @default(unfulfilled) @map("fulfillment_status")
+  source            OrderSource
+  customerId        String?           @map("customer_id") @db.Uuid
+  companyId         String?           @map("company_id") @db.Uuid
+  companyLocationId String?           @map("company_location_id") @db.Uuid
+  email             String?
+  currency          String            @db.Char(3)
+  poNumber          String?           @map("po_number")
+  note              String?
+  tags              String[]          @default([])
+  itemCount         Int               @map("item_count")
+  subtotal          BigInt
+  discountTotal     BigInt            @default(0) @map("discount_total")
+  shippingTotal     BigInt            @default(0) @map("shipping_total")
+  taxTotal          BigInt            @default(0) @map("tax_total")
+  total             BigInt
+  shippingAddress   Json?             @map("shipping_address")
+  billingAddress    Json?             @map("billing_address")
+  cartId            String?           @map("cart_id") @db.Uuid
+  draftOrderId      String?           @map("draft_order_id") @db.Uuid
+  placedById        String?           @map("placed_by_id") @db.Uuid
+  cancelledAt       DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason      String?           @map("cancel_reason")
+  closedAt          DateTime?         @map("closed_at") @db.Timestamptz(6)
+  version           Int               @default(1)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  company      Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
+  placedBy     User?            @relation("OrderPlacedBy", fields: [placedById], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  events       OrderEvent[]
+
+  @@unique([storeId, number])
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([storeId, status, createdAt(sort: Desc)])
+  @@index([storeId, paymentStatus])
+  @@index([storeId, fulfillmentStatus])
+  @@index([storeId, customerId])
+  @@index([storeId, companyId])
+  @@index([storeId, email])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String          @id @default(uuid()) @db.Uuid
+  orderId           String          @map("order_id") @db.Uuid
+  storeId           String          @map("store_id") @db.Uuid
+  variantId         String?         @map("variant_id") @db.Uuid
+  productId         String?         @map("product_id") @db.Uuid
+  title             String
+  variantTitle      String          @map("variant_title")
+  sku               String?
+  quantity          Int
+  unitPrice         BigInt          @map("unit_price")
+  compareAtPrice    BigInt?         @map("compare_at_price")
+  priceSource       PriceSourceKind @map("price_source")
+  discount          BigInt          @default(0)
+  tax               BigInt          @default(0)
+  lineTotal         BigInt          @map("line_total")
+  requiresShipping  Boolean         @default(true) @map("requires_shipping")
+  taxable           Boolean         @default(true)
+  fulfilledQuantity Int             @default(0) @map("fulfilled_quantity")
+  refundedQuantity  Int             @default(0) @map("refunded_quantity")
+  position          Int
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order        Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant      ProductVariant?        @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  reservations OrderItemReservation[]
+
+  @@index([orderId, position])
+  @@index([storeId, variantId])
+  @@map("order_items")
+}
+
+// Stock held for an open order at a location. Fulfilment (Phase 7) converts a reservation
+// into a movement; cancellation releases it.
+model OrderItemReservation {
+  id              String    @id @default(uuid()) @db.Uuid
+  orderItemId     String    @map("order_item_id") @db.Uuid
+  storeId         String    @map("store_id") @db.Uuid
+  inventoryItemId String    @map("inventory_item_id") @db.Uuid
+  locationId      String    @map("location_id") @db.Uuid
+  quantity        Int
+  releasedAt      DateTime? @map("released_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  orderItem     OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([storeId, inventoryItemId, locationId])
+  @@map("order_item_reservations")
+}
+
+model OrderEvent {
+  id        String    @id @default(uuid()) @db.Uuid
+  orderId   String    @map("order_id") @db.Uuid
+  storeId   String    @map("store_id") @db.Uuid
+  type      String
+  payload   Json      @default("{}")
+  actorType ActorType @map("actor_type")
+  actorId   String?   @map("actor_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_events")
+}
+
+enum DraftOrderStatus {
+  open
+  completed
+  cancelled
+}
+
+// Staff-built order (phone, sales rep, negotiated). Lines are quoted through PricingService
+// and may carry a custom price; completing it runs the same placement pipeline as checkout.
+model DraftOrder {
+  id                String           @id @default(uuid()) @db.Uuid
+  storeId           String           @map("store_id") @db.Uuid
+  organizationId    String           @map("organization_id") @db.Uuid
+  number            Int
+  name              String
+  status            DraftOrderStatus @default(open)
+  customerId        String?          @map("customer_id") @db.Uuid
+  companyId         String?          @map("company_id") @db.Uuid
+  companyLocationId String?          @map("company_location_id") @db.Uuid
+  email             String?
+  currency          String           @db.Char(3)
+  poNumber          String?          @map("po_number")
+  note              String?
+  tags              String[]         @default([])
+  shippingAddress   Json?            @map("shipping_address")
+  billingAddress    Json?            @map("billing_address")
+  subtotal          BigInt           @default(0)
+  total             BigInt           @default(0)
+  completedOrderId  String?          @map("completed_order_id") @db.Uuid
+  createdById       String           @map("created_by_id") @db.Uuid
+  version           Int              @default(1)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  company      Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
+  createdBy    User             @relation("DraftOrderCreatedBy", fields: [createdById], references: [id])
+  items        DraftOrderItem[]
+
+  @@unique([storeId, number])
+  @@index([storeId, status, updatedAt(sort: Desc)])
+  @@map("draft_orders")
+}
+
+model DraftOrderItem {
+  id           String          @id @default(uuid()) @db.Uuid
+  draftOrderId String          @map("draft_order_id") @db.Uuid
+  storeId      String          @map("store_id") @db.Uuid
+  variantId    String          @map("variant_id") @db.Uuid
+  quantity     Int
+  unitPrice    BigInt          @map("unit_price")
+  priceSource  PriceSourceKind @map("price_source")
+  position     Int
+
+  draftOrder DraftOrder     @relation(fields: [draftOrderId], references: [id], onDelete: Cascade)
+  variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([draftOrderId, variantId])
+  @@map("draft_order_items")
+}
+
+// Replay protection for money-moving calls (spec §34). Same key + same request → stored
+// response; same key + different request → idempotency_conflict.
+model IdempotencyKey {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  scope          String
+  key            String
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, scope, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
 }

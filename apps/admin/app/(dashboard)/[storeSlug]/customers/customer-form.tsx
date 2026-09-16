@@ -282,6 +282,7 @@ export function CustomerForm({
                     errors={fieldErrors}
                     prefix="addresses.0"
                     showName={false}
+                    required={false}
                   />
                 </CardContent>
               </Card>

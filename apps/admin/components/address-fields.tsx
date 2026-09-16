@@ -80,6 +80,7 @@ export function AddressFields({
   prefix = "",
   disabled = false,
   showName = true,
+  required = true,
 }: {
   value: AddressDraft;
   onChange: (next: AddressDraft) => void;
@@ -88,6 +89,8 @@ export function AddressFields({
   prefix?: string;
   disabled?: boolean;
   showName?: boolean;
+  // false = the whole address is optional (blank passes); the API still validates a filled one.
+  required?: boolean;
 }) {
   const err = (field: keyof AddressDraft) => errors[prefix ? `${prefix}.${field}` : field];
   const set = (field: keyof AddressDraft) => (v: string) => onChange({ ...value, [field]: v });
@@ -101,7 +104,7 @@ export function AddressFields({
         id={`${idPrefix}-${key}`}
         value={value[key]}
         onChange={(e) => set(key)(e.target.value)}
-        required={extra.required}
+        required={required && extra.required}
         maxLength={extra.maxLength ?? 120}
         disabled={disabled}
         invalid={!!err(key)}

@@ -132,35 +132,34 @@ line with a suggested valid quantity.
 ### Commerce (Phase 6–7)
 
 ```
-carts                    store_id, customer_id?, company_id?, company_location_id?, currency,
-                         market_id, po_number, note, status, expires_at
-cart_items               cart_id, variant_id, quantity, properties jsonb, unit_price_snapshot
-orders                   store_id, number, customer_id?, company_id?, company_location_id?,
-                         currency, status, payment_status, fulfillment_status, source, po_number,
-                         subtotal, discount_total, shipping_total, tax_total, total,
-                         billing_address jsonb, shipping_address jsonb, note, tags, cancelled_at
-order_items              order_id, variant_id, sku, title, quantity, unit_price, discount,
-                         tax, total, fulfillable_quantity, refunded_quantity
-order_discounts          order_id, discount_id?, code, type, amount
-order_events             order_id, type, payload, actor
-draft_orders             store_id, ..., status, invoice_sent_at, completed_order_id
-payments                 store_id, order_id, provider, provider_ref, method, status, amount,
-                         currency, idempotency_key
-transactions             payment_id, kind (authorize|capture|void|refund), amount, status, raw jsonb
-refunds                  order_id, payment_id, amount, reason, restock, status
-fulfillments             order_id, location_id, status, tracking jsonb, shipped_at
-fulfillment_items        fulfillment_id, order_item_id, quantity
-shipping_zones           store_id, name, countries[], regions[]
-shipping_profiles        store_id, name, product_scope
-shipping_rates           zone_id, profile_id, type, price, conditions jsonb, carrier_config
-returns                  order_id, status, reason_id, resolution, received_at, inspected_at
-return_items             return_id, order_item_id, quantity, condition
-tax_rules                store_id, market_id?, country, region?, rate, class, inclusive
-tax_classes              store_id, name
-markets                  store_id, name, countries[], currency, locales[], domain_id?,
-                         price_adjustment, tax_behavior, catalog_id?
-idempotency_keys         scope, key, request_hash, response jsonb, expires_at
+carts                    store_id, status (active|completed|abandoned), customer_id?, company_id?,
+                         company_location_id?, email, currency, po_number, note, shipping/billing
+                         address jsonb, completed_order_id  — priced on read, never stores money
+cart_items               cart_id, variant_id (unique pair), quantity, properties jsonb
+orders                   store_id, number (per-store sequence on stores.order_sequence), name "#1001",
+                         status (pending_approval|confirmed|processing|completed|cancelled),
+                         payment_status, fulfillment_status, source (storefront|draft_order|admin|api),
+                         buyer refs, email, currency, po_number, note, tags[], item_count, subtotal,
+                         discount_total, shipping_total, tax_total, total, addresses jsonb, cart_id?,
+                         draft_order_id?, placed_by_id?, cancelled_at, cancel_reason, version
+order_items              order_id, variant_id? (SetNull), product_id?, title/variant_title/sku snapshot,
+                         quantity, unit_price, compare_at_price, price_source (contract|price_list|
+                         volume|base|custom), discount, tax, line_total, requires_shipping, taxable,
+                         fulfilled_quantity, refunded_quantity, position
+order_item_reservations  order_item_id, inventory_item_id, location_id, quantity, released_at —
+                         stock held in inventory_levels.reserved until fulfilled (Phase 7) or cancelled
+order_events             order_id, type, payload jsonb, actor — timeline (created, updated, note, cancelled)
+draft_orders             store_id, number (stores.draft_sequence), name "D1001", status (open|completed|
+                         cancelled), buyer refs, addresses, subtotal, total, completed_order_id, created_by
+draft_order_items        draft_order_id, variant_id, quantity, unit_price, price_source (custom = override)
+idempotency_keys         store_id, scope, key (unique triple), request_hash, response_body, expires_at
+payments / transactions / refunds / fulfillments / shipping_* / returns / tax_* / markets  (Phase 7–8)
 ```
+
+Placement pipeline (OrderPlacementService): resolve buyer → LineQuoterService (PricingService quote,
+catalog visibility, quantity rules, availability, shipping/tax calculators) → refuse on any problem →
+reserve stock → write order + items + reservations + event in one transaction → update customer
+counters → mark cart/draft completed. Checkout and draft completion accept an Idempotency-Key.
 
 ### B2B advanced (Phase 12)
 
