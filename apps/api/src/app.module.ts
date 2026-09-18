@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
+import { ScheduleModule } from "@nestjs/schedule";
 
 import { SessionGuard } from "./common/auth/session.guard";
 import { ApiErrorFilter } from "./common/errors/api-error.filter";
@@ -42,6 +43,8 @@ import { ApprovalsModule } from "./modules/approvals/approvals.module";
 import { FinanceModule } from "./modules/finance/finance.module";
 import { DiscountsModule } from "./modules/discounts/discounts.module";
 import { SavedListsModule } from "./modules/saved-lists/saved-lists.module";
+import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 
 // Domain modules are registered flat and talk to each other only through exported services.
 // Guard order: SessionGuard (who) → PermissionGuard (which tenant, which permission).
@@ -52,6 +55,7 @@ import { SavedListsModule } from "./modules/saved-lists/saved-lists.module";
       validate: validateEnv,
       envFilePath: ["../../.env", ".env"],
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     RedisModule,
     MailModule,
@@ -87,6 +91,8 @@ import { SavedListsModule } from "./modules/saved-lists/saved-lists.module";
     FinanceModule,
     DiscountsModule,
     SavedListsModule,
+    AnalyticsModule,
+    NotificationsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

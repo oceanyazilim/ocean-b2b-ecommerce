@@ -28,3 +28,5 @@ export * from "./domains";
 export * from "./themes";
 export * from "./b2b";
 export * from "./storefront";
+export * from "./analytics";
+export * from "./notifications";

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { LogoutButton } from "@/components/logout-button";
+import { NotificationBell } from "@/components/notification-bell";
 import { SidebarNav, type NavItem } from "@/components/sidebar-nav";
 import { StoreSwitcher } from "@/components/store-switcher";
 import { can, findStore, requireMe } from "@/lib/session";
@@ -42,7 +43,7 @@ export default async function StoreLayout({
       href: `${base}/storefront`,
       disabled: !can(store, "content.read") && !can(store, "settings.read") && !can(store, "themes.read"),
     },
-    { label: "Analytics", href: `${base}/analytics`, disabled: true },
+    { label: "Analytics", href: `${base}/analytics`, disabled: !can(store, "analytics.read") },
     { label: "Settings", href: `${base}/settings/general`, disabled: !can(store, "settings.read") },
   ];
 
@@ -85,6 +86,7 @@ export default async function StoreLayout({
             )}
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <NotificationBell storeId={store.id} />
             <Link href="/account/security" className="hidden hover:underline sm:inline">
               {me.user.name}
             </Link>
