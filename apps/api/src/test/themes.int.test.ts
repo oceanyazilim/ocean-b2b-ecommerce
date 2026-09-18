@@ -133,6 +133,27 @@ describe.skipIf(!INTEGRATION_ENABLED)("phase 9: theme catalog, install, edit, pu
       .patch(`${base}/themes/${installed.id}/versions/${draftVersionId}/settings`)
       .send({ globalSettings: { primaryColor: "#00ff00" } })
       .expect(409);
+
+    // Preview token: the storefront resolves the new (unpublished) draft through it, without
+    // the token holder ever needing a merchant session.
+    const newDraftId = published.versions.find((v: { status: string }) => v.status === "draft").id;
+    await owner
+      .patch(`${base}/themes/${installed.id}/versions/${newDraftId}/settings`)
+      .send({ globalSettings: { primaryColor: "#0000ff" } })
+      .expect(200);
+    const { token } = (
+      await owner.post(`${base}/themes/${installed.id}/versions/${newDraftId}/preview-token`).send({}).expect(201)
+    ).body.data;
+
+    const previewer = t.http();
+    const preview = (
+      await previewer.get(`/storefront/v1/theme/preview?token=${token}`).set("Host", hostname).expect(200)
+    ).body.data;
+    expect(preview.versionId).toBe(newDraftId);
+    expect(preview.globalSettings.primaryColor).toBe("#0000ff");
+
+    await previewer.get("/storefront/v1/theme/preview?token=not-a-real-token").set("Host", hostname).expect(404);
+    await previewer.get("/storefront/v1/theme/preview").set("Host", hostname).expect(404);
   });
 
   it("gates writes behind themes.edit/publish and hides themes across tenants", async () => {

@@ -2337,7 +2337,7 @@ model ThemeTemplateVersion {
 model ThemePreviewToken {
   id                  String   @id @default(uuid()) @db.Uuid
   storeThemeVersionId String   @map("store_theme_version_id") @db.Uuid
-  tokenHash           String   @map("token_hash") @db.VarChar(255)
+  tokenHash           String   @unique @map("token_hash") @db.VarChar(255)
   passwordHash        String?  @map("password_hash") @db.VarChar(255)
   expiresAt           DateTime @map("expires_at") @db.Timestamptz
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz

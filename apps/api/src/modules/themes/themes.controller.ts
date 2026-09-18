@@ -117,4 +117,15 @@ export class ThemesController {
   ) {
     return this.themes.publish(tenant, storeThemeId, versionId, meta);
   }
+
+  @Post(":storeThemeId/versions/:versionId/preview-token")
+  @RequireStore("themes.read")
+  mintPreviewToken(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("storeThemeId") storeThemeId: string,
+    @Param("versionId") versionId: string,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.themes.mintPreviewToken(tenant, storeThemeId, versionId, meta);
+  }
 }

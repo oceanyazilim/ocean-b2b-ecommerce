@@ -7,6 +7,7 @@ import type {
   MenuInput,
   MenuSummary,
   MenuItemSummary,
+  UpdateMenuInput,
 } from "@ocean/types";
 
 import { ConflictError, NotFoundError } from "../../common/errors/domain-error";
@@ -276,5 +277,75 @@ export class ContentService {
     );
     await this.events.publish(ctx, "content.menu.created", { menuId: created.id });
     return this.toMenuSummary(created);
+  }
+
+  async updateMenu(
+    ctx: TenantContext,
+    id: string,
+    input: UpdateMenuInput,
+    meta: RequestMeta,
+  ): Promise<MenuSummary> {
+    const current = await this.prisma.menu.findFirst({ where: { ...this.scopeMenu(ctx), id } });
+    if (!current) throw new NotFoundError("Menu");
+
+    const data: Prisma.MenuUncheckedUpdateInput = {};
+    if (input.title !== undefined) data.title = input.title;
+    if (input.handle !== undefined) data.handle = input.handle;
+
+    await this.prisma
+      .$transaction(async (tx) => {
+        if (Object.keys(data).length > 0) {
+          await tx.menu.update({ where: { id }, data });
+        }
+        // Items have no stable identity of their own from the client's perspective — a save
+        // always sends the whole list, same as a theme template's configuration.
+        if (input.items !== undefined) {
+          await tx.menuItem.deleteMany({ where: { menuId: id } });
+          if (input.items.length > 0) {
+            await tx.menuItem.createMany({
+              data: input.items.map((item) => ({
+                menuId: id,
+                label: item.label,
+                url: item.url,
+                position: item.position,
+                parentId: item.parentId,
+              })),
+            });
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("A menu with this handle already exists.");
+        throw error;
+      });
+
+    await this.audit.record({
+      organizationId: ctx.organizationId,
+      storeId: ctx.storeId,
+      actorId: ctx.actor.id,
+      action: "content.menu_updated",
+      resourceType: "menu",
+      resourceId: id,
+      meta,
+    });
+    await this.events.publish(ctx, "content.menu.updated", { menuId: id });
+    return this.getMenu(ctx, id);
+  }
+
+  async removeMenu(ctx: TenantContext, id: string, meta: RequestMeta): Promise<void> {
+    const current = await this.prisma.menu.findFirst({ where: { ...this.scopeMenu(ctx), id } });
+    if (!current) throw new NotFoundError("Menu");
+    await this.prisma.menu.delete({ where: { id } });
+    await this.audit.record({
+      organizationId: ctx.organizationId,
+      storeId: ctx.storeId,
+      actorId: ctx.actor.id,
+      action: "content.menu_deleted",
+      resourceType: "menu",
+      resourceId: id,
+      before: { title: current.title },
+      meta,
+    });
+    await this.events.publish(ctx, "content.menu.deleted", { menuId: id });
   }
 }

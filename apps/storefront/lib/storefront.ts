@@ -10,11 +10,20 @@ import type {
   StorefrontProductDetail,
   StorefrontProductSummary,
 } from "@ocean/types";
+import { headers } from "next/headers";
 
 import { storefrontFetch } from "./api";
 
+export const THEME_PREVIEW_HEADER = "x-theme-preview-token";
+
+// The theme editor's iframe requests every page with `?preview_token=`, which middleware.ts
+// turns into this request header (see its comment for why not a cookie); every other request
+// keeps rendering the live published theme.
 export async function getTheme(): Promise<ResolvedTheme | null> {
-  const res = await storefrontFetch<{ data: ResolvedTheme | null }>("/theme");
+  const previewToken = (await headers()).get(THEME_PREVIEW_HEADER);
+  const res = previewToken
+    ? await storefrontFetch<{ data: ResolvedTheme | null }>(`/theme/preview?token=${encodeURIComponent(previewToken)}`)
+    : await storefrontFetch<{ data: ResolvedTheme | null }>("/theme");
   return res.data;
 }
 

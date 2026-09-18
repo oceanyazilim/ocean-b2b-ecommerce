@@ -1,7 +1,7 @@
 "use client";
 
 import type { MenuSummary } from "@ocean/types";
-import { Alert, Button, Card, CardContent, Dialog, FormField, Input, Skeleton } from "@ocean/ui";
+import { Alert, Button, Card, CardContent, ConfirmDialog, Dialog, FormField, Input, Skeleton } from "@ocean/ui";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { api, errorMessage } from "@/lib/api";
@@ -11,7 +11,10 @@ export function MenusManager({ storeId, canWrite }: { storeId: string; canWrite:
   const [rows, setRows] = useState<MenuSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<MenuSummary | "new" | null>(null);
+  const [deleting, setDeleting] = useState<MenuSummary | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const action = useSubmit();
 
   const load = useCallback(async () => {
     setError(null);
@@ -32,13 +35,10 @@ export function MenusManager({ storeId, canWrite }: { storeId: string; canWrite:
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Navigation menus for the storefront header and footer. Menus can&apos;t be edited after
-          creation yet.
-        </p>
-        {canWrite && <Button onClick={() => setAdding(true)}>Add menu</Button>}
+        <p className="text-sm text-muted-foreground">Navigation menus for the storefront header and footer.</p>
+        {canWrite && <Button onClick={() => setEditing("new")}>Add menu</Button>}
       </div>
-      {error && <Alert variant="error">{error}</Alert>}
+      {(error ?? action.error) && <Alert variant="error">{error ?? action.error}</Alert>}
       {loading ? (
         <Skeleton className="h-32 w-full" />
       ) : rows.length === 0 ? (
@@ -53,8 +53,22 @@ export function MenusManager({ storeId, canWrite }: { storeId: string; canWrite:
             <Card key={m.id}>
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{m.title}</h3>
-                  <span className="text-xs text-muted-foreground">/{m.handle}</span>
+                  <button className="font-medium hover:underline" onClick={() => setEditing(m)}>
+                    {m.title}
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">/{m.handle}</span>
+                    {canWrite && (
+                      <>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(m)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDeleting(m)}>
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 {m.items && m.items.length > 0 ? (
                   <ul className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
@@ -72,19 +86,34 @@ export function MenusManager({ storeId, canWrite }: { storeId: string; canWrite:
           ))}
         </div>
       )}
-      <AddMenuDialog storeId={storeId} open={adding} onClose={() => setAdding(false)} onSaved={() => void load()} />
+      <MenuDialog storeId={storeId} editing={editing} onClose={() => setEditing(null)} onSaved={() => void load()} />
+      <ConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        title={`Delete ${deleting?.title ?? "this menu"}?`}
+        destructive
+        pending={busyId === deleting?.id}
+        onConfirm={async () => {
+          if (!deleting) return;
+          setBusyId(deleting.id);
+          const ok = await action.run(() => api(`/stores/${storeId}/menus/${deleting.id}`, { method: "DELETE" }));
+          setBusyId(null);
+          if (ok !== undefined) await load();
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
 
-function AddMenuDialog({
+function MenuDialog({
   storeId,
-  open,
+  editing,
   onClose,
   onSaved,
 }: {
   storeId: string;
-  open: boolean;
+  editing: MenuSummary | "new" | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -93,15 +122,21 @@ function AddMenuDialog({
   const [title, setTitle] = useState("");
   const [handle, setHandle] = useState("");
   const [items, setItems] = useState<{ label: string; url: string }[]>([{ label: "", url: "" }]);
+  const isNew = editing === "new";
+  const current = editing && editing !== "new" ? editing : null;
 
   useEffect(() => {
-    if (open) {
-      reset();
-      setTitle("");
-      setHandle("");
-      setItems([{ label: "", url: "" }]);
-    }
-  }, [open, reset]);
+    if (editing === null) return;
+    reset();
+    setTitle(current?.title ?? "");
+    setHandle(current?.handle ?? "");
+    setItems(
+      current?.items && current.items.length > 0
+        ? current.items.map((i) => ({ label: i.label, url: i.url ?? "" }))
+        : [{ label: "", url: "" }],
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `current` is derived from `editing`
+  }, [editing, reset]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -109,7 +144,9 @@ function AddMenuDialog({
       .filter((i) => i.label.trim())
       .map((i, idx) => ({ label: i.label.trim(), url: i.url.trim() || null, position: idx }));
     const res = await submit.run(() =>
-      api(`/stores/${storeId}/menus`, { body: { title, handle, items: cleanItems } }),
+      isNew
+        ? api(`/stores/${storeId}/menus`, { body: { title, handle, items: cleanItems } })
+        : api(`/stores/${storeId}/menus/${current?.id}`, { method: "PATCH", body: { title, handle, items: cleanItems } }),
     );
     if (res !== undefined) {
       onSaved();
@@ -119,16 +156,16 @@ function AddMenuDialog({
 
   return (
     <Dialog
-      open={open}
+      open={editing !== null}
       onClose={onClose}
-      title="Add menu"
+      title={isNew ? "Add menu" : "Edit menu"}
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={submit.pending}>
             Cancel
           </Button>
           <Button type="submit" form="menu-form" loading={submit.pending}>
-            Create
+            {isNew ? "Create" : "Save"}
           </Button>
         </>
       }
@@ -161,6 +198,9 @@ function AddMenuDialog({
                   setItems(items.map((it, i) => (i === idx ? { ...it, url } : it)));
                 }}
               />
+              <Button type="button" size="sm" variant="ghost" onClick={() => setItems(items.filter((_, i) => i !== idx))}>
+                ✕
+              </Button>
             </div>
           ))}
           <Button type="button" size="sm" variant="ghost" onClick={() => setItems([...items, { label: "", url: "" }])}>

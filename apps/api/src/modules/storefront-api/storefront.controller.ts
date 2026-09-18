@@ -7,6 +7,7 @@ import {
 } from "@ocean/types";
 
 import { Public } from "../../common/auth/public.decorator";
+import { NotFoundError } from "../../common/errors/domain-error";
 import { CurrentTenant } from "../../common/tenant/current-tenant.decorator";
 import { StorefrontGuard } from "../../common/tenant/storefront.guard";
 import type { TenantContext } from "../../common/tenant/tenant-context";
@@ -79,6 +80,17 @@ export class StorefrontController {
   @Get("theme")
   getTheme(@CurrentTenant() tenant: TenantContext) {
     return this.themes.getPublishedTheme(tenant);
+  }
+
+  // Used by the theme editor's live-preview iframe (a separate, unauthenticated-to-the-admin
+  // origin) to render a specific — usually still-draft — version. The token alone authorizes
+  // it; no store/session check beyond that the token hasn't expired.
+  @Get("theme/preview")
+  async getPreviewTheme(@Query("token") token: string | undefined) {
+    if (!token) throw new NotFoundError("Preview");
+    const theme = await this.themes.resolvePreviewTheme(token);
+    if (!theme) throw new NotFoundError("Preview");
+    return theme;
   }
 
   @Get("payment-methods")

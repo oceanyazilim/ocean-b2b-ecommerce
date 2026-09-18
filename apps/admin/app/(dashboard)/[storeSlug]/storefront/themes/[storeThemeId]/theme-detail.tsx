@@ -1,11 +1,12 @@
 "use client";
 
 import type { StoreThemeDetail, StoreThemeVersionDetail } from "@ocean/types";
-import { Alert, Badge, Button, Card, CardContent, Checkbox, ConfirmDialog, FormField, Input, Select, Skeleton, Textarea } from "@ocean/ui";
+import { Alert, Badge, Button, Card, CardContent, ConfirmDialog, FormField, Skeleton } from "@ocean/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { ThemeSettingInput } from "@/components/theme-setting-input";
 import { api, errorMessage } from "@/lib/api";
 import { useSubmit } from "@/lib/use-submit";
 
@@ -122,7 +123,7 @@ export function ThemeDetail({
             ) : (
               detail.manifest.globalSettings.map((field) => (
                 <FormField key={field.key} id={`setting-${field.key}`} label={field.label}>
-                  <SettingInput
+                  <ThemeSettingInput
                     field={field}
                     value={settings[field.key]}
                     onChange={(value) => setSettings((prev) => ({ ...prev, [field.key]: value }))}
@@ -145,11 +146,14 @@ export function ThemeDetail({
 
       <Card>
         <CardContent className="flex flex-col gap-2 py-6">
-          <h2 className="text-lg font-semibold">Templates</h2>
-          <p className="text-sm text-muted-foreground">
-            The visual drag-and-drop editor arrives in a later phase. For now, templates carry the
-            theme&apos;s default section layout.
-          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Templates</h2>
+            {draftVersion && (
+              <Link href={`/${storeSlug}/storefront/themes/${storeThemeId}/editor`}>
+                <Button size="sm">Open editor</Button>
+              </Link>
+            )}
+          </div>
           <ul className="mt-2 flex flex-col gap-1 text-sm">
             {(draftVersion?.templates ?? []).map((t) => (
               <li key={t.id} className="flex items-center justify-between border-b py-1.5 last:border-0">
@@ -181,63 +185,4 @@ export function ThemeDetail({
       />
     </div>
   );
-}
-
-function SettingInput({
-  field,
-  value,
-  onChange,
-  disabled,
-}: {
-  field: StoreThemeDetail["manifest"]["globalSettings"][number];
-  value: unknown;
-  onChange: (value: unknown) => void;
-  disabled: boolean;
-}) {
-  const current = value ?? field.default ?? "";
-  switch (field.type) {
-    case "boolean":
-      return (
-        <Checkbox checked={Boolean(current)} onChange={(e) => onChange(e.target.checked)} disabled={disabled} />
-      );
-    case "number":
-      return (
-        <Input
-          type="number"
-          value={typeof current === "number" ? current : ""}
-          onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-          disabled={disabled}
-        />
-      );
-    case "richtext":
-      return (
-        <Textarea value={String(current)} onChange={(e) => onChange(e.target.value)} rows={4} disabled={disabled} />
-      );
-    case "color":
-      return (
-        <Input type="color" value={String(current || "#000000")} onChange={(e) => onChange(e.target.value)} disabled={disabled} />
-      );
-    case "select":
-      return (
-        <Select value={String(current)} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-          {(field.options ?? []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
-      );
-    case "image":
-    case "url":
-    case "text":
-    default:
-      return (
-        <Input
-          value={String(current)}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.type === "image" ? "https://…/image.jpg" : undefined}
-          disabled={disabled}
-        />
-      );
-  }
 }

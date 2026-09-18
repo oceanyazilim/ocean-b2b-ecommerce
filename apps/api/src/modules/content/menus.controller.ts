@@ -1,10 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from "@nestjs/common";
-import {
-  menuInputSchema,
-  updateMenuSchema,
-  type MenuInput,
-  type UpdateMenuInput,
-} from "@ocean/types";
+import { menuInputSchema, updateMenuSchema, type MenuInput, type UpdateMenuInput } from "@ocean/types";
 
 import { ReqMeta, type RequestMeta } from "../../common/http/request-meta";
 import { CurrentTenant } from "../../common/tenant/current-tenant.decorator";
@@ -40,5 +35,27 @@ export class MenusController {
     @ReqMeta() meta: RequestMeta,
   ) {
     return this.content.createMenu(tenant, body, meta);
+  }
+
+  @Patch(":menuId")
+  @RequireStore("content.write")
+  update(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("menuId") id: string,
+    @Body(new ZodValidationPipe(updateMenuSchema)) body: UpdateMenuInput,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.content.updateMenu(tenant, id, body, meta);
+  }
+
+  @Delete(":menuId")
+  @RequireStore("content.write")
+  @HttpCode(204)
+  async remove(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("menuId") id: string,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    await this.content.removeMenu(tenant, id, meta);
   }
 }

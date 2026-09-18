@@ -6,7 +6,7 @@ import { CartProvider } from "@/components/cart-provider";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { hexToHslTriplet } from "@/lib/color";
-import { getTheme, listMenus } from "@/lib/storefront";
+import { getTheme, listMenus, THEME_PREVIEW_HEADER } from "@/lib/storefront";
 
 import "./globals.css";
 
@@ -16,8 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const host = (await headers()).get("host") ?? "";
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host") ?? "";
   const storeName = host.split(".")[0] || "Store";
+  const isPreview = !!requestHeaders.get(THEME_PREVIEW_HEADER);
   const [theme, menus] = await Promise.all([
     getTheme().catch(() => null),
     listMenus().catch(() => []),
@@ -40,6 +42,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en">
       <body className="flex min-h-screen flex-col bg-background text-foreground" style={themeVars}>
+        {isPreview && (
+          <div className="bg-amber-400 px-4 py-1.5 text-center text-xs font-medium text-amber-950">
+            Theme preview — this draft isn&apos;t published yet
+          </div>
+        )}
         <CartProvider>
           <Header logoUrl={logoUrl} storeName={storeName} menus={menus} />
           <main className="flex-1">{children}</main>

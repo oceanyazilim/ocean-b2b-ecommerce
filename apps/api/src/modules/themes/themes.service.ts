@@ -23,6 +23,7 @@ import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { EventsService } from "../events/events.service";
+import { hashToken } from "../users/user-token.service";
 
 const storeThemeInclude = {
   theme: true,
@@ -480,6 +481,19 @@ export class ThemesService {
 
   // ---- storefront-facing --------------------------------------------------------------------
 
+  private resolveTheme(storeThemeId: string, version: VersionRow): ResolvedTheme {
+    const templates: Record<string, TemplateConfiguration> = {};
+    for (const t of version.templates) {
+      templates[`${t.templateType}.${t.templateName}`] = t.configuration as unknown as TemplateConfiguration;
+    }
+    return {
+      storeThemeId,
+      versionId: version.id,
+      globalSettings: (version.globalSettings as Record<string, unknown>) ?? {},
+      templates,
+    };
+  }
+
   async getPublishedTheme(ctx: TenantContext): Promise<ResolvedTheme | null> {
     const storeTheme = await this.prisma.storeTheme.findFirst({
       where: { ...this.scope(ctx), role: "main" },
@@ -490,15 +504,49 @@ export class ThemesService {
       include: versionInclude,
     });
     if (!version) return null;
-    const templates: Record<string, TemplateConfiguration> = {};
-    for (const t of version.templates) {
-      templates[`${t.templateType}.${t.templateName}`] = t.configuration as unknown as TemplateConfiguration;
-    }
-    return {
-      storeThemeId: storeTheme.id,
-      versionId: version.id,
-      globalSettings: (version.globalSettings as Record<string, unknown>) ?? {},
-      templates,
-    };
+    return this.resolveTheme(storeTheme.id, version);
+  }
+
+  // ---- preview (Phase 10 editor live-preview iframe) -----------------------------------------
+
+  // A short-lived, hashed-at-rest token that lets the storefront app render one specific
+  // (usually still-a-draft) version regardless of publish state — the editor's iframe carries
+  // it so edits are visible before publishing, without giving the storefront app the admin's
+  // own session. Minting a new token for a version doesn't invalidate earlier ones; they just
+  // expire on their own.
+  async mintPreviewToken(
+    ctx: TenantContext,
+    storeThemeId: string,
+    versionId: string,
+    meta: RequestMeta,
+  ): Promise<{ token: string; expiresAt: string }> {
+    await this.requireStoreTheme(ctx, storeThemeId);
+    const version = await this.prisma.storeThemeVersion.findFirst({ where: { id: versionId, storeThemeId } });
+    if (!version) throw new NotFoundError("Theme version");
+
+    const token = randomBytes(32).toString("base64url");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.prisma.themePreviewToken.create({
+      data: { storeThemeVersionId: versionId, tokenHash: hashToken(token), expiresAt },
+    });
+    await this.audit.record({
+      organizationId: ctx.organizationId,
+      storeId: ctx.storeId,
+      actorId: ctx.actor.id,
+      action: "theme.preview_token_minted",
+      resourceType: "storeThemeVersion",
+      resourceId: versionId,
+      meta,
+    });
+    return { token, expiresAt: expiresAt.toISOString() };
+  }
+
+  async resolvePreviewTheme(token: string): Promise<ResolvedTheme | null> {
+    const row = await this.prisma.themePreviewToken.findUnique({
+      where: { tokenHash: hashToken(token) },
+      include: { version: { include: versionInclude } },
+    });
+    if (!row || row.expiresAt.getTime() < Date.now()) return null;
+    return this.resolveTheme(row.version.storeThemeId, row.version);
   }
 }
