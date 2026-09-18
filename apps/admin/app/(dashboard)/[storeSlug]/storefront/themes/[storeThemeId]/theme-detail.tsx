@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ThemeSettingInput } from "@/components/theme-setting-input";
 import { api, errorMessage } from "@/lib/api";
+import { buildPreviewUrl } from "@/lib/theme-preview";
 import { useSubmit } from "@/lib/use-submit";
 
 export function ThemeDetail({
@@ -30,9 +31,11 @@ export function ThemeDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "copied" | "error">("idle");
   const saveAction = useSubmit();
   const publishAction = useSubmit();
   const deleteAction = useSubmit();
+  const rollbackAction = useSubmit();
 
   const load = useCallback(async () => {
     setError(null);
@@ -81,6 +84,30 @@ export function ThemeDetail({
     if (ok !== undefined) await load();
   }
 
+  async function rollbackTo(versionId: string) {
+    const ok = await rollbackAction.run(() =>
+      api(`/stores/${storeId}/themes/${storeThemeId}/versions/${versionId}/rollback`, { method: "POST" }),
+    );
+    if (ok !== undefined) await load();
+  }
+
+  async function copyPreviewLink() {
+    if (!draftVersion) return;
+    setCopyStatus("copying");
+    try {
+      const url = await buildPreviewUrl(storeId, storeThemeId, draftVersion.id);
+      if (!url) {
+        setCopyStatus("error");
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCopyStatus("copied");
+      setTimeout(() => setCopyStatus("idle"), 2000);
+    } catch {
+      setCopyStatus("error");
+    }
+  }
+
   if (loading) return <Skeleton className="h-64 w-full" />;
   if (error || !detail) return <Alert variant="error">{error ?? "Theme not found."}</Alert>;
 
@@ -97,6 +124,11 @@ export function ThemeDetail({
           <p className="text-sm text-muted-foreground">Based on {detail.themeName}</p>
         </div>
         <div className="flex gap-2">
+          {draftVersion && (
+            <Button variant="outline" onClick={() => void copyPreviewLink()} loading={copyStatus === "copying"}>
+              {copyStatus === "copied" ? "Link copied ✓" : copyStatus === "error" ? "Couldn't build link" : "Copy preview link"}
+            </Button>
+          )}
           {canPublish && draftVersion && (
             <Button onClick={() => void publish()} loading={publishAction.pending}>
               Publish draft
@@ -164,6 +196,39 @@ export function ThemeDetail({
                 </span>
               </li>
             ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-2 py-6">
+          <h2 className="text-lg font-semibold">Version history</h2>
+          <p className="text-sm text-muted-foreground">
+            Restoring copies that version&apos;s settings and templates over the current draft —
+            review it in the editor, then publish when you&apos;re ready.
+          </p>
+          {rollbackAction.error && <Alert variant="error">{rollbackAction.error}</Alert>}
+          <ul className="mt-2 flex flex-col gap-1 text-sm">
+            {[...detail.versions]
+              .sort((a, b) => b.number - a.number)
+              .map((v) => (
+                <li key={v.id} className="flex items-center justify-between border-b py-1.5 last:border-0">
+                  <span className="flex items-center gap-2">
+                    Version {v.number}
+                    <Badge variant={v.status === "draft" ? "default" : v.status === "published" ? "success" : "secondary"}>
+                      {v.status}
+                    </Badge>
+                  </span>
+                  <span className="flex items-center gap-3 text-muted-foreground">
+                    {v.publishedAt ? new Date(v.publishedAt).toLocaleString() : "Never published"}
+                    {canEdit && v.status !== "draft" && draftVersion && (
+                      <Button size="sm" variant="ghost" onClick={() => void rollbackTo(v.id)} loading={rollbackAction.pending}>
+                        Restore
+                      </Button>
+                    )}
+                  </span>
+                </li>
+              ))}
           </ul>
         </CardContent>
       </Card>

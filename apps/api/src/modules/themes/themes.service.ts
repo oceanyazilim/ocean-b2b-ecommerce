@@ -413,6 +413,63 @@ export class ThemesService {
     return this.toTemplateVersion(updated);
   }
 
+  // Copies an older (usually already-published) version's settings and templates over the
+  // current draft, so a merchant can undo a bad edit by rolling back and then publishing —
+  // never touches the target version itself, and never publishes on its own.
+  async rollback(
+    ctx: TenantContext,
+    storeThemeId: string,
+    targetVersionId: string,
+    meta: RequestMeta,
+  ): Promise<StoreThemeVersionDetail> {
+    await this.requireStoreTheme(ctx, storeThemeId);
+    const target = await this.prisma.storeThemeVersion.findFirst({
+      where: { id: targetVersionId, storeThemeId },
+      include: versionInclude,
+    });
+    if (!target) throw new NotFoundError("Theme version");
+    const draft = await this.prisma.storeThemeVersion.findFirst({
+      where: { storeThemeId, status: "draft" },
+    });
+    if (!draft) throw new ConflictError("No draft version to roll back into.");
+    if (draft.id === target.id) throw new ConflictError("That's already the current draft.");
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.storeThemeVersion.update({
+        where: { id: draft.id },
+        data: {
+          globalSettings: target.globalSettings as Prisma.InputJsonValue,
+          etag: randomBytes(16).toString("hex"),
+        },
+      });
+      await tx.themeTemplateVersion.deleteMany({ where: { themeVersionId: draft.id } });
+      if (target.templates.length) {
+        await tx.themeTemplateVersion.createMany({
+          data: target.templates.map((t) => ({
+            themeVersionId: draft.id,
+            templateType: t.templateType,
+            templateName: t.templateName,
+            configuration: t.configuration as Prisma.InputJsonValue,
+          })),
+        });
+      }
+      await this.audit.record(
+        {
+          organizationId: ctx.organizationId,
+          storeId: ctx.storeId,
+          actorId: ctx.actor.id,
+          action: "theme.rolled_back",
+          resourceType: "storeThemeVersion",
+          resourceId: draft.id,
+          after: { fromVersionId: target.id, fromVersionNumber: target.number },
+          meta,
+        },
+        tx,
+      );
+    });
+    return this.getVersion(ctx, storeThemeId, draft.id);
+  }
+
   // Publishing snapshots the draft as the live version and immediately opens a fresh draft
   // (cloned from it) so editing continues without ever touching what the storefront serves.
   async publish(

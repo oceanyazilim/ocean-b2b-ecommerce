@@ -1,18 +1,13 @@
 "use client";
 
-import type {
-  DomainSummary,
-  StoreThemeDetail,
-  StoreThemeVersionDetail,
-  TemplateConfiguration,
-  ThemeTemplateVersion,
-} from "@ocean/types";
+import type { StoreThemeDetail, StoreThemeVersionDetail, TemplateConfiguration, ThemeTemplateVersion } from "@ocean/types";
 import { Alert, Button, Select, Skeleton } from "@ocean/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
+import { mintPreviewToken, resolveStorefrontBase } from "@/lib/theme-preview";
 import { useSubmit } from "@/lib/use-submit";
 
 import { ThemeEditorPanel } from "./theme-editor-panel";
@@ -21,10 +16,6 @@ import type { Selection } from "./types";
 
 const TEMPLATE_NAME = "default";
 const SAVE_DEBOUNCE_MS = 900;
-
-function previewBase(hostname: string): string {
-  return hostname.endsWith(".localhost") ? `http://${hostname}:3002` : `https://${hostname}`;
-}
 
 export function ThemeEditor({
   storeId,
@@ -68,16 +59,12 @@ export function ThemeEditor({
       ).data;
       setVersion(v);
 
-      const [{ token }, domains] = await Promise.all([
-        api<{ data: { token: string } }>(
-          `/stores/${storeId}/themes/${storeThemeId}/versions/${draft.id}/preview-token`,
-          { method: "POST" },
-        ).then((r) => r.data),
-        api<{ data: DomainSummary[] }>(`/stores/${storeId}/domains`).then((r) => r.data),
+      const [token, base] = await Promise.all([
+        mintPreviewToken(storeId, storeThemeId, draft.id),
+        resolveStorefrontBase(storeId),
       ]);
-      const domain = domains.find((d2) => d2.isPrimary) ?? domains[0];
-      if (domain) {
-        setPreviewBaseUrl(previewBase(domain.hostname));
+      if (base) {
+        setPreviewBaseUrl(base);
         setPreviewToken(token);
         setPreviewNote(null);
       } else {

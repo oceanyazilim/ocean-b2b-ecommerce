@@ -154,6 +154,30 @@ describe.skipIf(!INTEGRATION_ENABLED)("phase 9: theme catalog, install, edit, pu
 
     await previewer.get("/storefront/v1/theme/preview?token=not-a-real-token").set("Host", hostname).expect(404);
     await previewer.get("/storefront/v1/theme/preview").set("Host", hostname).expect(404);
+
+    // Rollback: copy the original published version's settings/templates back over the current
+    // draft, without touching the published version itself.
+    const beforeRollback = await owner.get(`${base}/themes/${installed.id}/versions/${newDraftId}`).expect(200);
+    expect(beforeRollback.body.data.globalSettings.primaryColor).toBe("#0000ff");
+
+    const rolledBack = (
+      await owner.post(`${base}/themes/${installed.id}/versions/${draftVersionId}/rollback`).send({}).expect(201)
+    ).body.data;
+    expect(rolledBack.id).toBe(newDraftId);
+    expect(rolledBack.globalSettings.primaryColor).toBe("#ff0000");
+    expect(rolledBack.templates.find((t: { templateType: string }) => t.templateType === "home").configuration.sections.s1.settings.heading).toBe(
+      "Welcome to Theme Co",
+    );
+
+    const targetUnchanged = await owner.get(`${base}/themes/${installed.id}/versions/${draftVersionId}`).expect(200);
+    expect(targetUnchanged.body.data.globalSettings.primaryColor).toBe("#ff0000");
+
+    // Rolling back into itself, or rolling back when there's no draft (nothing here — both
+    // guarded server-side), is refused.
+    await owner
+      .post(`${base}/themes/${installed.id}/versions/${newDraftId}/rollback`)
+      .send({})
+      .expect(409);
   });
 
   it("gates writes behind themes.edit/publish and hides themes across tenants", async () => {

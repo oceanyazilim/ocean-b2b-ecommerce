@@ -107,6 +107,17 @@ export class ThemesController {
     return this.themes.updateTemplate(tenant, storeThemeId, versionId, templateType, templateName, body, meta);
   }
 
+  @Post(":storeThemeId/versions/:versionId/rollback")
+  @RequireStore("themes.edit")
+  rollback(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("storeThemeId") storeThemeId: string,
+    @Param("versionId") versionId: string,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.themes.rollback(tenant, storeThemeId, versionId, meta);
+  }
+
   @Post(":storeThemeId/versions/:versionId/publish")
   @RequireStore("themes.publish")
   publish(
