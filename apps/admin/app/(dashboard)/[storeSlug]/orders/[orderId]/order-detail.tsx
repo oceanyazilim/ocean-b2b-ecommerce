@@ -30,6 +30,9 @@ import {
   PaymentStatusBadge,
   PRICE_SOURCE_LABEL,
 } from "../order-badges";
+import { FulfillmentsPanel } from "./fulfillments-panel";
+import { PaymentsPanel } from "./payments-panel";
+import { ReturnsPanel } from "./returns-panel";
 
 const EVENT_LABEL: Record<string, string> = {
   "order.created": "Order placed",
@@ -43,11 +46,17 @@ export function OrderDetailView({
   storeSlug,
   order,
   canWrite,
+  canRefund,
+  canManageFulfillments,
+  canManageReturns,
 }: {
   storeId: string;
   storeSlug: string;
   order: OrderDetail;
   canWrite: boolean;
+  canRefund: boolean;
+  canManageFulfillments: boolean;
+  canManageReturns: boolean;
 }) {
   const router = useRouter();
   const submit = useSubmit();
@@ -221,6 +230,29 @@ export function OrderDetailView({
               </dl>
             </CardContent>
           </Card>
+
+          <PaymentsPanel
+            storeId={storeId}
+            orderId={order.id}
+            payments={order.payments}
+            refunds={order.refunds}
+            canManagePayments={canWrite}
+            canRefund={canRefund}
+          />
+          <FulfillmentsPanel
+            storeId={storeId}
+            orderId={order.id}
+            items={order.items}
+            fulfillments={order.fulfillments}
+            canWrite={canManageFulfillments}
+          />
+          <ReturnsPanel
+            storeId={storeId}
+            orderId={order.id}
+            items={order.items}
+            returns={order.returns}
+            canWrite={canManageReturns}
+          />
 
           <Card>
             <CardHeader>

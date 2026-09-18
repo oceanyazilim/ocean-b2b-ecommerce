@@ -57,6 +57,12 @@ export class TaxController {
     await this.tax.remove(tenant, id, meta);
   }
 
+  @Get("settings")
+  @RequireStore("taxes.read")
+  getSettings(@CurrentTenant() tenant: TenantContext) {
+    return this.tax.getSettings(tenant);
+  }
+
   @Put("settings")
   @RequireStore("taxes.write")
   updateSettings(

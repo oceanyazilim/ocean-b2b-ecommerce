@@ -137,6 +137,14 @@ export class TaxService {
     await this.events.publish(ctx, "tax.rule.deleted", { ruleId: id });
   }
 
+  async getSettings(ctx: TenantContext): Promise<{ pricesIncludeTax: boolean }> {
+    const store = await this.prisma.store.findUniqueOrThrow({
+      where: { id: ctx.storeId as string },
+      select: { pricesIncludeTax: true },
+    });
+    return { pricesIncludeTax: store.pricesIncludeTax };
+  }
+
   async updateSettings(ctx: TenantContext, pricesIncludeTax: boolean, meta: RequestMeta) {
     await this.prisma.store.update({
       where: { id: ctx.storeId as string },

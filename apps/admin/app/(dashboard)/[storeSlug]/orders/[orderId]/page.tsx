@@ -36,6 +36,9 @@ export default async function OrderPage({
       storeSlug={store.slug}
       order={order}
       canWrite={can(store, "orders.write")}
+      canRefund={can(store, "orders.refund")}
+      canManageFulfillments={can(store, "fulfillments.write")}
+      canManageReturns={can(store, "returns.write")}
     />
   );
 }
