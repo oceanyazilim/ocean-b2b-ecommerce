@@ -13,6 +13,7 @@ import { uniqueSlug } from "../../common/slug";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { EntitlementsService } from "../billing/entitlements.service";
 import { StoresRepository } from "./stores.repository";
 
 export function toStoreSummary(store: Store): StoreSummary {
@@ -48,6 +49,7 @@ export class StoresService {
     private readonly prisma: PrismaService,
     private readonly repo: StoresRepository,
     private readonly audit: AuditService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async listForOrganization(tenant: TenantContext): Promise<StoreSummary[]> {
@@ -60,6 +62,8 @@ export class StoresService {
     meta: RequestMeta,
   ): Promise<StoreSummary> {
     assertTimezone(input.timezone);
+    const currentStoreCount = await this.repo.countForOrganization(tenant.organizationId);
+    await this.entitlements.assertWithinLimit(tenant.organizationId, "stores.max", currentStoreCount);
     const store = await this.prisma.$transaction(async (tx) => {
       if (input.slug && (await this.repo.slugExists(input.slug, tx))) {
         throw new ConflictError("This store URL is already taken.", [

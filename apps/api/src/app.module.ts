@@ -45,6 +45,7 @@ import { DiscountsModule } from "./modules/discounts/discounts.module";
 import { SavedListsModule } from "./modules/saved-lists/saved-lists.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { BillingModule } from "./modules/billing/billing.module";
 
 // Domain modules are registered flat and talk to each other only through exported services.
 // Guard order: SessionGuard (who) → PermissionGuard (which tenant, which permission).
@@ -93,6 +94,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     SavedListsModule,
     AnalyticsModule,
     NotificationsModule,
+    BillingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

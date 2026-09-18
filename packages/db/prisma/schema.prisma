@@ -186,6 +186,9 @@ model Organization {
   approvals             Approval[]
   savedLists            SavedList[]
   discounts             Discount[]
+  subscription          Subscription?
+  platformInvoices      PlatformInvoice[]
+  featureFlagTargets    FeatureFlagTarget[]
 
   @@map("organizations")
 }
@@ -298,6 +301,7 @@ model Store {
   savedLists            SavedList[]
   discounts             Discount[]
   notifications         Notification[]
+  featureFlagTargets    FeatureFlagTarget[]
 
   @@index([organizationId])
   @@map("stores")
@@ -2711,4 +2715,140 @@ model DiscountCode {
   @@unique([storeId, code])
   @@index([discountId])
   @@map("discount_codes")
+}
+
+// ---------------------------------------------------------------------------
+// Platform (Phase 14) — billing for the SaaS platform itself, not to be confused with the
+// merchant-to-customer commerce above. Plans are a platform-owned catalog (no tenant column,
+// same pattern as Theme); Subscription is the organization's one link into it.
+// ---------------------------------------------------------------------------
+
+enum PlanStatus {
+  active
+  archived
+}
+
+model Plan {
+  id          String     @id @default(uuid()) @db.Uuid
+  code        String     @unique
+  name        String
+  description String?
+  // { "<currency>": { "monthly": <minor units>, "yearly": <minor units> } }, or null ("contact us").
+  prices      Json?
+  status      PlanStatus @default(active)
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entitlements  Entitlement[]
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+// A plan's limits/features as a flat key-value bag (e.g. "stores.max": 5, "staff.max": 20,
+// "feature.custom_domains": true) rather than dedicated columns, so new limits don't need a
+// migration.
+model Entitlement {
+  id     String @id @default(uuid()) @db.Uuid
+  planId String @map("plan_id") @db.Uuid
+  key    String
+  value  Json
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+  @@map("entitlements")
+}
+
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  canceled
+}
+
+// One per organization (billing is an organization concern, never a store concern — see
+// docs/architecture/00-overview.md's tenancy hierarchy). providerRef stays null until a real
+// payment processor is wired in; until then plan changes are a manual/self-serve assignment,
+// mirroring the Phase 7 PaymentAdapter's manual/test adapters.
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  organizationId     String             @unique @map("organization_id") @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  status             SubscriptionStatus @default(trialing)
+  trialEndsAt        DateTime?          @map("trial_ends_at") @db.Timestamptz(6)
+  currentPeriodStart DateTime           @default(now()) @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd   DateTime           @map("current_period_end") @db.Timestamptz(6)
+  cancelAt           DateTime?          @map("cancel_at") @db.Timestamptz(6)
+  canceledAt         DateTime?          @map("canceled_at") @db.Timestamptz(6)
+  providerRef        String?            @map("provider_ref")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan              @relation(fields: [planId], references: [id])
+  invoices     PlatformInvoice[]
+
+  @@map("subscriptions")
+}
+
+enum PlatformInvoiceStatus {
+  open
+  paid
+  void
+}
+
+// Ocean billing the organization for its subscription — distinct from the merchant-to-buyer
+// `Invoice` model (Phase 12), which is the opposite direction of money.
+model PlatformInvoice {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  subscriptionId String                @map("subscription_id") @db.Uuid
+  amount         BigInt
+  currency       String                @db.Char(3)
+  status         PlatformInvoiceStatus @default(open)
+  dueAt          DateTime              @map("due_at") @db.Timestamptz(6)
+  paidAt         DateTime?             @map("paid_at") @db.Timestamptz(6)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("platform_invoices")
+}
+
+// A flag can be globally on/off (defaultOn) and overridden per organization or per store via a
+// target row. Toggling one's own org's targets is a self-serve beta opt-in (gated behind
+// organization.billing, the same permission that gates plan changes) — there's no separate
+// platform-operator role in this codebase to reserve flag rollout for.
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  description String?
+  defaultOn   Boolean  @default(false) @map("default_on")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  targets FeatureFlagTarget[]
+
+  @@map("feature_flags")
+}
+
+model FeatureFlagTarget {
+  id             String   @id @default(uuid()) @db.Uuid
+  flagId         String   @map("flag_id") @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  storeId        String?  @map("store_id") @db.Uuid
+  enabled        Boolean
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  flag         FeatureFlag   @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store?        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([flagId, organizationId])
+  @@index([flagId, storeId])
+  @@map("feature_flag_targets")
 }

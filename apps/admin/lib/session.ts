@@ -51,6 +51,10 @@ export function can(store: MeStore, requirement: PermissionRequirement): boolean
   return satisfies(createPermissionSet(store.permissions as Permission[]), requirement);
 }
 
+export function canOrg(organization: MeOrganization, requirement: PermissionRequirement): boolean {
+  return satisfies(createPermissionSet(organization.permissions as Permission[]), requirement);
+}
+
 // Where a signed-in user should land: onboarding until they have a store, else their first store.
 export function homePath(me: MeResponse): string {
   const withStores = me.organizations.find((o) => o.stores.length > 0);

@@ -88,8 +88,74 @@ async function seedThemes(): Promise<void> {
   });
 }
 
+const PLANS = [
+  {
+    code: "starter",
+    name: "Starter",
+    description: "For a single store getting off the ground.",
+    prices: { TRY: { monthly: 0, yearly: 0 } },
+    sortOrder: 0,
+    entitlements: { "stores.max": 1, "staff.max": 3, "products.max": 200 },
+  },
+  {
+    code: "growth",
+    name: "Growth",
+    description: "For multi-store B2B operations.",
+    prices: { TRY: { monthly: 149900, yearly: 1499000 } },
+    sortOrder: 1,
+    entitlements: {
+      "stores.max": 5,
+      "staff.max": 20,
+      "products.max": 10000,
+      "feature.custom_domains": true,
+    },
+  },
+  {
+    code: "enterprise",
+    name: "Enterprise",
+    description: "For large organizations — contact sales.",
+    prices: null,
+    sortOrder: 2,
+    entitlements: {
+      "stores.max": 999999,
+      "staff.max": 999999,
+      "products.max": 999999,
+      "feature.custom_domains": true,
+      "feature.priority_support": true,
+    },
+  },
+] as const;
+
+async function seedBilling(): Promise<void> {
+  for (const plan of PLANS) {
+    const { entitlements, ...planData } = plan;
+    const created = await prisma.plan.upsert({
+      where: { code: plan.code },
+      update: planData,
+      create: planData,
+    });
+    for (const [key, value] of Object.entries(entitlements)) {
+      await prisma.entitlement.upsert({
+        where: { planId_key: { planId: created.id, key } },
+        update: { value },
+        create: { planId: created.id, key, value },
+      });
+    }
+  }
+  await prisma.featureFlag.upsert({
+    where: { key: "beta.custom_domains" },
+    update: {},
+    create: {
+      key: "beta.custom_domains",
+      description: "Custom domain support (rolling out)",
+      defaultOn: false,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   await seedThemes();
+  await seedBilling();
 
   const passwordHash = await hash(DEMO_PASSWORD, {
     memoryCost: 65536,
