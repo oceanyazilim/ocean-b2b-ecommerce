@@ -36,8 +36,12 @@ export default async function StoreLayout({
     { label: "Companies", href: `${base}/companies`, disabled: !can(store, "companies.read") },
     { label: "Catalogs", href: `${base}/catalogs`, disabled: !can(store, "catalogs.read") },
     { label: "Pricing", href: `${base}/pricing`, disabled: !can(store, "pricing.read") },
-    { label: "Quotes", href: `${base}/quotes`, disabled: true },
-    { label: "Storefront", href: `${base}/storefront`, disabled: true },
+    { label: "Quotes", href: `${base}/quotes`, disabled: !can(store, "quotes.read") },
+    {
+      label: "Storefront",
+      href: `${base}/storefront`,
+      disabled: !can(store, "content.read") && !can(store, "settings.read") && !can(store, "themes.read"),
+    },
     { label: "Analytics", href: `${base}/analytics`, disabled: true },
     { label: "Settings", href: `${base}/settings/general`, disabled: !can(store, "settings.read") },
   ];
