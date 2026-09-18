@@ -7,7 +7,90 @@ const prisma = new PrismaClient();
 const DEMO_EMAIL = "owner@demo.local";
 const DEMO_PASSWORD = "DemoPass123!";
 
+// Minimal but real manifest: enough templates/sections/blocks for the theme editor (Phase 10)
+// and a storefront renderer to have something to work with, without pretending to be a full
+// theme. Wholesale Pro (a second theme) is deferred until there's a renderer to tell them apart.
+const FOUNDATION_MANIFEST = {
+  templates: [
+    { type: "home", label: "Home page", sections: [] },
+    { type: "product", label: "Product page", sections: [] },
+    { type: "collection", label: "Collection page", sections: [] },
+    { type: "cart", label: "Cart page", sections: [] },
+    { type: "page", label: "Generic page", sections: [] },
+  ],
+  sections: [
+    {
+      type: "hero",
+      label: "Hero banner",
+      blocks: ["heading", "text", "button"],
+      settings: [
+        { key: "heading", label: "Heading", type: "text", default: "Welcome" },
+        { key: "backgroundImage", label: "Background image", type: "image" },
+      ],
+    },
+    {
+      type: "featured-products",
+      label: "Featured products",
+      blocks: [],
+      settings: [
+        { key: "title", label: "Title", type: "text", default: "Featured products" },
+        { key: "collectionHandle", label: "Collection", type: "text" },
+      ],
+    },
+    {
+      type: "rich-text",
+      label: "Rich text",
+      blocks: ["heading", "text"],
+      settings: [],
+    },
+    {
+      type: "image-with-text",
+      label: "Image with text",
+      blocks: ["heading", "text", "button"],
+      settings: [{ key: "image", label: "Image", type: "image" }],
+    },
+  ],
+  blocks: [
+    { type: "heading", label: "Heading", settings: [{ key: "text", label: "Text", type: "text" }] },
+    { type: "text", label: "Text", settings: [{ key: "text", label: "Text", type: "richtext" }] },
+    {
+      type: "button",
+      label: "Button",
+      settings: [
+        { key: "label", label: "Label", type: "text", default: "Shop now" },
+        { key: "url", label: "Link", type: "url" },
+      ],
+    },
+  ],
+  globalSettings: [
+    { key: "primaryColor", label: "Primary color", type: "color", default: "#1a1a1a" },
+    { key: "secondaryColor", label: "Secondary color", type: "color", default: "#f5f5f5" },
+    { key: "logoUrl", label: "Logo", type: "image" },
+  ],
+};
+
+async function seedThemes(): Promise<void> {
+  const theme = await prisma.theme.upsert({
+    where: { slug: "foundation" },
+    update: {},
+    create: {
+      slug: "foundation",
+      name: "Foundation",
+      description: "The default Ocean theme: a clean, wholesale-ready starting point.",
+      category: "general",
+      status: "active",
+    },
+  });
+  await prisma.themeRelease.upsert({
+    where: { themeId_version: { themeId: theme.id, version: "1.0.0" } },
+    update: { manifest: FOUNDATION_MANIFEST },
+    create: { themeId: theme.id, version: "1.0.0", manifest: FOUNDATION_MANIFEST },
+  });
+}
+
 async function main(): Promise<void> {
+  await seedThemes();
+
   const passwordHash = await hash(DEMO_PASSWORD, {
     memoryCost: 65536,
     timeCost: 3,
