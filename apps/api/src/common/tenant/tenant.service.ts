@@ -73,4 +73,29 @@ export class TenantService {
       requestId,
     };
   }
+
+  async forStorefront(
+    hostname: string,
+    customerId: string | null,
+    requestId: string,
+  ): Promise<TenantContext> {
+    const domain = await this.prisma.domain.findUnique({
+      where: { hostname },
+      select: { storeId: true, organizationId: true },
+    });
+    if (!domain) throw new NotFoundError("Store");
+
+    return {
+      organizationId: domain.organizationId,
+      storeId: domain.storeId,
+      actor: customerId ? { type: "customer", id: customerId } : { type: "guest", id: "anonymous" },
+      organizationRole: null,
+      storeRole: null,
+      // Storefront endpoints don't use these permissions (they check session vs resource),
+      // but the context requires them.
+      organizationPermissions: resolveOrganizationPermissions(null),
+      storePermissions: resolveStorePermissions(null, null),
+      requestId,
+    };
+  }
 }

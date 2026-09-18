@@ -163,7 +163,7 @@ export const FULFILLMENT_STATUSES = ["unfulfilled", "partially_fulfilled", "fulf
 export const fulfillmentStatusSchema = z.enum(FULFILLMENT_STATUSES);
 export type FulfillmentStatus = z.infer<typeof fulfillmentStatusSchema>;
 
-export const ORDER_SOURCES = ["storefront", "draft_order", "admin", "api"] as const;
+export const ORDER_SOURCES = ["storefront", "draft_order", "quote", "admin", "api"] as const;
 export type OrderSource = (typeof ORDER_SOURCES)[number];
 
 export const ORDER_SORTS = ["created_desc", "created_asc", "total_desc", "number_desc"] as const;

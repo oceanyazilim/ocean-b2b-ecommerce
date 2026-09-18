@@ -42,6 +42,9 @@ export const STORE_ROLE_PERMISSIONS: Record<StoreRole, readonly StorePermission[
     "quotes.write",
     "discounts.write",
     "content.write",
+    "credit.write",
+    "approvals.write",
+    "savedLists.write",
   ],
   product_manager: [
     "products.read",
@@ -69,6 +72,8 @@ export const STORE_ROLE_PERMISSIONS: Record<StoreRole, readonly StorePermission[
     "inventory.read",
     "quotes.read",
     "quotes.write",
+    "approvals.write",
+    "savedLists.write",
   ],
   marketing: [
     "products.read",
@@ -94,6 +99,8 @@ export const STORE_ROLE_PERMISSIONS: Record<StoreRole, readonly StorePermission[
     "companies.read",
     "finance.read",
     "finance.write",
+    "credit.read",
+    "credit.write",
     "analytics.read",
   ],
   developer: [

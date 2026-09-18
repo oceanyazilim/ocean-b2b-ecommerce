@@ -2,7 +2,7 @@ import type { PermissionSet } from "@ocean/permissions";
 import type { OrganizationRole, StoreRole } from "@ocean/db";
 
 export interface TenantActor {
-  type: "user";
+  type: "user" | "customer" | "guest" | "system" | "platform";
   id: string;
 }
 

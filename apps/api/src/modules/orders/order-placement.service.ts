@@ -6,6 +6,7 @@ import { ValidationError } from "../../common/errors/domain-error";
 import type { RequestMeta } from "../../common/http/request-meta";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
+import { ApprovalsService } from "../approvals/approvals.service";
 import { AuditService } from "../audit/audit.service";
 import { EventsService } from "../events/events.service";
 import { InventoryReservationsService } from "../inventory/inventory-reservations.service";
@@ -25,6 +26,7 @@ export interface PlaceOrderParams {
   source: OrderSource;
   cartId?: string | null;
   draftOrderId?: string | null;
+  quoteId?: string | null;
 }
 
 const json = (value: unknown) =>
@@ -41,6 +43,7 @@ export class OrderPlacementService {
     private readonly quoter: LineQuoterService,
     private readonly reservations: InventoryReservationsService,
     private readonly shippingEligibility: ShippingEligibilityService,
+    private readonly approvals: ApprovalsService,
     private readonly audit: AuditService,
     private readonly events: EventsService,
   ) {}
@@ -72,6 +75,13 @@ export class OrderPlacementService {
             selectedRateId: params.shippingRateId ?? null,
           })
         : null;
+    // A matching rule holds the order for approval instead of confirming it immediately; see
+    // ApprovalsService.findMatchingRule and the Approval row created below.
+    const matchedRule = await this.approvals.findMatchingRule(
+      ctx,
+      params.buyer.companyId,
+      quote.totals.total.amount,
+    );
 
     const storeId = ctx.storeId as string;
     return this.prisma.$transaction(async (tx) => {
@@ -92,7 +102,7 @@ export class OrderPlacementService {
           organizationId: ctx.organizationId,
           number,
           name: `#${number}`,
-          status: "confirmed",
+          status: matchedRule ? "pending_approval" : "confirmed",
           paymentStatus: "pending",
           fulfillmentStatus: "unfulfilled",
           source: params.source,
@@ -168,6 +178,17 @@ export class OrderPlacementService {
           actorId: ctx.actor.id,
         },
       });
+      if (matchedRule) {
+        await tx.approval.create({
+          data: {
+            storeId,
+            organizationId: ctx.organizationId,
+            orderId: order.id,
+            ruleId: matchedRule.id,
+            status: "pending",
+          },
+        });
+      }
       if (params.buyer.customerId) {
         await tx.customer.update({
           where: { id: params.buyer.customerId },
@@ -188,6 +209,12 @@ export class OrderPlacementService {
         await tx.draftOrder.update({
           where: { id: params.draftOrderId },
           data: { status: "completed", completedOrderId: order.id, version: { increment: 1 } },
+        });
+      }
+      if (params.quoteId) {
+        await tx.quote.update({
+          where: { id: params.quoteId },
+          data: { status: "converted", convertedOrderId: order.id },
         });
       }
       await this.audit.record(

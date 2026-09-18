@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+import { ApprovalsModule } from "../approvals/approvals.module";
 import { CatalogsModule } from "../catalogs/catalogs.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { PaymentsModule } from "../payments/payments.module";
@@ -24,7 +25,15 @@ import { ReturnsController } from "./returns.controller";
 import { ReturnsService } from "./returns.service";
 
 @Module({
-  imports: [CatalogsModule, PricingModule, InventoryModule, ShippingModule, TaxModule, PaymentsModule],
+  imports: [
+    CatalogsModule,
+    PricingModule,
+    InventoryModule,
+    ShippingModule,
+    TaxModule,
+    PaymentsModule,
+    ApprovalsModule,
+  ],
   controllers: [
     OrdersController,
     CartsController,
