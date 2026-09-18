@@ -163,6 +163,13 @@ model Organization {
   carts               Cart[]
   orders              Order[]
   draftOrders         DraftOrder[]
+  paymentMethods      PaymentMethod[]
+  payments            Payment[]
+  refunds             Refund[]
+  shippingZones       ShippingZone[]
+  fulfillments        Fulfillment[]
+  returns             Return[]
+  taxRules            TaxRule[]
 
   @@map("organizations")
 }
@@ -204,21 +211,22 @@ enum StoreRole {
 }
 
 model Store {
-  id              String      @id @default(uuid()) @db.Uuid
-  organizationId  String      @map("organization_id") @db.Uuid
-  name            String
-  slug            String      @unique
-  defaultCurrency String      @map("default_currency") @db.Char(3)
-  defaultLocale   String      @map("default_locale")
-  timezone        String
-  status          StoreStatus @default(setup)
-  businessType    String?     @map("business_type")
-  industry        String?
-  onboardingState Json        @default("{}") @map("onboarding_state")
-  orderSequence   Int         @default(1000) @map("order_sequence")
-  draftSequence   Int         @default(1000) @map("draft_sequence")
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String      @id @default(uuid()) @db.Uuid
+  organizationId   String      @map("organization_id") @db.Uuid
+  name             String
+  slug             String      @unique
+  defaultCurrency  String      @map("default_currency") @db.Char(3)
+  defaultLocale    String      @map("default_locale")
+  timezone         String
+  status           StoreStatus @default(setup)
+  businessType     String?     @map("business_type")
+  industry         String?
+  pricesIncludeTax Boolean     @default(false) @map("prices_include_tax")
+  onboardingState  Json        @default("{}") @map("onboarding_state")
+  orderSequence    Int         @default(1000) @map("order_sequence")
+  draftSequence    Int         @default(1000) @map("draft_sequence")
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members              StoreMember[]
@@ -251,6 +259,13 @@ model Store {
   orders               Order[]
   draftOrders          DraftOrder[]
   idempotencyKeys      IdempotencyKey[]
+  paymentMethods       PaymentMethod[]
+  payments             Payment[]
+  refunds              Refund[]
+  shippingZones        ShippingZone[]
+  fulfillments         Fulfillment[]
+  returns              Return[]
+  taxRules             TaxRule[]
 
   @@index([organizationId])
   @@map("stores")
@@ -705,6 +720,7 @@ enum InventoryMovementReason {
   return
   damage
   count
+  fulfillment
 }
 
 enum InventoryMovementSource {
@@ -740,6 +756,7 @@ model Location {
   transfersFrom   TransferRequest[]      @relation("FromLocation")
   transfersTo     TransferRequest[]      @relation("ToLocation")
   reservations    OrderItemReservation[]
+  fulfillments    Fulfillment[]
 
   @@unique([storeId, name])
   @@index([storeId, isActive, isDefault])
@@ -1393,17 +1410,21 @@ model Cart {
   note              String?
   shippingAddress   Json?      @map("shipping_address")
   billingAddress    Json?      @map("billing_address")
+  shippingRateId    String?    @map("shipping_rate_id") @db.Uuid
+  paymentMethodId   String?    @map("payment_method_id") @db.Uuid
   completedOrderId  String?    @map("completed_order_id") @db.Uuid
   expiresAt         DateTime?  @map("expires_at") @db.Timestamptz(6)
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  company      Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
-  items        CartItem[]
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer      Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  company       Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  location      CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
+  shippingRate  ShippingRate?    @relation(fields: [shippingRateId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod?   @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  items         CartItem[]
 
   @@index([storeId, status, updatedAt(sort: Desc)])
   @@index([storeId, customerId])
@@ -1495,6 +1516,8 @@ model Order {
   total             BigInt
   shippingAddress   Json?             @map("shipping_address")
   billingAddress    Json?             @map("billing_address")
+  shippingRateId    String?           @map("shipping_rate_id") @db.Uuid
+  shippingRateName  String?           @map("shipping_rate_name")
   cartId            String?           @map("cart_id") @db.Uuid
   draftOrderId      String?           @map("draft_order_id") @db.Uuid
   placedById        String?           @map("placed_by_id") @db.Uuid
@@ -1511,8 +1534,13 @@ model Order {
   company      Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
   location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
   placedBy     User?            @relation("OrderPlacedBy", fields: [placedById], references: [id], onDelete: SetNull)
+  shippingRate ShippingRate?    @relation(fields: [shippingRateId], references: [id], onDelete: SetNull)
   items        OrderItem[]
   events       OrderEvent[]
+  payments     Payment[]
+  refunds      Refund[]
+  fulfillments Fulfillment[]
+  returns      Return[]
 
   @@unique([storeId, number])
   @@index([storeId, createdAt(sort: Desc)])
@@ -1548,9 +1576,12 @@ model OrderItem {
   position          Int
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  order        Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  variant      ProductVariant?        @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  reservations OrderItemReservation[]
+  order            Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant          ProductVariant?        @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  reservations     OrderItemReservation[]
+  refundItems      RefundItem[]
+  fulfillmentItems FulfillmentItem[]
+  returnItems      ReturnItem[]
 
   @@index([orderId, position])
   @@index([storeId, variantId])
@@ -1619,6 +1650,7 @@ model DraftOrder {
   tags              String[]         @default([])
   shippingAddress   Json?            @map("shipping_address")
   billingAddress    Json?            @map("billing_address")
+  shippingRateId    String?          @map("shipping_rate_id") @db.Uuid
   subtotal          BigInt           @default(0)
   total             BigInt           @default(0)
   completedOrderId  String?          @map("completed_order_id") @db.Uuid
@@ -1633,6 +1665,7 @@ model DraftOrder {
   company      Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
   location     CompanyLocation? @relation(fields: [companyLocationId], references: [id], onDelete: SetNull)
   createdBy    User             @relation("DraftOrderCreatedBy", fields: [createdById], references: [id])
+  shippingRate ShippingRate?    @relation(fields: [shippingRateId], references: [id], onDelete: SetNull)
   items        DraftOrderItem[]
 
   @@unique([storeId, number])
@@ -1675,4 +1708,336 @@ model IdempotencyKey {
   @@unique([storeId, scope, key])
   @@index([expiresAt])
   @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Payments, shipping, fulfilment, returns, taxes
+// ---------------------------------------------------------------------------
+
+// A payment method a store offers, backed by a provider adapter ("manual" = offline
+// settlement confirmed by staff, "test" = sandbox). Real PSPs register under new keys.
+model PaymentMethod {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  provider       String
+  name           String
+  instructions   String?
+  config         Json     @default("{}")
+  isEnabled      Boolean  @default(true) @map("is_enabled")
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+  carts        Cart[]
+
+  @@unique([storeId, name])
+  @@index([storeId, isEnabled, position])
+  @@map("payment_methods")
+}
+
+enum PaymentRecordStatus {
+  pending
+  authorized
+  captured
+  voided
+  failed
+}
+
+enum PaymentTransactionKind {
+  authorize
+  capture
+  void
+  refund
+}
+
+enum PaymentTransactionStatus {
+  succeeded
+  failed
+  pending
+}
+
+model Payment {
+  id              String              @id @default(uuid()) @db.Uuid
+  storeId         String              @map("store_id") @db.Uuid
+  organizationId  String              @map("organization_id") @db.Uuid
+  orderId         String              @map("order_id") @db.Uuid
+  paymentMethodId String?             @map("payment_method_id") @db.Uuid
+  provider        String
+  methodName      String              @map("method_name")
+  status          PaymentRecordStatus @default(pending)
+  amount          BigInt
+  capturedAmount  BigInt              @default(0) @map("captured_amount")
+  refundedAmount  BigInt              @default(0) @map("refunded_amount")
+  currency        String              @db.Char(3)
+  providerRef     String?             @map("provider_ref")
+  failureReason   String?             @map("failure_reason")
+  createdById     String?             @map("created_by_id") @db.Uuid
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method       PaymentMethod?       @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  transactions PaymentTransaction[]
+  refunds      Refund[]
+
+  @@index([storeId, orderId])
+  @@index([storeId, provider, providerRef])
+  @@map("payments")
+}
+
+model PaymentTransaction {
+  id          String                   @id @default(uuid()) @db.Uuid
+  paymentId   String                   @map("payment_id") @db.Uuid
+  storeId     String                   @map("store_id") @db.Uuid
+  kind        PaymentTransactionKind
+  status      PaymentTransactionStatus
+  amount      BigInt
+  providerRef String?                  @map("provider_ref")
+  raw         Json?
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, createdAt])
+  @@map("payment_transactions")
+}
+
+enum RefundStatus {
+  pending
+  succeeded
+  failed
+}
+
+model Refund {
+  id             String       @id @default(uuid()) @db.Uuid
+  storeId        String       @map("store_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  orderId        String       @map("order_id") @db.Uuid
+  paymentId      String?      @map("payment_id") @db.Uuid
+  amount         BigInt
+  currency       String       @db.Char(3)
+  reason         String?
+  status         RefundStatus @default(pending)
+  restock        Boolean      @default(false)
+  createdById    String?      @map("created_by_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment      Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  items        RefundItem[]
+  returns      Return[]
+
+  @@index([storeId, orderId])
+  @@map("refunds")
+}
+
+model RefundItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  refundId    String  @map("refund_id") @db.Uuid
+  orderItemId String  @map("order_item_id") @db.Uuid
+  quantity    Int
+  locationId  String? @map("location_id") @db.Uuid
+
+  refund    Refund    @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@map("refund_items")
+}
+
+enum ShippingRateType {
+  flat
+  free
+  weight_based
+  price_based
+  pickup
+  freight
+}
+
+// A zone is a set of countries ("*" = everywhere else); rates inside it apply when their
+// subtotal / weight conditions hold. Checkout lets the buyer pick one applicable rate.
+model ShippingZone {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  countries      String[] @default([])
+  isActive       Boolean  @default(true) @map("is_active")
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rates        ShippingRate[]
+
+  @@unique([storeId, name])
+  @@index([storeId, isActive, position])
+  @@map("shipping_zones")
+}
+
+model ShippingRate {
+  id             String           @id @default(uuid()) @db.Uuid
+  zoneId         String           @map("zone_id") @db.Uuid
+  storeId        String           @map("store_id") @db.Uuid
+  name           String
+  description    String?
+  type           ShippingRateType @default(flat)
+  price          BigInt           @default(0)
+  minSubtotal    BigInt?          @map("min_subtotal")
+  maxSubtotal    BigInt?          @map("max_subtotal")
+  minWeightGrams Int?             @map("min_weight_grams")
+  maxWeightGrams Int?             @map("max_weight_grams")
+  isActive       Boolean          @default(true) @map("is_active")
+  position       Int              @default(0)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  zone        ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  carts       Cart[]
+  draftOrders DraftOrder[]
+  orders      Order[]
+
+  @@index([zoneId, isActive, position])
+  @@index([storeId])
+  @@map("shipping_rates")
+}
+
+enum FulfillmentState {
+  pending
+  shipped
+  delivered
+  cancelled
+}
+
+// Units leaving a location for an order. Creating one consumes the reservation and writes
+// the inventory movement; tracking lives on the fulfilment.
+model Fulfillment {
+  id              String           @id @default(uuid()) @db.Uuid
+  storeId         String           @map("store_id") @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  orderId         String           @map("order_id") @db.Uuid
+  locationId      String?          @map("location_id") @db.Uuid
+  status          FulfillmentState @default(pending)
+  trackingCarrier String?          @map("tracking_carrier")
+  trackingNumber  String?          @map("tracking_number")
+  trackingUrl     String?          @map("tracking_url")
+  note            String?
+  shippedAt       DateTime?        @map("shipped_at") @db.Timestamptz(6)
+  deliveredAt     DateTime?        @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt     DateTime?        @map("cancelled_at") @db.Timestamptz(6)
+  createdById     String?          @map("created_by_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  location     Location?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  items        FulfillmentItem[]
+
+  @@index([storeId, orderId])
+  @@index([storeId, status])
+  @@map("fulfillments")
+}
+
+model FulfillmentItem {
+  id            String @id @default(uuid()) @db.Uuid
+  fulfillmentId String @map("fulfillment_id") @db.Uuid
+  orderItemId   String @map("order_item_id") @db.Uuid
+  quantity      Int
+
+  fulfillment Fulfillment @relation(fields: [fulfillmentId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@map("fulfillment_items")
+}
+
+enum ReturnStatus {
+  requested
+  approved
+  received
+  closed
+  declined
+}
+
+enum ReturnResolution {
+  refund
+  exchange
+  store_credit
+  none
+}
+
+model Return {
+  id             String           @id @default(uuid()) @db.Uuid
+  storeId        String           @map("store_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  orderId        String           @map("order_id") @db.Uuid
+  status         ReturnStatus     @default(requested)
+  reason         String
+  resolution     ReturnResolution @default(refund)
+  note           String?
+  locationId     String?          @map("location_id") @db.Uuid
+  refundId       String?          @map("refund_id") @db.Uuid
+  receivedAt     DateTime?        @map("received_at") @db.Timestamptz(6)
+  closedAt       DateTime?        @map("closed_at") @db.Timestamptz(6)
+  createdById    String?          @map("created_by_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refund       Refund?      @relation(fields: [refundId], references: [id], onDelete: SetNull)
+  items        ReturnItem[]
+
+  @@index([storeId, orderId])
+  @@index([storeId, status])
+  @@map("returns")
+}
+
+model ReturnItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  returnId    String  @map("return_id") @db.Uuid
+  orderItemId String  @map("order_item_id") @db.Uuid
+  quantity    Int
+  condition   String?
+  restock     Boolean @default(true)
+
+  return    Return    @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@map("return_items")
+}
+
+// Tax rules: the most specific active rule for the shipping address wins (province beats
+// country). Rates in basis points; store.prices_include_tax decides inclusive vs added.
+model TaxRule {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  countryCode    String   @map("country_code") @db.Char(2)
+  provinceCode   String?  @map("province_code")
+  rateBps        Int      @map("rate_bps")
+  isActive       Boolean  @default(true) @map("is_active")
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, countryCode, provinceCode])
+  @@map("tax_rules")
 }

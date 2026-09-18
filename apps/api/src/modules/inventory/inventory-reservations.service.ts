@@ -119,6 +119,111 @@ export class InventoryReservationsService {
     for (const itemId of touched) await this.recomputeItem(itemId, tx);
   }
 
+  // Adds fresh, unreserved on-hand stock back after a received return or a refund with
+  // restock=true — the original order is done (closed / refunded), so these units are free for
+  // any order to claim. `reference` lands on the movement row for the audit trail; a variant
+  // with no tracked inventory item is a no-op (nothing to restock).
+  async restockVariant(
+    ctx: TenantContext,
+    tx: Prisma.TransactionClient,
+    input: {
+      variantId: string;
+      locationId: string;
+      quantity: number;
+      reason: "return";
+      reference: string;
+    },
+  ): Promise<void> {
+    const storeId = ctx.storeId as string;
+    const inventoryItem = await tx.inventoryItem.findFirst({
+      where: { storeId, productVariantId: input.variantId },
+    });
+    if (!inventoryItem) return;
+    await tx.inventoryLevel.upsert({
+      where: { itemId_locationId: { itemId: inventoryItem.id, locationId: input.locationId } },
+      update: { quantity: { increment: input.quantity } },
+      create: {
+        storeId,
+        organizationId: ctx.organizationId,
+        itemId: inventoryItem.id,
+        locationId: input.locationId,
+        quantity: input.quantity,
+      },
+    });
+    await tx.inventoryMovement.create({
+      data: {
+        storeId,
+        organizationId: ctx.organizationId,
+        itemId: inventoryItem.id,
+        fromLocationId: null,
+        toLocationId: input.locationId,
+        quantity: input.quantity,
+        reason: input.reason,
+        source: "system",
+        reference: input.reference,
+        createdById: ctx.actor.id,
+      },
+    });
+    await this.recomputeItem(inventoryItem.id, tx);
+  }
+
+  // Undoes a fulfilment: on-hand AND reserved both go back up, and a fresh reservation row is
+  // recreated for the order item, because the order is still open and still owes these units —
+  // unlike restockVariant, this stock must not be free for a different order to claim.
+  async restoreFulfillmentReservation(
+    ctx: TenantContext,
+    tx: Prisma.TransactionClient,
+    input: {
+      orderItemId: string;
+      variantId: string;
+      locationId: string;
+      quantity: number;
+      reference: string;
+    },
+  ): Promise<void> {
+    const storeId = ctx.storeId as string;
+    const inventoryItem = await tx.inventoryItem.findFirst({
+      where: { storeId, productVariantId: input.variantId },
+    });
+    if (!inventoryItem) return;
+    await tx.inventoryLevel.upsert({
+      where: { itemId_locationId: { itemId: inventoryItem.id, locationId: input.locationId } },
+      update: { quantity: { increment: input.quantity }, reserved: { increment: input.quantity } },
+      create: {
+        storeId,
+        organizationId: ctx.organizationId,
+        itemId: inventoryItem.id,
+        locationId: input.locationId,
+        quantity: input.quantity,
+        reserved: input.quantity,
+      },
+    });
+    await tx.orderItemReservation.create({
+      data: {
+        orderItemId: input.orderItemId,
+        storeId,
+        inventoryItemId: inventoryItem.id,
+        locationId: input.locationId,
+        quantity: input.quantity,
+      },
+    });
+    await tx.inventoryMovement.create({
+      data: {
+        storeId,
+        organizationId: ctx.organizationId,
+        itemId: inventoryItem.id,
+        fromLocationId: null,
+        toLocationId: input.locationId,
+        quantity: input.quantity,
+        reason: "fulfillment",
+        source: "system",
+        reference: input.reference,
+        createdById: ctx.actor.id,
+      },
+    });
+    await this.recomputeItem(inventoryItem.id, tx);
+  }
+
   private async recomputeItem(itemId: string, tx: Prisma.TransactionClient) {
     const agg = await tx.inventoryLevel.aggregate({
       where: { itemId },

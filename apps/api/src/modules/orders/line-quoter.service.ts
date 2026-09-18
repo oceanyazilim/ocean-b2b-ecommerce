@@ -50,7 +50,14 @@ export interface LineQuote {
   // Raw data placement needs to snapshot without another round-trip.
   variants: Map<string, VariantRow>;
   taxPerLine: number[];
+  shippableWeightGrams: number;
 }
+
+const GRAMS_PER_UNIT: Record<string, number> = { g: 1, kg: 1000, lb: 453.592, oz: 28.3495 };
+const toGrams = (weight: unknown, unit: string): number =>
+  weight === null || weight === undefined
+    ? 0
+    : Math.round(Number(weight) * (GRAMS_PER_UNIT[unit] ?? 1));
 
 const variantInclude = {
   product: {
@@ -161,14 +168,19 @@ export class LineQuoterService {
     ctx: TenantContext,
     buyer: ResolvedBuyer,
     inputLines: readonly QuoteLineInput[],
-    addresses: { shippingAddress: Address | null; billingAddress: Address | null },
+    options: {
+      shippingAddress: Address | null;
+      billingAddress: Address | null;
+      shippingRateId?: string | null;
+    },
   ): Promise<LineQuote> {
     const storeId = ctx.storeId as string;
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
-      select: { defaultCurrency: true },
+      select: { defaultCurrency: true, pricesIncludeTax: true },
     });
     const currency = store?.defaultCurrency ?? "TRY";
+    const pricesIncludeTax = store?.pricesIncludeTax ?? false;
 
     // Merge duplicate variants so pricing sees the real quantity.
     const merged = new Map<string, QuoteLineInput>();
@@ -265,8 +277,9 @@ export class LineQuoterService {
       companyId: buyer.companyId,
       companyLocationId: buyer.companyLocationId,
       customerId: buyer.customerId,
-      shippingAddress: addresses.shippingAddress,
-      billingAddress: addresses.billingAddress,
+      shippingAddress: options.shippingAddress,
+      billingAddress: options.billingAddress,
+      selectedShippingRateId: options.shippingRateId ?? null,
       lines: quoted.map((l) => {
         const v = variants.get(l.variantId)!;
         return {
@@ -276,10 +289,14 @@ export class LineQuoterService {
           lineTotal: l.lineTotal.amount,
           requiresShipping: v.requiresShipping,
           taxable: v.taxable,
+          weightGrams: toGrams(v.weight, v.weightUnit) * l.quantity,
         };
       }),
       subtotal,
     };
+    const shippableWeightGrams = calcInput.lines
+      .filter((l) => l.requiresShipping)
+      .reduce((sum, l) => sum + l.weightGrams, 0);
     const [shippingTotal, taxes] = await Promise.all([
       quoted.some((l) => variants.get(l.variantId)!.requiresShipping)
         ? this.shipping.shippingTotal(calcInput)
@@ -287,6 +304,11 @@ export class LineQuoterService {
       this.tax.taxes(calcInput),
     ]);
     const problems = quoted.flatMap((l) => l.problems.map((p) => `${l.title}: ${p}`));
+    // Inclusive pricing: taxTotal is already inside subtotal (informational only), so it is
+    // not added again. Exclusive: taxTotal is added on top, same as shipping.
+    const total = pricesIncludeTax
+      ? subtotal + shippingTotal
+      : subtotal + shippingTotal + taxes.total;
     return {
       currency,
       buyer,
@@ -297,13 +319,14 @@ export class LineQuoterService {
         discountTotal: toMoney(0, currency),
         shippingTotal: toMoney(shippingTotal, currency),
         taxTotal: toMoney(taxes.total, currency),
-        total: toMoney(subtotal + shippingTotal + taxes.total, currency),
+        total: toMoney(total, currency),
         itemCount: quoted.reduce((sum, l) => sum + l.quantity, 0),
       },
       problems,
       ready: quoted.length > 0 && problems.length === 0,
       variants,
       taxPerLine: taxes.perLine,
+      shippableWeightGrams,
     };
   }
 }

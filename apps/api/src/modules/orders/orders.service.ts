@@ -19,12 +19,15 @@ import { AuditService } from "../audit/audit.service";
 import { toMoney } from "../catalog/money";
 import { EventsService } from "../events/events.service";
 import { InventoryReservationsService } from "../inventory/inventory-reservations.service";
+import { PaymentsService } from "../payments/payments.service";
+import { FulfillmentsService } from "./fulfillments.service";
 import {
   orderDetailInclude,
   orderSummaryInclude,
   toOrderDetail,
   toOrderSummary,
 } from "./order.mapper";
+import { ReturnsService } from "./returns.service";
 
 const SORT: Record<OrderListQuery["sort"], Prisma.OrderOrderByWithRelationInput[]> = {
   created_desc: [{ createdAt: "desc" }, { id: "desc" }],
@@ -46,6 +49,9 @@ export class OrdersService {
     private readonly reservations: InventoryReservationsService,
     private readonly audit: AuditService,
     private readonly events: EventsService,
+    private readonly payments: PaymentsService,
+    private readonly fulfillments: FulfillmentsService,
+    private readonly returns: ReturnsService,
     @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
   ) {}
 
@@ -138,13 +144,22 @@ export class OrdersService {
     });
     if (!row) throw new NotFoundError("Order");
     const actorIds = [...new Set(row.events.map((e) => e.actorId).filter((v): v is string => !!v))];
-    const actors = actorIds.length
-      ? await this.prisma.user.findMany({
-          where: { id: { in: actorIds } },
-          select: { id: true, name: true },
-        })
-      : [];
-    return toOrderDetail(row, new Map(actors.map((a) => [a.id, a])), this.storage);
+    const [actors, payments, refunds, fulfillments, returns] = await Promise.all([
+      actorIds.length
+        ? this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } })
+        : Promise.resolve([]),
+      this.payments.list(ctx, id),
+      this.payments.listRefunds(ctx, id),
+      this.fulfillments.list(ctx, id),
+      this.returns.list(ctx, id),
+    ]);
+    return {
+      ...toOrderDetail(row, new Map(actors.map((a) => [a.id, a])), this.storage),
+      payments,
+      refunds,
+      fulfillments,
+      returns,
+    };
   }
 
   async update(ctx: TenantContext, id: string, input: UpdateOrderInput, meta: RequestMeta) {
@@ -230,8 +245,8 @@ export class OrdersService {
     return this.get(ctx, id);
   }
 
-  // Phase 6 cancellation: only untouched orders (nothing paid, nothing shipped). Payments and
-  // fulfilments (Phase 7) extend this with refunds and restocking of shipped units.
+  // Only untouched orders can be cancelled directly (nothing paid, nothing shipped); void the
+  // payment or refund it first, and use a return to unwind shipped units.
   async cancel(ctx: TenantContext, id: string, input: CancelOrderInput, meta: RequestMeta) {
     await this.prisma.$transaction(async (tx) => {
       const current = await tx.order.findFirst({

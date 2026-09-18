@@ -9,6 +9,7 @@ import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { EventsService } from "../events/events.service";
 import { InventoryReservationsService } from "../inventory/inventory-reservations.service";
+import { ShippingEligibilityService } from "../shipping/shipping-eligibility.service";
 import { LineQuoterService, type QuoteLineInput, type ResolvedBuyer } from "./line-quoter.service";
 
 export interface PlaceOrderParams {
@@ -20,6 +21,7 @@ export interface PlaceOrderParams {
   tags?: string[];
   shippingAddress: Address | null;
   billingAddress: Address | null;
+  shippingRateId?: string | null;
   source: OrderSource;
   cartId?: string | null;
   draftOrderId?: string | null;
@@ -38,6 +40,7 @@ export class OrderPlacementService {
     private readonly prisma: PrismaService,
     private readonly quoter: LineQuoterService,
     private readonly reservations: InventoryReservationsService,
+    private readonly shippingEligibility: ShippingEligibilityService,
     private readonly audit: AuditService,
     private readonly events: EventsService,
   ) {}
@@ -51,6 +54,7 @@ export class OrderPlacementService {
     const quote = await this.quoter.quote(ctx, params.buyer, params.lines, {
       shippingAddress: params.shippingAddress,
       billingAddress: params.billingAddress,
+      shippingRateId: params.shippingRateId,
     });
     if (!quote.ready) {
       throw new ValidationError(quote.problems[0] ?? "The order cannot be placed.", [
@@ -59,6 +63,15 @@ export class OrderPlacementService {
         ),
       ]);
     }
+    const usedShippingRate =
+      quote.totals.shippingTotal.amount > 0
+        ? await this.shippingEligibility.resolveRate(ctx, {
+            countryCode: params.shippingAddress?.countryCode ?? null,
+            subtotal: quote.totals.subtotal.amount,
+            weightGrams: quote.shippableWeightGrams,
+            selectedRateId: params.shippingRateId ?? null,
+          })
+        : null;
 
     const storeId = ctx.storeId as string;
     return this.prisma.$transaction(async (tx) => {
@@ -99,6 +112,8 @@ export class OrderPlacementService {
           total: BigInt(quote.totals.total.amount),
           shippingAddress: json(params.shippingAddress),
           billingAddress: json(params.billingAddress),
+          shippingRateId: usedShippingRate?.id ?? null,
+          shippingRateName: usedShippingRate?.name ?? null,
           cartId: params.cartId ?? null,
           draftOrderId: params.draftOrderId ?? null,
           placedById: ctx.actor.type === "user" ? ctx.actor.id : null,

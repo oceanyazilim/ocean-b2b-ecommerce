@@ -12,6 +12,7 @@ export const REASON_LABELS: Record<InventoryMovementReason, string> = {
   return: "Return",
   damage: "Damage",
   count: "Stock count",
+  fulfillment: "Fulfillment",
 };
 
 export const STOCK_STATUS: Record<InventoryStockStatus, { label: string; variant: BadgeVariant }> =

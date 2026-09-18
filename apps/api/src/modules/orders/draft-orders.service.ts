@@ -20,6 +20,7 @@ import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { toMoney, toMoneyOrNull } from "../catalog/money";
 import { EventsService } from "../events/events.service";
+import { ShippingEligibilityService } from "../shipping/shipping-eligibility.service";
 import { IdempotencyService } from "./idempotency.service";
 import { LineQuoterService, type ResolvedBuyer } from "./line-quoter.service";
 import { OrderPlacementService } from "./order-placement.service";
@@ -48,6 +49,7 @@ export class DraftOrdersService {
     private readonly idempotency: IdempotencyService,
     private readonly audit: AuditService,
     private readonly events: EventsService,
+    private readonly shippingEligibility: ShippingEligibilityService,
   ) {}
 
   private scope(ctx: TenantContext): Prisma.DraftOrderWhereInput {
@@ -134,13 +136,23 @@ export class DraftOrdersService {
       {
         shippingAddress: (row.shippingAddress as unknown as Address | null) ?? null,
         billingAddress: (row.billingAddress as unknown as Address | null) ?? null,
+        shippingRateId: row.shippingRateId,
       },
     );
+    const shippingAddress = (row.shippingAddress as unknown as Address | null) ?? null;
+    const availableShippingRates = await this.shippingEligibility.eligibleRates(ctx, {
+      countryCode: shippingAddress?.countryCode ?? null,
+      subtotal: quote.totals.subtotal.amount,
+      weightGrams: quote.shippableWeightGrams,
+    });
+    const shippingRate = row.shippingRateId
+      ? (availableShippingRates.find((r) => r.id === row.shippingRateId) ?? null)
+      : null;
     const byVariant = new Map(row.items.map((i) => [i.variantId, i]));
     return {
       ...this.toSummary(row),
       note: row.note,
-      shippingAddress: (row.shippingAddress as unknown as Address | null) ?? null,
+      shippingAddress,
       billingAddress: (row.billingAddress as unknown as Address | null) ?? null,
       items: quote.lines.map((l) => {
         const item = byVariant.get(l.variantId)!;
@@ -152,6 +164,8 @@ export class DraftOrdersService {
         };
       }),
       totals: quote.totals,
+      shippingRate,
+      availableShippingRates,
       catalogRestricted: quote.catalogRestricted,
       ready: quote.ready,
       problems: quote.problems,
@@ -166,7 +180,11 @@ export class DraftOrdersService {
       select: { defaultCurrency: true },
     });
     const currency = store?.defaultCurrency ?? "TRY";
-    const lines = await this.priceLines(ctx, buyer, input.items, input);
+    const lines = await this.priceLines(ctx, buyer, input.items, {
+      shippingAddress: input.shippingAddress,
+      billingAddress: input.billingAddress,
+      shippingRateId: input.shippingRateId,
+    });
     const id = await this.prisma.$transaction(async (tx) => {
       const seq = await tx.store.update({
         where: { id: ctx.storeId as string },
@@ -189,6 +207,7 @@ export class DraftOrdersService {
           tags: [...new Set(input.tags)],
           shippingAddress: json(input.shippingAddress),
           billingAddress: json(input.billingAddress),
+          shippingRateId: input.shippingRateId ?? null,
           subtotal: BigInt(lines.subtotal),
           total: BigInt(lines.total),
           createdById: ctx.actor.id,
@@ -250,7 +269,9 @@ export class DraftOrdersService {
         quantity: i.quantity,
         customUnitPrice: i.priceSource === "custom" ? Number(i.unitPrice) : null,
       }));
-    const addresses = {
+    const shippingRateId =
+      input.shippingRateId === undefined ? current.shippingRateId : input.shippingRateId;
+    const options = {
       shippingAddress:
         input.shippingAddress === undefined
           ? ((current.shippingAddress as unknown as Address | null) ?? null)
@@ -259,8 +280,9 @@ export class DraftOrdersService {
         input.billingAddress === undefined
           ? ((current.billingAddress as unknown as Address | null) ?? null)
           : input.billingAddress,
+      shippingRateId,
     };
-    const lines = await this.priceLines(ctx, buyer, itemsInput, addresses);
+    const lines = await this.priceLines(ctx, buyer, itemsInput, options);
     await this.prisma.$transaction(async (tx) => {
       await tx.draftOrderItem.deleteMany({ where: { draftOrderId: id } });
       await tx.draftOrder.update({
@@ -283,6 +305,7 @@ export class DraftOrdersService {
           ...(input.billingAddress !== undefined
             ? { billingAddress: input.billingAddress ? json(input.billingAddress) : Prisma.DbNull }
             : {}),
+          ...(input.shippingRateId !== undefined ? { shippingRateId: input.shippingRateId } : {}),
           subtotal: BigInt(lines.subtotal),
           total: BigInt(lines.total),
           version: { increment: 1 },
@@ -338,6 +361,7 @@ export class DraftOrdersService {
           tags: current.tags,
           shippingAddress: (current.shippingAddress as unknown as Address | null) ?? null,
           billingAddress: (current.billingAddress as unknown as Address | null) ?? null,
+          shippingRateId: current.shippingRateId,
           source: "draft_order",
           draftOrderId: current.id,
         },
@@ -389,9 +413,10 @@ export class DraftOrdersService {
     ctx: TenantContext,
     buyer: ResolvedBuyer,
     items: DraftLineInput[],
-    addresses: {
+    options: {
       shippingAddress?: Address | null | undefined;
       billingAddress?: Address | null | undefined;
+      shippingRateId?: string | null | undefined;
     },
   ) {
     const quote = await this.quoter.quote(
@@ -403,8 +428,9 @@ export class DraftOrdersService {
         customUnitPrice: i.customUnitPrice ?? null,
       })),
       {
-        shippingAddress: addresses.shippingAddress ?? null,
-        billingAddress: addresses.billingAddress ?? null,
+        shippingAddress: options.shippingAddress ?? null,
+        billingAddress: options.billingAddress ?? null,
+        shippingRateId: options.shippingRateId ?? null,
       },
     );
     const unknown = quote.lines.filter((l) =>

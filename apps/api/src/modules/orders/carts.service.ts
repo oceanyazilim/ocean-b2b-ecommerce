@@ -15,6 +15,9 @@ import { ConflictError, NotFoundError, ValidationError } from "../../common/erro
 import type { RequestMeta } from "../../common/http/request-meta";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
+import { PaymentMethodsService } from "../payments/payment-methods.service";
+import { PaymentsService } from "../payments/payments.service";
+import { ShippingEligibilityService } from "../shipping/shipping-eligibility.service";
 import { IdempotencyService } from "./idempotency.service";
 import { LineQuoterService } from "./line-quoter.service";
 import { OrderPlacementService } from "./order-placement.service";
@@ -36,6 +39,9 @@ export class CartsService {
     private readonly quoter: LineQuoterService,
     private readonly placement: OrderPlacementService,
     private readonly idempotency: IdempotencyService,
+    private readonly shippingEligibility: ShippingEligibilityService,
+    private readonly paymentMethods: PaymentMethodsService,
+    private readonly payments: PaymentsService,
   ) {}
 
   private scope(ctx: TenantContext): Prisma.CartWhereInput {
@@ -61,8 +67,21 @@ export class CartsService {
       {
         shippingAddress: (row.shippingAddress as unknown as Address | null) ?? null,
         billingAddress: (row.billingAddress as unknown as Address | null) ?? null,
+        shippingRateId: row.shippingRateId,
       },
     );
+    const shippingAddress = (row.shippingAddress as unknown as Address | null) ?? null;
+    const [availableShippingRates, paymentMethod] = await Promise.all([
+      this.shippingEligibility.eligibleRates(ctx, {
+        countryCode: shippingAddress?.countryCode ?? null,
+        subtotal: quote.totals.subtotal.amount,
+        weightGrams: quote.shippableWeightGrams,
+      }),
+      row.paymentMethodId ? this.paymentMethods.get(ctx, row.paymentMethodId).catch(() => null) : null,
+    ]);
+    const shippingRate = row.shippingRateId
+      ? (availableShippingRates.find((r) => r.id === row.shippingRateId) ?? null)
+      : null;
     const byVariant = new Map(row.items.map((i) => [i.variantId, i]));
     return {
       id: row.id,
@@ -73,7 +92,7 @@ export class CartsService {
       currency: row.currency,
       poNumber: row.poNumber,
       note: row.note,
-      shippingAddress: (row.shippingAddress as unknown as Address | null) ?? null,
+      shippingAddress,
       billingAddress: (row.billingAddress as unknown as Address | null) ?? null,
       items: quote.lines.map((l) => {
         const item = byVariant.get(l.variantId)!;
@@ -84,6 +103,9 @@ export class CartsService {
         };
       }),
       totals: quote.totals,
+      shippingRate,
+      availableShippingRates,
+      paymentMethod,
       ready: quote.ready,
       problems: quote.problems,
       completedOrderId: row.completedOrderId,
@@ -158,6 +180,32 @@ export class CartsService {
     if (input.billingAddress !== undefined) {
       data.billingAddress = input.billingAddress ? json(input.billingAddress) : Prisma.DbNull;
     }
+    if (input.shippingRateId !== undefined) {
+      if (input.shippingRateId) {
+        const rate = await this.prisma.shippingRate.findFirst({
+          where: { id: input.shippingRateId, storeId: ctx.storeId as string },
+        });
+        if (!rate) {
+          throw new ValidationError("Unknown shipping rate.", [
+            { path: "shippingRateId", message: "Not found" },
+          ]);
+        }
+      }
+      data.shippingRateId = input.shippingRateId;
+    }
+    if (input.paymentMethodId !== undefined) {
+      if (input.paymentMethodId) {
+        const method = await this.prisma.paymentMethod.findFirst({
+          where: { id: input.paymentMethodId, storeId: ctx.storeId as string, isEnabled: true },
+        });
+        if (!method) {
+          throw new ValidationError("Unknown or disabled payment method.", [
+            { path: "paymentMethodId", message: "Not found" },
+          ]);
+        }
+      }
+      data.paymentMethodId = input.paymentMethodId;
+    }
     await this.prisma.cart.update({ where: { id }, data });
     return this.get(ctx, id);
   }
@@ -229,6 +277,10 @@ export class CartsService {
         input.billingAddress === undefined
           ? ((cart.billingAddress as unknown as Address | null) ?? shippingAddress)
           : (input.billingAddress ?? shippingAddress);
+      const shippingRateId =
+        input.shippingRateId === undefined ? cart.shippingRateId : input.shippingRateId;
+      const paymentMethodId =
+        input.paymentMethodId === undefined ? cart.paymentMethodId : input.paymentMethodId;
       const orderId = await this.placement.place(
         ctx,
         {
@@ -239,11 +291,15 @@ export class CartsService {
           note: input.note === undefined ? cart.note : input.note,
           shippingAddress,
           billingAddress,
+          shippingRateId,
           source: "storefront",
           cartId: cart.id,
         },
         meta,
       );
+      if (paymentMethodId) {
+        await this.payments.charge(ctx, orderId, { paymentMethodId }, meta);
+      }
       return { orderId };
     });
   }

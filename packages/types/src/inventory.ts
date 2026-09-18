@@ -143,6 +143,7 @@ export const INVENTORY_MOVEMENT_REASONS = [
   "return",
   "damage",
   "count",
+  "fulfillment",
 ] as const;
 export const inventoryMovementReasonSchema = z.enum(INVENTORY_MOVEMENT_REASONS);
 export type InventoryMovementReason = z.infer<typeof inventoryMovementReasonSchema>;

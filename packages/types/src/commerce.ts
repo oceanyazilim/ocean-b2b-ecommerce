@@ -3,6 +3,9 @@ import { z } from "zod";
 import { addressSchema, type Address } from "./addresses";
 import { cursorPaginationQuerySchema } from "./api";
 import { emailSchema, idSchema, moneyMinorSchema, type Money } from "./primitives";
+import type { EligibleShippingRate } from "./shipping";
+import type { PaymentMethodSummary, PaymentSummary, RefundSummary } from "./payments";
+import type { FulfillmentSummary, ReturnSummary } from "./fulfillments";
 import type { PriceSource, QuantityRuleCheck, VolumeTier } from "./pricing";
 
 // ---- shared ------------------------------------------------------------------------------------
@@ -86,6 +89,8 @@ export const updateCartSchema = z
     note: optionalText(2000),
     shippingAddress: addressSchema.nullable().optional(),
     billingAddress: addressSchema.nullable().optional(),
+    shippingRateId: idSchema.nullable().optional(),
+    paymentMethodId: idSchema.nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "Nothing to update");
 export type UpdateCartInput = z.infer<typeof updateCartSchema>;
@@ -102,6 +107,8 @@ export const checkoutSchema = z.object({
   billingAddress: addressSchema.nullable().optional(),
   poNumber: optionalText(80),
   note: optionalText(2000),
+  shippingRateId: idSchema.nullable().optional(),
+  paymentMethodId: idSchema.nullable().optional(),
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
@@ -118,6 +125,9 @@ export interface CartDetail {
   billingAddress: Address | null;
   items: (QuotedLine & { id: string; properties: Record<string, string> | null })[];
   totals: OrderTotals;
+  shippingRate: EligibleShippingRate | null;
+  availableShippingRates: EligibleShippingRate[];
+  paymentMethod: PaymentMethodSummary | null;
   ready: boolean;
   problems: string[];
   completedOrderId: string | null;
@@ -250,6 +260,10 @@ export interface OrderDetail extends OrderSummary {
   billingAddress: Address | null;
   items: OrderItemSummary[];
   events: OrderEventEntry[];
+  payments: PaymentSummary[];
+  refunds: RefundSummary[];
+  fulfillments: FulfillmentSummary[];
+  returns: ReturnSummary[];
   placedBy: { id: string; name: string } | null;
   cancelledAt: string | null;
   cancelReason: string | null;
@@ -288,6 +302,7 @@ const draftFields = z.object({
   tags: tagsSchema,
   shippingAddress: addressSchema.nullable().optional(),
   billingAddress: addressSchema.nullable().optional(),
+  shippingRateId: idSchema.nullable().optional(),
   items: z.array(draftLineInputSchema).max(200),
 });
 
@@ -333,6 +348,8 @@ export interface DraftOrderDetail extends DraftOrderSummary {
   billingAddress: Address | null;
   items: (QuotedLine & { id: string; customUnitPrice: Money | null })[];
   totals: OrderTotals;
+  shippingRate: EligibleShippingRate | null;
+  availableShippingRates: EligibleShippingRate[];
   catalogRestricted: boolean;
   ready: boolean;
   problems: string[];

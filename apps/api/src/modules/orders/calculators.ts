@@ -1,8 +1,7 @@
 import type { Address } from "@ocean/types";
 
-// Shipping and tax are their own domains (Phase 7). Checkout depends on these interfaces
-// only; the zero implementations below keep Phase 6 orders correct (no shipping, no tax)
-// until real calculators are bound to the tokens.
+// Shipping and tax are their own domains (shipping/calculator.ts, tax/calculator.ts). Checkout
+// depends only on these interfaces and the DI tokens below, never on the concrete services.
 
 export interface CalculatorLine {
   variantId: string;
@@ -11,6 +10,7 @@ export interface CalculatorLine {
   lineTotal: number;
   requiresShipping: boolean;
   taxable: boolean;
+  weightGrams: number;
 }
 
 export interface CalculatorContext {
@@ -23,6 +23,10 @@ export interface CalculatorContext {
   billingAddress: Address | null;
   lines: CalculatorLine[];
   subtotal: number;
+  // Rate the buyer (or staff) explicitly picked, from Cart/DraftOrder.shippingRateId. The real
+  // calculator validates it is still eligible before trusting it; falls back to auto-selecting
+  // the cheapest eligible rate when absent or no longer valid.
+  selectedShippingRateId: string | null;
 }
 
 export interface ShippingCalculator {
@@ -37,15 +41,3 @@ export interface TaxCalculator {
 
 export const SHIPPING_CALCULATOR = Symbol("SHIPPING_CALCULATOR");
 export const TAX_CALCULATOR = Symbol("TAX_CALCULATOR");
-
-export class ZeroShippingCalculator implements ShippingCalculator {
-  shippingTotal(): Promise<number> {
-    return Promise.resolve(0);
-  }
-}
-
-export class ZeroTaxCalculator implements TaxCalculator {
-  taxes(input: CalculatorContext): Promise<{ perLine: number[]; total: number }> {
-    return Promise.resolve({ perLine: input.lines.map(() => 0), total: 0 });
-  }
-}

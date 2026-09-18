@@ -96,11 +96,13 @@ export function toOrderSummary(row: OrderSummaryRow): OrderSummary {
   };
 }
 
+// Payments, refunds, fulfillments and returns are fetched separately by OrdersService.get()
+// (each has its own scoped service) and merged onto this base.
 export function toOrderDetail(
   row: OrderDetailRow,
   actors: Map<string, { id: string; name: string }>,
   storage: StorageAdapter,
-): OrderDetail {
+): Omit<OrderDetail, "payments" | "refunds" | "fulfillments" | "returns"> {
   const c = row.currency;
   return {
     ...toOrderSummary(row),
