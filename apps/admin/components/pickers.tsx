@@ -3,6 +3,7 @@
 import type {
   CompanyCandidate,
   CompanyLocationSummary,
+  CustomerCandidate,
   InventoryVariantCandidate,
 } from "@ocean/types";
 import { FormField, Input, Select, cn } from "@ocean/ui";
@@ -176,6 +177,64 @@ export function CompanyPicker({
           <>
             <span>{c.displayName}</span>
             <span className="text-xs text-muted-foreground">{c.status}</span>
+          </>
+        )}
+      />
+    </div>
+  );
+}
+
+export function CustomerPicker({
+  storeId,
+  value,
+  onChange,
+  id = "customer-picker",
+  error,
+}: {
+  storeId: string;
+  value: CustomerCandidate | null;
+  onChange: (customer: CustomerCandidate | null) => void;
+  id?: string;
+  error?: string | undefined;
+}) {
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState<CustomerCandidate[]>([]);
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      void api<{ data: CustomerCandidate[] }>(
+        `/stores/${storeId}/customers/search?q=${encodeURIComponent(q)}&limit=20`,
+      )
+        .then((res) => setItems(res.data))
+        .catch(() => setItems([]));
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [q, storeId]);
+  return (
+    <div className="flex flex-col gap-2">
+      <FormField id={id} label="Customer" error={error}>
+        <Input
+          id={id}
+          placeholder="Search customers"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </FormField>
+      {value && (
+        <p className="text-sm">
+          Selected: <span className="font-medium">{value.displayName}</span>
+        </p>
+      )}
+      <ResultList
+        label="Matching customers"
+        items={items}
+        selectedId={value?.id ?? null}
+        getId={(c) => c.id}
+        onPick={onChange}
+        emptyText="No matching customers."
+        render={(c) => (
+          <>
+            <span>{c.displayName}</span>
+            <span className="text-xs text-muted-foreground">{c.email}</span>
           </>
         )}
       />
