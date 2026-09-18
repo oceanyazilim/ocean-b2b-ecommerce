@@ -3,3 +3,29 @@
 @tailwind utilities;
 
 @import "@ocean/ui/styles.css";
+
+/* Minimal typography reset for merchant-authored HTML (product descriptions, content pages,
+   rich-text theme blocks) — no @tailwindcss/typography dependency for this much surface area. */
+.rich-text :where(p, ul, ol) {
+  margin-bottom: 1em;
+}
+.rich-text :where(h1, h2, h3) {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+.rich-text :where(ul, ol) {
+  padding-left: 1.25em;
+}
+.rich-text ul {
+  list-style: disc;
+}
+.rich-text ol {
+  list-style: decimal;
+}
+.rich-text a {
+  text-decoration: underline;
+}
+.rich-text img {
+  border-radius: 0.5rem;
+}

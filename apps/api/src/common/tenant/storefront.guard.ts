@@ -7,8 +7,17 @@ import { NotFoundError } from "../errors/domain-error";
 import { TenantService } from "./tenant.service";
 
 // Storefront routes carry no merchant session (SessionGuard exempts them via @Public() on each
-// controller); this guard resolves the store from the request's Host header instead, and layers
-// an optional customer session on top — anonymous ("guest") is a normal, expected outcome here.
+// controller); this guard resolves the store from the request's hostname instead, and layers an
+// optional customer session on top — anonymous ("guest") is a normal, expected outcome here.
+//
+// Prefers X-Forwarded-Host over Host: the storefront app (apps/storefront) proxies its own
+// server-side fetches through Node's `fetch`, which silently ignores an explicit `Host` header
+// override and always sends the true connection target's host — the standard way around that,
+// used by every reverse proxy for the same reason, is a forwarded-host header instead. Trusting
+// a client-supplied header this way is safe here specifically because storefront data is public
+// by design (product/theme reads) and cart/session cookies are already name-scoped per store id,
+// so spoofing it can redirect a request to a different (still public) store's data, never hijack
+// another store's session.
 @Injectable()
 export class StorefrontGuard implements CanActivate {
   constructor(
@@ -18,7 +27,8 @@ export class StorefrontGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request>();
-    const hostHeader = req.headers.host ?? "";
+    const forwardedHost = req.headers["x-forwarded-host"];
+    const hostHeader = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) || req.headers.host || "";
     const hostname = hostHeader.split(":")[0] ?? "";
     if (!hostname) throw new NotFoundError("Store");
 

@@ -84,6 +84,29 @@ describe.skipIf(!INTEGRATION_ENABLED)("storefront API: catalog, customer auth, g
     await guest.get("/storefront/v1/context").set("Host", hostname).expect(200);
   });
 
+  it("only lists enabled payment methods to the storefront", async () => {
+    const enabled = (
+      await owner
+        .post(`${base}/payment-methods`)
+        .send({ provider: "manual", name: "Bank Transfer" })
+        .expect(201)
+    ).body.data;
+    const disabled = (
+      await owner
+        .post(`${base}/payment-methods`)
+        .send({ provider: "manual", name: "Cash on Delivery" })
+        .expect(201)
+    ).body.data;
+    await owner.patch(`${base}/payment-methods/${disabled.id}`).send({ isEnabled: false }).expect(200);
+
+    const guest = t.http();
+    const list = (
+      await guest.get("/storefront/v1/payment-methods").set("Host", hostname).expect(200)
+    ).body.data;
+    expect(list.map((m: { id: string }) => m.id)).toContain(enabled.id);
+    expect(list.map((m: { id: string }) => m.id)).not.toContain(disabled.id);
+  });
+
   it("signs a customer up, persists the session across requests, then logs them out", async () => {
     const shopper = t.http();
     const email = uniqueEmail("shopper");

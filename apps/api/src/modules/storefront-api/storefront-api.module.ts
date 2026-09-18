@@ -5,6 +5,7 @@ import { ContentModule } from "../content/content.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { MarketsModule } from "../markets/markets.module";
 import { OrdersModule } from "../orders/orders.module";
+import { PaymentsModule } from "../payments/payments.module";
 import { PricingModule } from "../pricing/pricing.module";
 import { ThemesModule } from "../themes/themes.module";
 import { UsersModule } from "../users/users.module";
@@ -22,6 +23,7 @@ import { StorefrontController } from "./storefront.controller";
     OrdersModule,
     ContentModule,
     MarketsModule,
+    PaymentsModule,
     ThemesModule,
     UsersModule,
   ],

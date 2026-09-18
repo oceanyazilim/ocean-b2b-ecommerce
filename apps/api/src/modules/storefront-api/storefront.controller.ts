@@ -13,6 +13,7 @@ import type { TenantContext } from "../../common/tenant/tenant-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { ContentService } from "../content/content.service";
 import { MarketsService } from "../markets/markets.service";
+import { PaymentMethodsService } from "../payments/payment-methods.service";
 import { ThemesService } from "../themes/themes.service";
 import { StorefrontCatalogService } from "./storefront-catalog.service";
 
@@ -25,6 +26,7 @@ export class StorefrontController {
     private readonly content: ContentService,
     private readonly markets: MarketsService,
     private readonly themes: ThemesService,
+    private readonly paymentMethods: PaymentMethodsService,
   ) {}
 
   @Get("products")
@@ -77,6 +79,11 @@ export class StorefrontController {
   @Get("theme")
   getTheme(@CurrentTenant() tenant: TenantContext) {
     return this.themes.getPublishedTheme(tenant);
+  }
+
+  @Get("payment-methods")
+  async listPaymentMethods(@CurrentTenant() tenant: TenantContext) {
+    return (await this.paymentMethods.list(tenant)).filter((m) => m.isEnabled);
   }
 
   @Get("context")
