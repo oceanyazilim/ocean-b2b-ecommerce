@@ -1,39 +1,38 @@
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import type { Request } from "express";
 
+import { SessionService } from "../auth/session.service";
+import { customerSessionCookie } from "../auth/session.types";
+import { NotFoundError } from "../errors/domain-error";
 import { TenantService } from "./tenant.service";
 
+// Storefront routes carry no merchant session (SessionGuard exempts them via @Public() on each
+// controller); this guard resolves the store from the request's Host header instead, and layers
+// an optional customer session on top — anonymous ("guest") is a normal, expected outcome here.
 @Injectable()
 export class StorefrontGuard implements CanActivate {
-  constructor(private readonly tenants: TenantService) {}
+  constructor(
+    private readonly tenants: TenantService,
+    private readonly sessions: SessionService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request>();
-    
-    // In dev, the host might have a port. E.g. localhost:3002
-    // We should strip the port for matching or rely on the host.
-    const hostHeader = (req.headers.host as string) || "";
-    const hostname = hostHeader.split(":")[0] || "";
-    
-    let customerId: string | null = null;
-    
+    const hostHeader = req.headers.host ?? "";
+    const hostname = hostHeader.split(":")[0] ?? "";
+    if (!hostname) throw new NotFoundError("Store");
+
     const tenant = await this.tenants.forStorefront(hostname, null, req.requestId ?? "");
-    
+
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
-    const sessionKey = `ocean_cs_${tenant.storeId}`;
-    const sessionId = cookies[sessionKey];
-      
-    if (sessionId) {
-      // TODO: Validate session against Redis and get customerId.
-      if ((req as any).customerId) {
-         customerId = (req as any).customerId;
-      }
+    const cookieValue = cookies[customerSessionCookie(tenant.storeId as string)];
+    const sessionId = this.sessions.idFromCookie(cookieValue);
+    const session = sessionId ? await this.sessions.load("customer", sessionId) : null;
+    if (session) {
+      tenant.actor = { type: "customer", id: session.userId };
+      req.customerSession = session;
     }
-    
-    if (customerId) {
-       tenant.actor = { type: "customer", id: customerId };
-    }
-    
+
     req.tenant = tenant;
     return true;
   }

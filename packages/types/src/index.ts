@@ -27,3 +27,4 @@ export * from "./content";
 export * from "./domains";
 export * from "./themes";
 export * from "./b2b";
+export * from "./storefront";

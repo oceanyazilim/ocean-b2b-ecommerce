@@ -88,7 +88,12 @@ export class TenantService {
     return {
       organizationId: domain.organizationId,
       storeId: domain.storeId,
-      actor: customerId ? { type: "customer", id: customerId } : { type: "guest", id: "anonymous" },
+      // A nil UUID, not a descriptive placeholder: actorId columns are plain @db.Uuid (no FK,
+      // but the column type still rejects a non-UUID string) — every audit/event/order-event
+      // write in the codebase passes ctx.actor.id straight through assuming that shape.
+      actor: customerId
+        ? { type: "customer", id: customerId }
+        : { type: "guest", id: "00000000-0000-0000-0000-000000000000" },
       organizationRole: null,
       storeRole: null,
       // Storefront endpoints don't use these permissions (they check session vs resource),

@@ -13,3 +13,9 @@ export interface SessionRecord {
 }
 
 export const MERCHANT_SESSION_COOKIE = "ocean_ms";
+
+// One customer session cookie per store: a shopper can be signed into different stores
+// (different tenants) independently, unlike merchant staff whose session spans their orgs.
+export function customerSessionCookie(storeId: string): string {
+  return `ocean_cs_${storeId}`;
+}

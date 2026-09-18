@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { Prisma } from "@ocean/db";
+import type { ActorType, Prisma } from "@ocean/db";
 import type { AuditLogEntry, Paginated } from "@ocean/types";
 
 import type { RequestMeta } from "../../common/http/request-meta";
@@ -8,7 +8,7 @@ import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 export interface AuditEvent {
   organizationId?: string | null;
   storeId?: string | null;
-  actorType?: "user" | "platform" | "system";
+  actorType?: ActorType;
   actorId?: string | null;
   action: string;
   resourceType: string;

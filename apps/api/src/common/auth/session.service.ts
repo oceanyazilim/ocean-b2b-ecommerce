@@ -6,7 +6,12 @@ import type { Response } from "express";
 
 import type { Env } from "../../config/env";
 import { RedisService } from "../../infrastructure/redis/redis.service";
-import { MERCHANT_SESSION_COOKIE, type SessionRealm, type SessionRecord } from "./session.types";
+import {
+  customerSessionCookie,
+  MERCHANT_SESSION_COOKIE,
+  type SessionRealm,
+  type SessionRecord,
+} from "./session.types";
 
 const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -154,6 +159,25 @@ export class SessionService {
 
   clearCookie(res: Response): void {
     res.clearCookie(MERCHANT_SESSION_COOKIE, {
+      httpOnly: true,
+      secure: this.secureCookie,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+
+  attachCustomerCookie(res: Response, storeId: string, record: SessionRecord): void {
+    res.cookie(customerSessionCookie(storeId), this.cookieValue(record.id), {
+      httpOnly: true,
+      secure: this.secureCookie,
+      sameSite: "lax",
+      path: "/",
+      maxAge: this.idleTtl * 1000,
+    });
+  }
+
+  clearCustomerCookie(res: Response, storeId: string): void {
+    res.clearCookie(customerSessionCookie(storeId), {
       httpOnly: true,
       secure: this.secureCookie,
       sameSite: "lax",

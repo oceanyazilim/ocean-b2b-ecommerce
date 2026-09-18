@@ -6,6 +6,7 @@ declare global {
     interface Request {
       requestId: string;
       session?: SessionRecord;
+      customerSession?: SessionRecord;
       tenant?: TenantContext;
     }
   }

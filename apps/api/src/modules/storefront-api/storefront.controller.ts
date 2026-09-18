@@ -1,39 +1,57 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
+import {
+  storefrontCollectionListQuerySchema,
+  storefrontProductListQuerySchema,
+  type StorefrontCollectionListQuery,
+  type StorefrontProductListQuery,
+} from "@ocean/types";
 
-import { StorefrontGuard } from "../../common/tenant/storefront.guard";
+import { Public } from "../../common/auth/public.decorator";
 import { CurrentTenant } from "../../common/tenant/current-tenant.decorator";
+import { StorefrontGuard } from "../../common/tenant/storefront.guard";
 import type { TenantContext } from "../../common/tenant/tenant-context";
-
-import { ProductsService } from "../catalog/products/products.service";
-import { CollectionsService } from "../catalog/collections/collections.service";
+import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { ContentService } from "../content/content.service";
 import { MarketsService } from "../markets/markets.service";
 import { ThemesService } from "../themes/themes.service";
+import { StorefrontCatalogService } from "./storefront-catalog.service";
 
 @Controller("storefront/v1")
+@Public()
 @UseGuards(StorefrontGuard)
 export class StorefrontController {
   constructor(
-    private readonly products: ProductsService,
-    private readonly collections: CollectionsService,
+    private readonly catalog: StorefrontCatalogService,
     private readonly content: ContentService,
     private readonly markets: MarketsService,
     private readonly themes: ThemesService,
   ) {}
 
   @Get("products")
-  listProducts(@CurrentTenant() tenant: TenantContext, @Query() query: any) {
-    return this.products.list(tenant, query);
+  listProducts(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(storefrontProductListQuerySchema)) query: StorefrontProductListQuery,
+  ) {
+    return this.catalog.listProducts(tenant, query);
   }
-  
-  @Get("products/:productId")
-  getProduct(@CurrentTenant() tenant: TenantContext, @Param("productId") id: string) {
-    return this.products.get(tenant, id);
+
+  @Get("products/:idOrHandle")
+  getProduct(@CurrentTenant() tenant: TenantContext, @Param("idOrHandle") id: string) {
+    return this.catalog.getProduct(tenant, id);
   }
 
   @Get("collections")
-  listCollections(@CurrentTenant() tenant: TenantContext, @Query() query: any) {
-    return this.collections.list(tenant, query);
+  listCollections(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(storefrontCollectionListQuerySchema))
+    query: StorefrontCollectionListQuery,
+  ) {
+    return this.catalog.listCollections(tenant, query);
+  }
+
+  @Get("collections/:handle")
+  getCollection(@CurrentTenant() tenant: TenantContext, @Param("handle") handle: string) {
+    return this.catalog.getCollection(tenant, handle);
   }
 
   @Get("pages")
@@ -45,7 +63,7 @@ export class StorefrontController {
   listMenus(@CurrentTenant() tenant: TenantContext) {
     return this.content.listMenus(tenant);
   }
-  
+
   @Get("markets")
   listMarkets(@CurrentTenant() tenant: TenantContext) {
     return this.markets.list(tenant);
@@ -55,12 +73,9 @@ export class StorefrontController {
   getTheme(@CurrentTenant() tenant: TenantContext) {
     return this.themes.getPublishedTheme(tenant);
   }
-  
+
   @Get("context")
   getContext(@CurrentTenant() tenant: TenantContext) {
-    return {
-      storeId: tenant.storeId,
-      actor: tenant.actor,
-    };
+    return { storeId: tenant.storeId, signedIn: tenant.actor.type === "customer" };
   }
 }
