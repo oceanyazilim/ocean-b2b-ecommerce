@@ -1,0 +1,264 @@
+import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@ocean/db";
+import type {
+  PageInput,
+  PageSummary,
+  UpdatePageInput,
+  MenuInput,
+  MenuSummary,
+  UpdateMenuInput,
+  MenuItemSummary,
+} from "@ocean/types";
+
+import { ConflictError, NotFoundError } from "../../common/errors/domain-error";
+import type { RequestMeta } from "../../common/http/request-meta";
+import type { TenantContext } from "../../common/tenant/tenant-context";
+import { PrismaService } from "../../infrastructure/prisma/prisma.service";
+import { AuditService } from "../audit/audit.service";
+import { EventsService } from "../events/events.service";
+
+type PageRow = Prisma.PageGetPayload<Record<string, never>>;
+type MenuRow = Prisma.MenuGetPayload<{ include: { items: true } }>;
+
+const isUniqueViolation = (error: unknown) =>
+  typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002";
+
+@Injectable()
+export class ContentService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly events: EventsService,
+  ) {}
+
+  private scope(ctx: TenantContext): Prisma.PageWhereInput {
+    return { storeId: ctx.storeId as string, organizationId: ctx.organizationId };
+  }
+
+  private scopeMenu(ctx: TenantContext): Prisma.MenuWhereInput {
+    return { storeId: ctx.storeId as string, organizationId: ctx.organizationId };
+  }
+
+  // --- Pages ---
+
+  private toPageSummary(row: PageRow): PageSummary {
+    return {
+      id: row.id,
+      title: row.title,
+      handle: row.handle,
+      status: row.status,
+      publishedAt: row.publishedAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+
+  async listPages(ctx: TenantContext): Promise<PageSummary[]> {
+    const rows = await this.prisma.page.findMany({
+      where: this.scope(ctx),
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((r) => this.toPageSummary(r));
+  }
+
+  async getPage(ctx: TenantContext, id: string): Promise<PageRow> {
+    const row = await this.prisma.page.findFirst({
+      where: { ...this.scope(ctx), id },
+    });
+    if (!row) throw new NotFoundError("Page");
+    return row;
+  }
+
+  async createPage(ctx: TenantContext, input: PageInput, meta: RequestMeta): Promise<PageSummary> {
+    const created = await this.prisma.page
+      .create({
+        data: {
+          storeId: ctx.storeId as string,
+          organizationId: ctx.organizationId,
+          title: input.title,
+          handle: input.handle,
+          bodyRich: input.bodyRich,
+          seoTitle: input.seoTitle,
+          seoDescription: input.seoDescription,
+          templateSuffix: input.templateSuffix,
+          status: input.status,
+          publishedAt: input.status === "published" ? new Date() : null,
+          createdById: ctx.actor.id,
+        },
+      })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("A page with this handle already exists.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.page_created",
+        resourceType: "page",
+        resourceId: created.id,
+        after: { title: created.title, handle: created.handle },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.page.created", { pageId: created.id });
+    return this.toPageSummary(created);
+  }
+
+  async updatePage(
+    ctx: TenantContext,
+    id: string,
+    input: UpdatePageInput,
+    meta: RequestMeta,
+  ): Promise<PageSummary> {
+    const current = await this.prisma.page.findFirst({ where: { ...this.scope(ctx), id } });
+    if (!current) throw new NotFoundError("Page");
+
+    const data: Prisma.PageUncheckedUpdateInput = {};
+    if (input.title !== undefined) data.title = input.title;
+    if (input.handle !== undefined) data.handle = input.handle;
+    if (input.bodyRich !== undefined) data.bodyRich = input.bodyRich;
+    if (input.seoTitle !== undefined) data.seoTitle = input.seoTitle;
+    if (input.seoDescription !== undefined) data.seoDescription = input.seoDescription;
+    if (input.templateSuffix !== undefined) data.templateSuffix = input.templateSuffix;
+    if (input.status !== undefined) {
+      data.status = input.status;
+      if (input.status === "published" && current.status !== "published" && !current.publishedAt) {
+        data.publishedAt = new Date();
+      }
+    }
+
+    const updated = await this.prisma.page
+      .update({ where: { id }, data })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("A page with this handle already exists.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.page_updated",
+        resourceType: "page",
+        resourceId: id,
+        before: { title: current.title, handle: current.handle },
+        after: input,
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.page.updated", { pageId: id });
+    return this.toPageSummary(updated);
+  }
+
+  async removePage(ctx: TenantContext, id: string, meta: RequestMeta): Promise<void> {
+    const current = await this.prisma.page.findFirst({ where: { ...this.scope(ctx), id } });
+    if (!current) throw new NotFoundError("Page");
+    
+    await this.prisma.page.delete({ where: { id } });
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.page_deleted",
+        resourceType: "page",
+        resourceId: id,
+        before: { title: current.title },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.page.deleted", { pageId: id });
+  }
+
+  // --- Menus ---
+
+  private toMenuSummary(row: MenuRow): MenuSummary {
+    const buildTree = (items: typeof row.items, parentId: string | null = null): MenuItemSummary[] => {
+      return items
+        .filter(item => item.parentId === parentId)
+        .sort((a, b) => a.position - b.position)
+        .map(item => ({
+          id: item.id,
+          label: item.label,
+          url: item.url,
+          position: item.position,
+          children: buildTree(items, item.id),
+        }));
+    };
+
+    return {
+      id: row.id,
+      title: row.title,
+      handle: row.handle,
+      items: buildTree(row.items),
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+
+  async listMenus(ctx: TenantContext): Promise<MenuSummary[]> {
+    const rows = await this.prisma.menu.findMany({
+      where: this.scopeMenu(ctx),
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((r) => this.toMenuSummary(r));
+  }
+
+  async getMenu(ctx: TenantContext, id: string): Promise<MenuSummary> {
+    const row = await this.prisma.menu.findFirst({
+      where: { ...this.scopeMenu(ctx), id },
+      include: { items: true },
+    });
+    if (!row) throw new NotFoundError("Menu");
+    return this.toMenuSummary(row);
+  }
+
+  async createMenu(ctx: TenantContext, input: MenuInput, meta: RequestMeta): Promise<MenuSummary> {
+    const created = await this.prisma.menu
+      .create({
+        data: {
+          storeId: ctx.storeId as string,
+          organizationId: ctx.organizationId,
+          title: input.title,
+          handle: input.handle,
+          items: input.items ? {
+            create: input.items.map(item => ({
+              label: item.label,
+              url: item.url,
+              position: item.position,
+              parentId: item.parentId,
+            }))
+          } : undefined,
+        },
+        include: { items: true },
+      })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("A menu with this handle already exists.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.menu_created",
+        resourceType: "menu",
+        resourceId: created.id,
+        after: { title: created.title, handle: created.handle },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.menu.created", { menuId: created.id });
+    return this.toMenuSummary(created);
+  }
+}
