@@ -77,6 +77,17 @@ export interface StorefrontCollectionDetail extends StorefrontCollectionSummary 
   products: StorefrontProductSummary[];
 }
 
+// ---- content pages ---------------------------------------------------------------------------
+
+export interface StorefrontPageDetail {
+  id: string;
+  title: string;
+  handle: string;
+  bodyRich: { html?: string } | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
 export const createStorefrontCartSchema = z.object({
   items: z
     .array(z.object({ variantId: idSchema, quantity: z.number().int().min(1) }))

@@ -161,6 +161,28 @@ describe.skipIf(!INTEGRATION_ENABLED)("storefront API: catalog, customer auth, g
     await shopper.get(`/storefront/v1/products/${otherProduct.id}`).set("Host", hostname).expect(404);
   });
 
+  it("only exposes published pages, by handle, never drafts", async () => {
+    await owner
+      .post(`${base}/pages`)
+      .send({ title: "About Us", handle: "about-us", status: "published", bodyRich: { html: "<p>Hi</p>" } })
+      .expect(201);
+    await owner
+      .post(`${base}/pages`)
+      .send({ title: "Coming Soon", handle: "coming-soon", status: "draft" })
+      .expect(201);
+
+    const guest = t.http();
+    const list = (await guest.get("/storefront/v1/pages").set("Host", hostname).expect(200)).body.data;
+    expect(list.map((p: { handle: string }) => p.handle)).toEqual(["about-us"]);
+
+    const page = (
+      await guest.get("/storefront/v1/pages/about-us").set("Host", hostname).expect(200)
+    ).body.data;
+    expect(page).toMatchObject({ title: "About Us", bodyRich: { html: "<p>Hi</p>" } });
+
+    await guest.get("/storefront/v1/pages/coming-soon").set("Host", hostname).expect(404);
+  });
+
   it("supports a guest cart end to end through checkout", async () => {
     const guest = t.http();
     await owner

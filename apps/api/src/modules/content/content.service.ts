@@ -6,7 +6,6 @@ import type {
   UpdatePageInput,
   MenuInput,
   MenuSummary,
-  UpdateMenuInput,
   MenuItemSummary,
 } from "@ocean/types";
 
@@ -64,6 +63,23 @@ export class ContentService {
   async getPage(ctx: TenantContext, id: string): Promise<PageRow> {
     const row = await this.prisma.page.findFirst({
       where: { ...this.scope(ctx), id },
+    });
+    if (!row) throw new NotFoundError("Page");
+    return row;
+  }
+
+  // Storefront-facing: published pages only, never drafts/archived.
+  async listPublishedPages(ctx: TenantContext): Promise<PageSummary[]> {
+    const rows = await this.prisma.page.findMany({
+      where: { ...this.scope(ctx), status: "published" },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((r) => this.toPageSummary(r));
+  }
+
+  async getPublishedPage(ctx: TenantContext, handle: string): Promise<PageRow> {
+    const row = await this.prisma.page.findFirst({
+      where: { ...this.scope(ctx), handle, status: "published" },
     });
     if (!row) throw new NotFoundError("Page");
     return row;

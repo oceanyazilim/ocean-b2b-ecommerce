@@ -56,7 +56,12 @@ export class StorefrontController {
 
   @Get("pages")
   listPages(@CurrentTenant() tenant: TenantContext) {
-    return this.content.listPages(tenant);
+    return this.content.listPublishedPages(tenant);
+  }
+
+  @Get("pages/:handle")
+  getPage(@CurrentTenant() tenant: TenantContext, @Param("handle") handle: string) {
+    return this.content.getPublishedPage(tenant, handle);
   }
 
   @Get("menus")
