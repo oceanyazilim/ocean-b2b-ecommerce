@@ -9,7 +9,7 @@ const DEMO_PASSWORD = "DemoPass123!";
 
 // Minimal but real manifest: enough templates/sections/blocks for the theme editor (Phase 10)
 // and a storefront renderer to have something to work with, without pretending to be a full
-// theme. Wholesale Pro (a second theme) is deferred until there's a renderer to tell them apart.
+// theme.
 const FOUNDATION_MANIFEST = {
   templates: [
     { type: "home", label: "Home page", sections: [] },
@@ -69,8 +69,96 @@ const FOUNDATION_MANIFEST = {
   ],
 };
 
+// Wholesale Pro: the B2B-focused second theme. It reuses exactly the section/block types
+// Foundation does (the storefront renderer only knows how to draw those four section types and
+// three block types — see apps/storefront/components/renderer) so no renderer changes are
+// needed. What makes it a distinct theme is the content: every section/block default and the
+// brand colors are written for a wholesale buyer — volume pricing, company accounts, requesting
+// a quote — instead of Foundation's general-purpose copy.
+const WHOLESALE_PRO_MANIFEST = {
+  templates: [
+    { type: "home", label: "Home page", sections: [] },
+    { type: "product", label: "Product page", sections: [] },
+    { type: "collection", label: "Collection page", sections: [] },
+    { type: "cart", label: "Cart page", sections: [] },
+    { type: "page", label: "Generic page", sections: [] },
+  ],
+  sections: [
+    {
+      type: "hero",
+      label: "Wholesale hero banner",
+      blocks: ["heading", "text", "button"],
+      settings: [
+        {
+          key: "heading",
+          label: "Heading",
+          type: "text",
+          default: "Volume pricing for verified business accounts",
+        },
+        { key: "backgroundImage", label: "Background image", type: "image" },
+      ],
+    },
+    {
+      type: "featured-products",
+      label: "Bulk-ready inventory",
+      blocks: [],
+      settings: [
+        { key: "title", label: "Title", type: "text", default: "Reorder your top SKUs" },
+        { key: "collectionHandle", label: "Collection", type: "text", default: "bulk-essentials" },
+      ],
+    },
+    {
+      type: "rich-text",
+      label: "Company account callout",
+      blocks: ["heading", "text"],
+      settings: [],
+    },
+    {
+      type: "image-with-text",
+      label: "Request a quote panel",
+      blocks: ["heading", "text", "button"],
+      settings: [{ key: "image", label: "Image", type: "image" }],
+    },
+  ],
+  blocks: [
+    {
+      type: "heading",
+      label: "Heading",
+      settings: [
+        { key: "text", label: "Text", type: "text", default: "Trusted by 2,400+ business accounts" },
+      ],
+    },
+    {
+      type: "text",
+      label: "Text",
+      settings: [
+        {
+          key: "text",
+          label: "Text",
+          type: "richtext",
+          default:
+            "<p>Tiered volume pricing, dedicated account management, and net-30 terms for verified companies.</p>",
+        },
+      ],
+    },
+    {
+      type: "button",
+      label: "Button",
+      settings: [
+        { key: "label", label: "Label", type: "text", default: "Request a quote" },
+        { key: "url", label: "Link", type: "url", default: "/collections/bulk-essentials" },
+      ],
+    },
+  ],
+  globalSettings: [
+    { key: "primaryColor", label: "Primary color", type: "color", default: "#0f2a43" },
+    { key: "secondaryColor", label: "Secondary color", type: "color", default: "#e7ecf1" },
+    { key: "logoUrl", label: "Logo", type: "image" },
+  ],
+};
+
 async function seedThemes(): Promise<void> {
-  const theme = await prisma.theme.upsert({
+  const foundation = await prisma.theme.upsert({
     where: { slug: "foundation" },
     update: {},
     create: {
@@ -82,9 +170,26 @@ async function seedThemes(): Promise<void> {
     },
   });
   await prisma.themeRelease.upsert({
-    where: { themeId_version: { themeId: theme.id, version: "1.0.0" } },
+    where: { themeId_version: { themeId: foundation.id, version: "1.0.0" } },
     update: { manifest: FOUNDATION_MANIFEST },
-    create: { themeId: theme.id, version: "1.0.0", manifest: FOUNDATION_MANIFEST },
+    create: { themeId: foundation.id, version: "1.0.0", manifest: FOUNDATION_MANIFEST },
+  });
+
+  const wholesalePro = await prisma.theme.upsert({
+    where: { slug: "wholesale-pro" },
+    update: {},
+    create: {
+      slug: "wholesale-pro",
+      name: "Wholesale Pro",
+      description: "Built for B2B buyers: volume pricing callouts, company account messaging, and request-a-quote CTAs.",
+      category: "wholesale",
+      status: "active",
+    },
+  });
+  await prisma.themeRelease.upsert({
+    where: { themeId_version: { themeId: wholesalePro.id, version: "1.0.0" } },
+    update: { manifest: WHOLESALE_PRO_MANIFEST },
+    create: { themeId: wholesalePro.id, version: "1.0.0", manifest: WHOLESALE_PRO_MANIFEST },
   });
 }
 
