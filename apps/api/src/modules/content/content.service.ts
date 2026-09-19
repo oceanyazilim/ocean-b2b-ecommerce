@@ -4,6 +4,16 @@ import type {
   PageInput,
   PageSummary,
   UpdatePageInput,
+  BlogInput,
+  UpdateBlogInput,
+  BlogSummary,
+  BlogDetail,
+  ArticleInput,
+  UpdateArticleInput,
+  ArticleSummary,
+  ArticleDetail,
+  Paginated,
+  CursorPaginationQuery,
   MenuInput,
   MenuSummary,
   MenuItemInput,
@@ -193,6 +203,371 @@ export class ContentService {
       this.prisma,
     );
     await this.events.publish(ctx, "content.page.deleted", { pageId: id });
+  }
+
+  // --- Blogs ---
+
+  private scopeBlog(ctx: TenantContext): Prisma.BlogWhereInput {
+    return { storeId: ctx.storeId as string, organizationId: ctx.organizationId };
+  }
+
+  private scopeArticle(ctx: TenantContext): Prisma.ArticleWhereInput {
+    return { storeId: ctx.storeId as string, organizationId: ctx.organizationId };
+  }
+
+  private toBlogSummary(row: Prisma.BlogGetPayload<{ include: { _count: { select: { articles: true } } } }>): BlogSummary {
+    return {
+      id: row.id,
+      title: row.title,
+      handle: row.handle,
+      articleCount: row._count.articles,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+
+  private toBlogDetail(row: Prisma.BlogGetPayload<{ include: { _count: { select: { articles: true } } } }>): BlogDetail {
+    return {
+      ...this.toBlogSummary(row),
+      seoTitle: row.seoTitle,
+      seoDescription: row.seoDescription,
+    };
+  }
+
+  async listBlogs(ctx: TenantContext): Promise<BlogSummary[]> {
+    const rows = await this.prisma.blog.findMany({
+      where: this.scopeBlog(ctx),
+      include: { _count: { select: { articles: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((r) => this.toBlogSummary(r));
+  }
+
+  async getBlog(ctx: TenantContext, id: string): Promise<BlogDetail> {
+    const row = await this.prisma.blog.findFirst({
+      where: { ...this.scopeBlog(ctx), id },
+      include: { _count: { select: { articles: true } } },
+    });
+    if (!row) throw new NotFoundError("Blog");
+    return this.toBlogDetail(row);
+  }
+
+  // Storefront-facing: every blog is listable (a blog itself has no draft/published state in
+  // this model — only its articles do, same as Shopify).
+  async listPublishedBlogs(ctx: TenantContext): Promise<BlogSummary[]> {
+    return this.listBlogs(ctx);
+  }
+
+  async getBlogByHandle(ctx: TenantContext, handle: string): Promise<BlogDetail> {
+    const row = await this.prisma.blog.findFirst({
+      where: { ...this.scopeBlog(ctx), handle },
+      include: { _count: { select: { articles: true } } },
+    });
+    if (!row) throw new NotFoundError("Blog");
+    return this.toBlogDetail(row);
+  }
+
+  async createBlog(ctx: TenantContext, input: BlogInput, meta: RequestMeta): Promise<BlogDetail> {
+    const created = await this.prisma.blog
+      .create({
+        data: {
+          storeId: ctx.storeId as string,
+          organizationId: ctx.organizationId,
+          title: input.title,
+          handle: input.handle,
+          seoTitle: input.seoTitle,
+          seoDescription: input.seoDescription,
+          createdById: ctx.actor.id,
+        },
+      })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("A blog with this handle already exists.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.blog_created",
+        resourceType: "blog",
+        resourceId: created.id,
+        after: { title: created.title, handle: created.handle },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.blog.created", { blogId: created.id });
+    return this.getBlog(ctx, created.id);
+  }
+
+  async updateBlog(
+    ctx: TenantContext,
+    id: string,
+    input: UpdateBlogInput,
+    meta: RequestMeta,
+  ): Promise<BlogDetail> {
+    const current = await this.prisma.blog.findFirst({ where: { ...this.scopeBlog(ctx), id } });
+    if (!current) throw new NotFoundError("Blog");
+
+    const data: Prisma.BlogUncheckedUpdateInput = {};
+    if (input.title !== undefined) data.title = input.title;
+    if (input.handle !== undefined) data.handle = input.handle;
+    if (input.seoTitle !== undefined) data.seoTitle = input.seoTitle;
+    if (input.seoDescription !== undefined) data.seoDescription = input.seoDescription;
+
+    await this.prisma.blog
+      .update({ where: { id }, data })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("A blog with this handle already exists.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.blog_updated",
+        resourceType: "blog",
+        resourceId: id,
+        before: { title: current.title, handle: current.handle },
+        after: input,
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.blog.updated", { blogId: id });
+    return this.getBlog(ctx, id);
+  }
+
+  async removeBlog(ctx: TenantContext, id: string, meta: RequestMeta): Promise<void> {
+    const current = await this.prisma.blog.findFirst({ where: { ...this.scopeBlog(ctx), id } });
+    if (!current) throw new NotFoundError("Blog");
+    // Cascades to its articles at the database level (Article.blog onDelete: Cascade).
+    await this.prisma.blog.delete({ where: { id } });
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.blog_deleted",
+        resourceType: "blog",
+        resourceId: id,
+        before: { title: current.title },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.blog.deleted", { blogId: id });
+  }
+
+  // --- Articles (blog-scoped) ---
+
+  private async requireBlog(ctx: TenantContext, blogId: string): Promise<void> {
+    const blog = await this.prisma.blog.findFirst({ where: { ...this.scopeBlog(ctx), id: blogId } });
+    if (!blog) throw new NotFoundError("Blog");
+  }
+
+  private toArticleSummary(row: Prisma.ArticleGetPayload<Record<string, never>>): ArticleSummary {
+    return {
+      id: row.id,
+      blogId: row.blogId,
+      title: row.title,
+      handle: row.handle,
+      excerpt: row.excerpt,
+      authorName: row.authorName,
+      featuredImageUrl: row.featuredImageUrl,
+      featuredImageAlt: row.featuredImageAlt,
+      tags: row.tags,
+      status: row.status,
+      publishedAt: row.publishedAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+
+  private toArticleDetail(row: Prisma.ArticleGetPayload<Record<string, never>>): ArticleDetail {
+    return {
+      ...this.toArticleSummary(row),
+      bodyRich: row.bodyRich as { html?: string } | null,
+      seoTitle: row.seoTitle,
+      seoDescription: row.seoDescription,
+    };
+  }
+
+  async listArticles(ctx: TenantContext, blogId: string): Promise<ArticleSummary[]> {
+    await this.requireBlog(ctx, blogId);
+    const rows = await this.prisma.article.findMany({
+      where: { ...this.scopeArticle(ctx), blogId },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((r) => this.toArticleSummary(r));
+  }
+
+  async getArticle(ctx: TenantContext, blogId: string, id: string): Promise<ArticleDetail> {
+    await this.requireBlog(ctx, blogId);
+    const row = await this.prisma.article.findFirst({ where: { ...this.scopeArticle(ctx), blogId, id } });
+    if (!row) throw new NotFoundError("Article");
+    return this.toArticleDetail(row);
+  }
+
+  async createArticle(
+    ctx: TenantContext,
+    blogId: string,
+    input: ArticleInput,
+    meta: RequestMeta,
+  ): Promise<ArticleDetail> {
+    await this.requireBlog(ctx, blogId);
+    const created = await this.prisma.article
+      .create({
+        data: {
+          storeId: ctx.storeId as string,
+          organizationId: ctx.organizationId,
+          blogId,
+          title: input.title,
+          handle: input.handle,
+          bodyRich: input.bodyRich,
+          excerpt: input.excerpt,
+          authorName: input.authorName,
+          featuredImageUrl: input.featuredImageUrl,
+          featuredImageAlt: input.featuredImageAlt,
+          tags: input.tags,
+          seoTitle: input.seoTitle,
+          seoDescription: input.seoDescription,
+          templateSuffix: input.templateSuffix,
+          status: input.status,
+          publishedAt: input.status === "published" ? new Date() : null,
+          createdById: ctx.actor.id,
+        },
+      })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("An article with this handle already exists in this blog.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.article_created",
+        resourceType: "article",
+        resourceId: created.id,
+        after: { title: created.title, handle: created.handle, blogId },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.article.created", { articleId: created.id, blogId });
+    return this.toArticleDetail(created);
+  }
+
+  async updateArticle(
+    ctx: TenantContext,
+    blogId: string,
+    id: string,
+    input: UpdateArticleInput,
+    meta: RequestMeta,
+  ): Promise<ArticleDetail> {
+    await this.requireBlog(ctx, blogId);
+    const current = await this.prisma.article.findFirst({ where: { ...this.scopeArticle(ctx), blogId, id } });
+    if (!current) throw new NotFoundError("Article");
+
+    const data: Prisma.ArticleUncheckedUpdateInput = {};
+    if (input.title !== undefined) data.title = input.title;
+    if (input.handle !== undefined) data.handle = input.handle;
+    if (input.bodyRich !== undefined) data.bodyRich = input.bodyRich;
+    if (input.excerpt !== undefined) data.excerpt = input.excerpt;
+    if (input.authorName !== undefined) data.authorName = input.authorName;
+    if (input.featuredImageUrl !== undefined) data.featuredImageUrl = input.featuredImageUrl;
+    if (input.featuredImageAlt !== undefined) data.featuredImageAlt = input.featuredImageAlt;
+    if (input.tags !== undefined) data.tags = input.tags;
+    if (input.seoTitle !== undefined) data.seoTitle = input.seoTitle;
+    if (input.seoDescription !== undefined) data.seoDescription = input.seoDescription;
+    if (input.templateSuffix !== undefined) data.templateSuffix = input.templateSuffix;
+    if (input.status !== undefined) {
+      data.status = input.status;
+      if (input.status === "published" && current.status !== "published" && !current.publishedAt) {
+        data.publishedAt = new Date();
+      }
+    }
+
+    const updated = await this.prisma.article
+      .update({ where: { id }, data })
+      .catch((error: unknown) => {
+        if (isUniqueViolation(error)) throw new ConflictError("An article with this handle already exists in this blog.");
+        throw error;
+      });
+
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.article_updated",
+        resourceType: "article",
+        resourceId: id,
+        before: { title: current.title, handle: current.handle },
+        after: input,
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.article.updated", { articleId: id, blogId });
+    return this.toArticleDetail(updated);
+  }
+
+  async removeArticle(ctx: TenantContext, blogId: string, id: string, meta: RequestMeta): Promise<void> {
+    await this.requireBlog(ctx, blogId);
+    const current = await this.prisma.article.findFirst({ where: { ...this.scopeArticle(ctx), blogId, id } });
+    if (!current) throw new NotFoundError("Article");
+    await this.prisma.article.delete({ where: { id } });
+    await this.audit.record(
+      {
+        organizationId: ctx.organizationId,
+        storeId: ctx.storeId,
+        actorId: ctx.actor.id,
+        action: "content.article_deleted",
+        resourceType: "article",
+        resourceId: id,
+        before: { title: current.title },
+        meta,
+      },
+      this.prisma,
+    );
+    await this.events.publish(ctx, "content.article.deleted", { articleId: id, blogId });
+  }
+
+  // Storefront-facing: published articles only, newest first, cursor-paginated.
+  async listPublishedArticles(
+    ctx: TenantContext,
+    blogId: string,
+    query: CursorPaginationQuery,
+  ): Promise<Paginated<ArticleSummary>> {
+    const rows = await this.prisma.article.findMany({
+      where: { ...this.scopeArticle(ctx), blogId, status: "published" },
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      take: query.limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+    });
+    const hasNextPage = rows.length > query.limit;
+    const page = hasNextPage ? rows.slice(0, query.limit) : rows;
+    return {
+      data: page.map((r) => this.toArticleSummary(r)),
+      pageInfo: { hasNextPage, endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null },
+    };
+  }
+
+  async getPublishedArticle(ctx: TenantContext, blogHandle: string, articleHandle: string): Promise<ArticleDetail> {
+    const blog = await this.prisma.blog.findFirst({ where: { ...this.scopeBlog(ctx), handle: blogHandle } });
+    if (!blog) throw new NotFoundError("Article");
+    const row = await this.prisma.article.findFirst({
+      where: { ...this.scopeArticle(ctx), blogId: blog.id, handle: articleHandle, status: "published" },
+    });
+    if (!row) throw new NotFoundError("Article");
+    return this.toArticleDetail(row);
   }
 
   // --- Menus ---

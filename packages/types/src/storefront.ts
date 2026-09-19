@@ -112,6 +112,35 @@ export interface StorefrontPageDetail {
   seoDescription: string | null;
 }
 
+// ---- content blogs -----------------------------------------------------------------------
+
+export interface StorefrontBlogSummary {
+  id: string;
+  title: string;
+  handle: string;
+}
+
+export const storefrontArticleListQuerySchema = cursorPaginationQuerySchema;
+export type StorefrontArticleListQuery = z.infer<typeof storefrontArticleListQuerySchema>;
+
+export interface StorefrontArticleSummary {
+  id: string;
+  title: string;
+  handle: string;
+  excerpt: string | null;
+  authorName: string | null;
+  featuredImage: { url: string; alt: string | null } | null;
+  tags: string[];
+  publishedAt: string | null;
+}
+
+export interface StorefrontArticleDetail extends StorefrontArticleSummary {
+  bodyRich: { html?: string } | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  blog: StorefrontBlogSummary;
+}
+
 export const createStorefrontCartSchema = z.object({
   items: z
     .array(z.object({ variantId: idSchema, quantity: z.number().int().min(1) }))

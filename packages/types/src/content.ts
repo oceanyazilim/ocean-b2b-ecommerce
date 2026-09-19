@@ -36,6 +36,80 @@ export interface PageSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Blogs
+// ---------------------------------------------------------------------------
+
+export const blogInputSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  handle: z.string().trim().min(1).max(255),
+  seoTitle: z.string().trim().max(255).nullable().optional(),
+  seoDescription: z.string().trim().max(320).nullable().optional(),
+});
+export type BlogInput = z.infer<typeof blogInputSchema>;
+
+export const updateBlogSchema = blogInputSchema.partial();
+export type UpdateBlogInput = z.infer<typeof updateBlogSchema>;
+
+export interface BlogSummary {
+  id: string;
+  title: string;
+  handle: string;
+  articleCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogDetail extends BlogSummary {
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Articles (blog-scoped)
+// ---------------------------------------------------------------------------
+
+export const articleInputSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  handle: z.string().trim().min(1).max(255),
+  bodyRich: z.record(z.string(), z.any()).default({}),
+  excerpt: z.string().trim().max(500).nullable().optional(),
+  authorName: z.string().trim().max(255).nullable().optional(),
+  featuredImageUrl: z.string().trim().max(2048).nullable().optional(),
+  featuredImageAlt: z.string().trim().max(255).nullable().optional(),
+  tags: z.array(z.string().trim().min(1).max(60)).max(50).default([]),
+  seoTitle: z.string().trim().max(255).nullable().optional(),
+  seoDescription: z.string().trim().max(320).nullable().optional(),
+  templateSuffix: z.string().trim().max(255).nullable().optional(),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+});
+export type ArticleInput = z.infer<typeof articleInputSchema>;
+
+export const updateArticleSchema = articleInputSchema.partial();
+export type UpdateArticleInput = z.infer<typeof updateArticleSchema>;
+
+export interface ArticleSummary {
+  id: string;
+  blogId: string;
+  title: string;
+  handle: string;
+  excerpt: string | null;
+  authorName: string | null;
+  featuredImageUrl: string | null;
+  featuredImageAlt: string | null;
+  tags: string[];
+  status: "draft" | "published" | "archived";
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ArticleDetail extends ArticleSummary {
+  bodyRich: { html?: string } | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Menus
 // ---------------------------------------------------------------------------
 

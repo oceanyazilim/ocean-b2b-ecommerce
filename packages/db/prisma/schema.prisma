@@ -52,6 +52,8 @@ model User {
   placedOrders         Order[]              @relation("OrderPlacedBy")
   draftOrders          DraftOrder[]         @relation("DraftOrderCreatedBy")
   pagesCreated         Page[]
+  blogsCreated         Blog[]
+  articlesCreated      Article[]
   approvals            Approval[]
   notifications        Notification[]
   impersonatorSessions ImpersonationSession[] @relation("ImpersonatorUser")
@@ -177,6 +179,8 @@ model Organization {
   taxRules              TaxRule[]
   markets               Market[]
   pages                 Page[]
+  blogs                 Blog[]
+  articles              Article[]
   menus                 Menu[]
   redirects             Redirect[]
   domains               Domain[]
@@ -296,6 +300,8 @@ model Store {
   taxRules              TaxRule[]
   markets               Market[]
   pages                 Page[]
+  blogs                 Blog[]
+  articles              Article[]
   menus                 Menu[]
   redirects             Redirect[]
   domains               Domain[]
@@ -2197,6 +2203,60 @@ model Page {
   @@unique([storeId, handle])
   @@index([storeId, status])
   @@map("pages")
+}
+
+model Blog {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  title          String
+  handle         String
+  seoTitle       String?  @map("seo_title")
+  seoDescription String?  @map("seo_description")
+  createdById    String   @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  articles     Article[]
+
+  @@unique([storeId, handle])
+  @@map("blogs")
+}
+
+model Article {
+  id               String     @id @default(uuid()) @db.Uuid
+  storeId          String     @map("store_id") @db.Uuid
+  organizationId   String     @map("organization_id") @db.Uuid
+  blogId           String     @map("blog_id") @db.Uuid
+  title            String
+  handle           String
+  bodyRich         Json       @default("{}") @map("body_rich")
+  excerpt          String?
+  authorName       String?    @map("author_name")
+  featuredImageUrl String?    @map("featured_image_url")
+  featuredImageAlt String?    @map("featured_image_alt")
+  tags             String[]   @default([])
+  seoTitle         String?    @map("seo_title")
+  seoDescription   String?    @map("seo_description")
+  templateSuffix   String?    @map("template_suffix")
+  status           PageStatus @default(draft)
+  publishedAt      DateTime?  @map("published_at") @db.Timestamptz(6)
+  createdById      String     @map("created_by_id") @db.Uuid
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  blog         Blog         @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id])
+
+  @@unique([blogId, handle])
+  @@index([storeId, status])
+  @@index([blogId, status, publishedAt])
+  @@map("articles")
 }
 
 model Menu {

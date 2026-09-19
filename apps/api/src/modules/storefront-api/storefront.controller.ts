@@ -1,8 +1,12 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import {
+  storefrontArticleListQuerySchema,
   storefrontCollectionListQuerySchema,
   storefrontProductListQuerySchema,
   storefrontVariantSearchQuerySchema,
+  type ArticleDetail,
+  type ArticleSummary,
+  type StorefrontArticleListQuery,
   type StorefrontCollectionListQuery,
   type StorefrontProductListQuery,
   type StorefrontVariantSearchQuery,
@@ -77,6 +81,65 @@ export class StorefrontController {
   @Get("pages/:handle")
   getPage(@CurrentTenant() tenant: TenantContext, @Param("handle") handle: string) {
     return this.content.getPublishedPage(tenant, handle);
+  }
+
+  @Get("blogs")
+  async listBlogs(@CurrentTenant() tenant: TenantContext) {
+    const blogs = await this.content.listPublishedBlogs(tenant);
+    return blogs.map((b) => ({ id: b.id, title: b.title, handle: b.handle }));
+  }
+
+  @Get("blogs/:handle")
+  async getBlog(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("handle") handle: string,
+    @Query(new ZodValidationPipe(storefrontArticleListQuerySchema)) query: StorefrontArticleListQuery,
+  ) {
+    const blog = await this.content.getBlogByHandle(tenant, handle);
+    const articles = await this.content.listPublishedArticles(tenant, blog.id, query);
+    return {
+      blog: { id: blog.id, title: blog.title, handle: blog.handle },
+      articles: {
+        data: articles.data.map((a) => this.toStorefrontArticleSummary(a)),
+        pageInfo: articles.pageInfo,
+      },
+    };
+  }
+
+  @Get("blogs/:handle/articles/:articleHandle")
+  async getArticle(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("handle") handle: string,
+    @Param("articleHandle") articleHandle: string,
+  ) {
+    const [blog, article] = await Promise.all([
+      this.content.getBlogByHandle(tenant, handle),
+      this.content.getPublishedArticle(tenant, handle, articleHandle),
+    ]);
+    return this.toStorefrontArticleDetail(article, blog);
+  }
+
+  private toStorefrontArticleSummary(a: ArticleSummary) {
+    return {
+      id: a.id,
+      title: a.title,
+      handle: a.handle,
+      excerpt: a.excerpt,
+      authorName: a.authorName,
+      featuredImage: a.featuredImageUrl ? { url: a.featuredImageUrl, alt: a.featuredImageAlt } : null,
+      tags: a.tags,
+      publishedAt: a.publishedAt,
+    };
+  }
+
+  private toStorefrontArticleDetail(a: ArticleDetail, blog: { id: string; title: string; handle: string }) {
+    return {
+      ...this.toStorefrontArticleSummary(a),
+      bodyRich: a.bodyRich,
+      seoTitle: a.seoTitle,
+      seoDescription: a.seoDescription,
+      blog,
+    };
   }
 
   @Get("menus")
