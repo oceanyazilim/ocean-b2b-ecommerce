@@ -29,6 +29,7 @@ export function StorefrontShell({
           { label: "Markets", href: base, exact: true },
           { label: "Domains", href: `${base}/domains` },
           { label: "Pages", href: `${base}/pages` },
+          { label: "Blogs", href: `${base}/blogs` },
           { label: "Menus", href: `${base}/menus` },
           { label: "Themes", href: `${base}/themes` },
         ]}

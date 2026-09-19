@@ -2,8 +2,12 @@ import "server-only";
 
 import type {
   MenuSummary,
+  PageInfo,
   PaymentMethodSummary,
   ResolvedTheme,
+  StorefrontArticleDetail,
+  StorefrontArticleSummary,
+  StorefrontBlogSummary,
   StorefrontCollectionDetail,
   StorefrontCollectionSummary,
   StorefrontPageDetail,
@@ -73,6 +77,39 @@ export async function getCollection(handle: string): Promise<StorefrontCollectio
 export async function getPage(handle: string): Promise<StorefrontPageDetail | null> {
   try {
     const res = await storefrontFetch<{ data: StorefrontPageDetail }>(`/pages/${encodeURIComponent(handle)}`);
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
+export async function listBlogs(): Promise<StorefrontBlogSummary[]> {
+  const res = await storefrontFetch<{ data: StorefrontBlogSummary[] }>("/blogs");
+  return res.data;
+}
+
+export async function getBlogArticles(
+  handle: string,
+  params: { cursor?: string; limit?: number } = {},
+): Promise<{ blog: StorefrontBlogSummary; articles: StorefrontArticleSummary[]; pageInfo: PageInfo } | null> {
+  try {
+    const qs = new URLSearchParams();
+    if (params.cursor) qs.set("cursor", params.cursor);
+    qs.set("limit", String(params.limit ?? 12));
+    const res = await storefrontFetch<{
+      data: { blog: StorefrontBlogSummary; articles: { data: StorefrontArticleSummary[]; pageInfo: PageInfo } };
+    }>(`/blogs/${encodeURIComponent(handle)}?${qs.toString()}`);
+    return { blog: res.data.blog, articles: res.data.articles.data, pageInfo: res.data.articles.pageInfo };
+  } catch {
+    return null;
+  }
+}
+
+export async function getArticle(blogHandle: string, articleHandle: string): Promise<StorefrontArticleDetail | null> {
+  try {
+    const res = await storefrontFetch<{ data: StorefrontArticleDetail }>(
+      `/blogs/${encodeURIComponent(blogHandle)}/articles/${encodeURIComponent(articleHandle)}`,
+    );
     return res.data;
   } catch {
     return null;
