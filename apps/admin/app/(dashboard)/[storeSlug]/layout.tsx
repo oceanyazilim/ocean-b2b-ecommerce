@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { CommandPalette, type PaletteNavItem, type PaletteSearchScope } from "@/components/command-palette";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationBell } from "@/components/notification-bell";
@@ -90,6 +91,44 @@ export default async function StoreLayout({
     },
   ];
 
+  // The command palette's static "Go to" results — every enabled top-level section plus the
+  // Settings sub-tabs, gated by the same permissions used to disable/hide them in the sidebar.
+  // "Settings" itself is skipped here since it links straight to settings/general, which the
+  // Settings sub-tab list below already includes — keeps the result list free of duplicates.
+  const paletteNavItems: PaletteNavItem[] = [
+    ...items
+      .filter((item) => !item.disabled && item.label !== "Settings")
+      .map((item) => ({ label: item.label, href: item.href, group: "Navigation" })),
+    ...(
+      [
+        { label: "General", href: `${base}/settings/general`, allowed: can(store, "settings.read") },
+        { label: "Team", href: `${base}/settings/team`, allowed: can(store, "users.manage") },
+        { label: "Billing", href: `${base}/settings/billing`, allowed: can(store, "settings.read") },
+        { label: "Developer", href: `${base}/settings/developer`, allowed: can(store, "apps.install") },
+        { label: "SSO", href: `${base}/settings/sso`, allowed: can(store, "settings.read") },
+        { label: "Shipping", href: `${base}/settings/shipping`, allowed: can(store, "shipping.read") },
+        { label: "Taxes", href: `${base}/settings/taxes`, allowed: can(store, "taxes.read") },
+        {
+          label: "Payment methods",
+          href: `${base}/settings/payment-methods`,
+          allowed: can(store, "payments.read"),
+        },
+        { label: "Metafields", href: `${base}/settings/metafields`, allowed: can(store, "settings.read") },
+        { label: "Files", href: `${base}/settings/files`, allowed: can(store, "products.read") },
+        { label: "Audit log", href: `${base}/settings/audit`, allowed: can(store, "settings.read") },
+      ] as const
+    )
+      .filter((item) => item.allowed)
+      .map((item) => ({ label: item.label, href: item.href, group: "Settings" })),
+  ];
+
+  const paletteSearchScope: PaletteSearchScope = {
+    products: can(store, "products.read"),
+    orders: can(store, "orders.read"),
+    customers: can(store, "customers.read"),
+    companies: can(store, "companies.read"),
+  };
+
   const switcherStores = me.organizations.flatMap((o) =>
     o.stores.map((s) => ({ slug: s.slug, name: s.name, organizationName: o.name })),
   );
@@ -150,6 +189,14 @@ export default async function StoreLayout({
             {store.role && (
               <span className="text-xs text-muted-foreground">{store.role.replace(/_/g, " ")}</span>
             )}
+          </div>
+          <div className="flex flex-1 items-center justify-end gap-3 text-sm text-muted-foreground sm:justify-center">
+            <CommandPalette
+              storeId={store.id}
+              storeSlug={store.slug}
+              navItems={paletteNavItems}
+              searchScope={paletteSearchScope}
+            />
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <NotificationBell storeId={store.id} />
