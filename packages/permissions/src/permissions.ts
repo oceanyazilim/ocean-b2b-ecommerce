@@ -91,3 +91,13 @@ const ALL = new Set<string>([
 export function isPermission(value: string): value is Permission {
   return ALL.has(value);
 }
+
+const STORE_ONLY = new Set<string>(STORE_PERMISSIONS);
+
+// Narrower than isPermission(): true only for a StorePermission, not any organization/company
+// permission too. Store-scoped grants (a CustomRole, an ApiKey/DeveloperApp's scopes) must be
+// validated against this, not the full Permission union — an org-level string like
+// "organization.billing" or "stores.delete" has no meaning attached to a single store.
+export function isStorePermission(value: string): value is StorePermission {
+  return STORE_ONLY.has(value);
+}

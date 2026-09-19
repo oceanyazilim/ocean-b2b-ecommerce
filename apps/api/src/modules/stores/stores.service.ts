@@ -62,9 +62,14 @@ export class StoresService {
     meta: RequestMeta,
   ): Promise<StoreSummary> {
     assertTimezone(input.timezone);
-    const currentStoreCount = await this.repo.countForOrganization(tenant.organizationId);
-    await this.entitlements.assertWithinLimit(tenant.organizationId, "stores.max", currentStoreCount);
     const store = await this.prisma.$transaction(async (tx) => {
+      // Serializes concurrent store-creation requests for the same organization so the
+      // stores.max check below can't race (two requests both reading count=0 and both
+      // passing) — pg_advisory_xact_lock blocks until it can acquire, and releases
+      // automatically when this transaction ends, no separate unlock needed.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenant.organizationId}::text)::bigint)`;
+      const currentStoreCount = await tx.store.count({ where: { organizationId: tenant.organizationId } });
+      await this.entitlements.assertWithinLimit(tenant.organizationId, "stores.max", currentStoreCount);
       if (input.slug && (await this.repo.slugExists(input.slug, tx))) {
         throw new ConflictError("This store URL is already taken.", [
           { path: "slug", message: "Already taken" },

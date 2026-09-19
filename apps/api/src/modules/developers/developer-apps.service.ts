@@ -1,7 +1,7 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 
 import { Injectable } from "@nestjs/common";
-import { isPermission } from "@ocean/permissions";
+import { isStorePermission } from "@ocean/permissions";
 import type {
   CreateDeveloperAppInput,
   DeveloperAppCreated,
@@ -19,8 +19,14 @@ import { AuditService } from "../audit/audit.service";
 
 const OAUTH_TOKEN_TTL_SECONDS = 3600;
 
+function secretsMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
+
 export function assertKnownScopes(scopes: string[]): void {
-  const unknown = scopes.filter((s) => !isPermission(s));
+  const unknown = scopes.filter((s) => !isStorePermission(s));
   if (unknown.length) {
     throw new ValidationError(`Unknown scope(s): ${unknown.join(", ")}`, [
       { path: "scopes", message: `Unknown scope(s): ${unknown.join(", ")}` },
@@ -119,7 +125,7 @@ export class DeveloperAppsService {
   // are the same store owner. The issued token is just another ApiKey row (kind=oauth_token).
   async issueToken(input: OAuthTokenInput): Promise<OAuthTokenResponse> {
     const app = await this.prisma.developerApp.findUnique({ where: { clientId: input.client_id } });
-    if (!app || app.status !== "active" || app.clientSecretHash !== hashToken(input.client_secret)) {
+    if (!app || app.status !== "active" || !secretsMatch(app.clientSecretHash, hashToken(input.client_secret))) {
       throw new UnauthenticatedError("Invalid client credentials.");
     }
     const token = `ocean_at_${randomBytes(24).toString("base64url")}`;

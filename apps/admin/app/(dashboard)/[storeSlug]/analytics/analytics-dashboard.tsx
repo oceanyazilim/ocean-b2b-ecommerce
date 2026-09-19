@@ -4,7 +4,7 @@ import type { AnalyticsOverview, TopCompanyRow, TopCustomerRow, TopProductRow } 
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, Input, Label, Skeleton } from "@ocean/ui";
 import { useCallback, useEffect, useState } from "react";
 
-import { api, API_URL, errorMessage } from "@/lib/api";
+import { api, API_URL, errorMessage, parseExportError } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
 function isoDaysAgo(days: number): string {
@@ -56,12 +56,19 @@ export function AnalyticsDashboard({ storeId }: { storeId: string; currency: str
 
   async function exportCsv() {
     setExporting(true);
+    setError(null);
     try {
       const qs = toRangeParams(from, to);
       const res = await fetch(`${API_URL}/admin/v1/stores/${storeId}/analytics/top-companies/export?${qs}`, {
         credentials: "include",
       });
       const text = await res.text();
+      if (!res.ok) {
+        // The body is the JSON error envelope, not CSV — surface it instead of downloading a
+        // file named "top-companies.csv" that's actually an error message.
+        setError(parseExportError(text));
+        return;
+      }
       const blob = new Blob([text], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

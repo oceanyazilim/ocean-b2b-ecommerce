@@ -41,6 +41,10 @@ export function SsoManager({ organizationId }: { organizationId: string }) {
       }
     } catch (err) {
       setError(errorMessage(err));
+      // Without this, a failed initial load leaves `connection` at its initial `undefined`
+      // forever, and the loading skeleton (gated on `connection === undefined`) never gives
+      // way to the error Alert below it.
+      setConnection((prev) => (prev === undefined ? null : prev));
     }
   }, [base]);
 

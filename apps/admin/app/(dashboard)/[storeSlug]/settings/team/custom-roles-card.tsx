@@ -1,11 +1,11 @@
 "use client";
 
 import type { CustomRoleSummary } from "@ocean/types";
-import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Dialog, FormField, Input, TagInput } from "@ocean/ui";
+import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ConfirmDialog, Dialog, FormField, Input, TagInput } from "@ocean/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useSubmit } from "@/lib/use-submit";
 
 export function CustomRolesCard({
@@ -19,9 +19,9 @@ export function CustomRolesCard({
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [rowError, setRowError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<CustomRoleSummary | null>(null);
   const createAction = useSubmit();
+  const deleteAction = useSubmit();
 
   async function create() {
     const ok = await createAction.run(() =>
@@ -35,16 +35,14 @@ export function CustomRolesCard({
     }
   }
 
-  async function remove(id: string) {
-    setBusy(id);
-    setRowError(null);
-    try {
-      await api(`/stores/${storeId}/custom-roles/${id}`, { method: "DELETE" });
+  async function remove() {
+    if (!deleting) return;
+    const ok = await deleteAction.run(() =>
+      api(`/stores/${storeId}/custom-roles/${deleting.id}`, { method: "DELETE" }),
+    );
+    if (ok !== undefined) {
+      setDeleting(null);
       router.refresh();
-    } catch (err) {
-      setRowError(errorMessage(err));
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -60,7 +58,7 @@ export function CustomRolesCard({
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {rowError && <Alert variant="error">{rowError}</Alert>}
+        {deleteAction.error && <Alert variant="error">{deleteAction.error}</Alert>}
         {customRoles.length === 0 ? (
           <p className="text-sm text-muted-foreground">No custom roles yet.</p>
         ) : (
@@ -73,12 +71,7 @@ export function CustomRolesCard({
                   </p>
                   <p className="text-xs text-muted-foreground">{r.permissions.join(", ")}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  loading={busy === r.id}
-                  onClick={() => void remove(r.id)}
-                >
+                <Button size="sm" variant="ghost" onClick={() => setDeleting(r)}>
                   Delete
                 </Button>
               </li>
@@ -101,6 +94,16 @@ export function CustomRolesCard({
           </Button>
         </div>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        title={`Delete "${deleting?.name}"?`}
+        description="Members currently assigned this role would need to be reassigned first — this only succeeds if none are."
+        destructive
+        pending={deleteAction.pending}
+        onConfirm={remove}
+      />
     </Card>
   );
 }

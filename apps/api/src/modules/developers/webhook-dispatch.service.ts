@@ -5,6 +5,7 @@ import { Interval } from "@nestjs/schedule";
 import type { Webhook } from "@ocean/db";
 
 import { EncryptionService } from "../../common/crypto/encryption.service";
+import { assertPublicHttpUrl } from "../../common/http/ssrf-guard";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 
 const API_VERSION = "2026-01";
@@ -98,6 +99,10 @@ export class WebhookDispatchService {
     let responseCode: number | null = null;
     let delivered = false;
     try {
+      // Re-checked at delivery time, not just at creation: a hostname's DNS could have been
+      // repointed at a private address since the webhook was created (rebinding), and this is
+      // the call that actually reaches the network.
+      await assertPublicHttpUrl(hook.url);
       const res = await fetch(hook.url, {
         method: "POST",
         headers: {

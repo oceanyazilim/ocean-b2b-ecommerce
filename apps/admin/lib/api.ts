@@ -78,3 +78,15 @@ export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Something unexpected happened. Please try again.";
 }
+
+// For a file-download endpoint (CSV export etc.) fetched directly rather than through api() —
+// on failure the body is the same JSON error envelope every other endpoint returns, not the
+// file. Pulls out a readable message instead of surfacing (or silently downloading) raw JSON.
+export function parseExportError(body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { error?: ApiErrorBody };
+    return parsed.error?.message ?? "The export failed. Please try again.";
+  } catch {
+    return "The export failed. Please try again.";
+  }
+}

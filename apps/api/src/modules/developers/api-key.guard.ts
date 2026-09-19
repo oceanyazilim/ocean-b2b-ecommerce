@@ -1,4 +1,4 @@
-import { CanActivate, createParamDecorator, ExecutionContext, Injectable, SetMetadata } from "@nestjs/common";
+import { CanActivate, createParamDecorator, ExecutionContext, Injectable, Logger, SetMetadata } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { Request } from "express";
 
@@ -21,6 +21,8 @@ export interface ApiKeyPrincipal {
 // both rows in the same ApiKey table (see schema.prisma), verified the same way here.
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
+  private readonly logger = new Logger("ApiKeyGuard");
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly reflector: Reflector,
@@ -51,7 +53,9 @@ export class ApiKeyGuard implements CanActivate {
       organizationId: key.organizationId,
       scopes: key.scopes,
     };
-    void this.prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });
+    this.prisma.apiKey
+      .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
+      .catch((error: unknown) => this.logger.warn(`failed to record lastUsedAt: ${String(error)}`));
     return true;
   }
 }

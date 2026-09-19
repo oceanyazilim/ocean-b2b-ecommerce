@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { isPermission } from "@ocean/permissions";
+import { isStorePermission } from "@ocean/permissions";
 import type { CreateCustomRoleInput, CustomRoleSummary, UpdateCustomRoleInput } from "@ocean/types";
 
 import { ConflictError, NotFoundError, ValidationError } from "../../common/errors/domain-error";
@@ -9,7 +9,7 @@ import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 
 function assertKnownPermissions(permissions: string[]): void {
-  const unknown = permissions.filter((p) => !isPermission(p));
+  const unknown = permissions.filter((p) => !isStorePermission(p));
   if (unknown.length) {
     throw new ValidationError(`Unknown permission(s): ${unknown.join(", ")}`, [
       { path: "permissions", message: `Unknown permission(s): ${unknown.join(", ")}` },

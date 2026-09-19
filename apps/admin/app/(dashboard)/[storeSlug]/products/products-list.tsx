@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api, API_URL, errorMessage } from "@/lib/api";
+import { api, API_URL, errorMessage, parseExportError } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
 type StatusTab = "all" | ProductStatus;
@@ -99,11 +99,18 @@ export function ProductsList({
 
   async function exportCsv() {
     setExporting(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/admin/v1/stores/${storeId}/products/export`, {
         credentials: "include",
       });
       const text = await res.text();
+      if (!res.ok) {
+        // The body is the JSON error envelope, not CSV — surface it instead of downloading a
+        // file named "products.csv" that's actually an error message.
+        setError(parseExportError(text));
+        return;
+      }
       const blob = new Blob([text], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

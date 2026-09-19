@@ -126,5 +126,8 @@ export class AuditService {
 }
 
 function csvField(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  // Neutralize spreadsheet formula injection: a leading =, +, -, @ (or tab/CR) makes Excel/
+  // Sheets treat the cell as a formula when the exported file is opened, not as plain text.
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }

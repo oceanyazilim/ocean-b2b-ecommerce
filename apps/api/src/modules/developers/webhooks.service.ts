@@ -5,6 +5,7 @@ import type { CreateWebhookInput, WebhookCreated, WebhookDeliverySummary, Webhoo
 
 import { EncryptionService } from "../../common/crypto/encryption.service";
 import { NotFoundError } from "../../common/errors/domain-error";
+import { assertPublicHttpUrl } from "../../common/http/ssrf-guard";
 import type { RequestMeta } from "../../common/http/request-meta";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
@@ -37,6 +38,7 @@ export class WebhooksService {
   }
 
   async create(tenant: TenantContext, input: CreateWebhookInput, meta: RequestMeta): Promise<WebhookCreated> {
+    await assertPublicHttpUrl(input.url);
     const secret = `whsec_${randomBytes(24).toString("base64url")}`;
     const created = await this.prisma.webhook.create({
       data: {

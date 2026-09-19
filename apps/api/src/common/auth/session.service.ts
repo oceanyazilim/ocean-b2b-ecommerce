@@ -67,7 +67,7 @@ export class SessionService {
     realm: SessionRealm,
     userId: string,
     meta: { ip: string | null; userAgent: string | null },
-    options: { mfaVerified?: boolean } = {},
+    options: { mfaVerified?: boolean; hardExpiresAt?: number } = {},
   ): Promise<SessionRecord> {
     const now = Date.now();
     const record: SessionRecord = {
@@ -79,10 +79,14 @@ export class SessionService {
       ip: meta.ip,
       userAgent: meta.userAgent,
       mfaVerified: options.mfaVerified ?? false,
+      ...(options.hardExpiresAt ? { hardExpiresAt: options.hardExpiresAt } : {}),
     };
+    const ttlSeconds = options.hardExpiresAt
+      ? Math.max(1, Math.min(this.idleTtl, Math.ceil((options.hardExpiresAt - now) / 1000)))
+      : this.idleTtl;
     await this.redis.client
       .multi()
-      .set(this.key(realm, record.id), JSON.stringify(record), "EX", this.idleTtl)
+      .set(this.key(realm, record.id), JSON.stringify(record), "EX", ttlSeconds)
       .sadd(this.userIndexKey(realm, userId), record.id)
       .expire(this.userIndexKey(realm, userId), this.absoluteTtl)
       .exec();
@@ -97,9 +101,18 @@ export class SessionService {
       await this.revoke(realm, id, record.userId);
       return null;
     }
+    // Not extendable by activity — a session that hasn't hit its normal idle timeout can still
+    // be hard-capped (impersonation).
+    if (record.hardExpiresAt && Date.now() > record.hardExpiresAt) {
+      await this.revoke(realm, id, record.userId);
+      return null;
+    }
     if (Date.now() - record.lastSeenAt > TOUCH_INTERVAL_MS) {
       record.lastSeenAt = Date.now();
-      await this.redis.client.set(this.key(realm, id), JSON.stringify(record), "EX", this.idleTtl);
+      const ttlSeconds = record.hardExpiresAt
+        ? Math.max(1, Math.min(this.idleTtl, Math.ceil((record.hardExpiresAt - Date.now()) / 1000)))
+        : this.idleTtl;
+      await this.redis.client.set(this.key(realm, id), JSON.stringify(record), "EX", ttlSeconds);
     }
     return record;
   }

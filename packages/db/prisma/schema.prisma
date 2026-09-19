@@ -3042,6 +3042,12 @@ enum SsoConnectionStatus {
 // relying party (WellKnownEndpoint discovery is not implemented — the three endpoint URLs are
 // entered directly, since there's no library dependency added for OIDC discovery/JWKS in this
 // codebase). clientSecretEnc uses EncryptionService, same pattern as Phase 15's webhook secrets.
+// SECURITY NOTE: `domain` has no ownership verification (no DNS TXT challenge, unlike the real
+// `Domain` model's verify flow) — SsoService.handleCallback therefore refuses to authenticate a
+// caller as any pre-existing User who isn't already a member of THIS organization, so a forged
+// SsoConnection can at most sign in/provision accounts within the configuring org, never take
+// over an unrelated global account. A future domain-ownership-verification pass would remove
+// the need for that restriction.
 model SsoConnection {
   id                    String              @id @default(uuid()) @db.Uuid
   organizationId        String              @unique @map("organization_id") @db.Uuid

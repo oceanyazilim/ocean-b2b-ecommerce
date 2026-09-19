@@ -180,24 +180,44 @@ export class SsoService {
 
     const user = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { email } });
-      const resolved =
-        existing ??
-        (await tx.user.create({
-          data: {
-            email,
-            name: profile.name ?? email,
-            // SSO users authenticate through the IdP; this password is never used, but the
-            // column is non-nullable, so a random one is set to keep them out of password login.
-            passwordHash: await this.passwords.hash(randomBytes(32).toString("hex")),
-            emailVerifiedAt: new Date(),
-          },
-        }));
-      await tx.organizationMember.upsert({
-        where: { organizationId_userId: { organizationId, userId: resolved.id } },
-        update: { status: "active" },
-        create: { organizationId, userId: resolved.id, role: conn.defaultRole },
+      if (existing) {
+        // Critical: email is a GLOBAL unique column, not scoped to this org, and nothing here
+        // verifies this org actually owns `conn.domain` (no DNS/ownership check — see the
+        // SsoConnection model comment). Logging the caller in as any pre-existing user whose
+        // email merely matches would let anyone with organization.write on ANY org take over
+        // ANY other user's account platform-wide, just by pointing this connection's endpoints
+        // at a server they control and asserting that user's email. SSO may therefore only
+        // authenticate a user who is already known to THIS org — it can sign in an existing
+        // member, or provision a brand-new account, but never adopt an unrelated stranger's
+        // pre-existing identity.
+        const alreadyMember = await tx.organizationMember.findUnique({
+          where: { organizationId_userId: { organizationId, userId: existing.id } },
+        });
+        if (!alreadyMember) {
+          throw new UnauthenticatedError(
+            "This account isn't a member of this organization yet. Ask an admin to invite you first.",
+          );
+        }
+        await tx.organizationMember.update({
+          where: { organizationId_userId: { organizationId, userId: existing.id } },
+          data: { status: "active" },
+        });
+        return existing;
+      }
+      const created = await tx.user.create({
+        data: {
+          email,
+          name: profile.name ?? email,
+          // SSO users authenticate through the IdP; this password is never used, but the
+          // column is non-nullable, so a random one is set to keep them out of password login.
+          passwordHash: await this.passwords.hash(randomBytes(32).toString("hex")),
+          emailVerifiedAt: new Date(),
+        },
       });
-      return resolved;
+      await tx.organizationMember.create({
+        data: { organizationId, userId: created.id, role: conn.defaultRole },
+      });
+      return created;
     });
 
     const session = await this.sessions.create("merchant", user.id, meta);

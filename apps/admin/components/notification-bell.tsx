@@ -62,13 +62,23 @@ export function NotificationBell({ storeId }: { storeId: string }) {
     if (n.readAt) return;
     setItems((prev) => prev?.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)) ?? prev);
     setCount((c) => Math.max(0, c - 1));
-    await api(`/stores/${storeId}/notifications/${n.id}/read`, { method: "POST" });
+    try {
+      await api(`/stores/${storeId}/notifications/${n.id}/read`, { method: "POST" });
+    } catch {
+      // Resync from the server rather than trying to precisely undo the optimistic change —
+      // simpler, and self-corrects any other drift too.
+      await Promise.all([loadCount(), loadList()]);
+    }
   }
 
   async function markAllRead() {
     setItems((prev) => prev?.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })) ?? prev);
     setCount(0);
-    await api(`/stores/${storeId}/notifications/read-all`, { method: "POST" });
+    try {
+      await api(`/stores/${storeId}/notifications/read-all`, { method: "POST" });
+    } catch {
+      await Promise.all([loadCount(), loadList()]);
+    }
   }
 
   return (

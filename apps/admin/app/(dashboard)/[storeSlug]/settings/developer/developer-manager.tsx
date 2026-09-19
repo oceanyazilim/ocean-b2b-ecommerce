@@ -74,6 +74,12 @@ export function DeveloperManager({ storeId }: { storeId: string }) {
       setWebhooks(w.data);
     } catch (err) {
       setError(errorMessage(err));
+      // Without this, a failed initial load leaves apps/keys/webhooks at their initial `null`
+      // forever, and the loading skeleton (gated on `!apps || !keys || !webhooks`) never gives
+      // way to the error Alert below it.
+      setApps((prev) => prev ?? []);
+      setKeys((prev) => prev ?? []);
+      setWebhooks((prev) => prev ?? []);
     }
   }, [base]);
 

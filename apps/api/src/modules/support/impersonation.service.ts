@@ -38,7 +38,10 @@ export class ImpersonationService {
     });
     if (!target) throw new NotFoundError("Store member");
 
-    const session = await this.sessions.create("merchant", target.userId, meta);
+    // hardExpiresAt makes this a real, activity-proof deadline — not just something the banner
+    // hides at, the underlying Redis session record itself stops validating after this instant.
+    const hardExpiresAt = Date.now() + IMPERSONATION_TTL_MS;
+    const session = await this.sessions.create("merchant", target.userId, meta, { hardExpiresAt });
     const record = await this.prisma.impersonationSession.create({
       data: {
         storeId: tenant.storeId as string,
@@ -47,7 +50,7 @@ export class ImpersonationService {
         targetUserId: target.userId,
         reason: input.reason,
         sessionId: session.id,
-        expiresAt: new Date(Date.now() + IMPERSONATION_TTL_MS),
+        expiresAt: new Date(hardExpiresAt),
       },
     });
     this.sessions.attachCookie(res, session);

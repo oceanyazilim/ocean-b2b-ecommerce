@@ -27,10 +27,6 @@ export class StoresRepository {
     });
   }
 
-  countForOrganization(organizationId: string): Promise<number> {
-    return this.prisma.store.count({ where: { organizationId } });
-  }
-
   createWithOwner(
     ctx: TenantContext,
     data: Omit<Prisma.StoreUncheckedCreateInput, "organizationId" | "members">,

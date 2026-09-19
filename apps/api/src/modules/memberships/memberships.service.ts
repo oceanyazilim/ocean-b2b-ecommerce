@@ -77,6 +77,11 @@ export class MembershipsService {
     await this.prisma.$transaction(async (tx) => {
       const member = await this.repo.findMember(tenant, userId, tx);
       if (!member || member.status !== "active") throw new NotFoundError("Member");
+      if (input.role === "custom" && !input.customRoleId) {
+        throw new ValidationError("A custom role requires customRoleId.", [
+          { path: "customRoleId", message: "Required when role is \"custom\"" },
+        ]);
+      }
       const nextCustomRoleId = input.role === "custom" ? (input.customRoleId ?? null) : null;
       if (member.role === input.role && member.customRoleId === nextCustomRoleId) return;
       if (member.role === "store_owner" && (await this.repo.countActiveOwners(tenant, tx)) <= 1) {
@@ -84,7 +89,7 @@ export class MembershipsService {
           "A store must keep at least one owner. Assign another owner first.",
         );
       }
-      if (input.role === "custom" && nextCustomRoleId) {
+      if (nextCustomRoleId) {
         const customRole = await tx.customRole.findFirst({
           where: { id: nextCustomRoleId, storeId: tenant.storeId as string },
         });

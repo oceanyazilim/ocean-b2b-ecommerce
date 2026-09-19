@@ -10,6 +10,10 @@ export interface SessionRecord {
   userAgent: string | null;
   // True when the session was established through an MFA challenge (or MFA is not enabled).
   mfaVerified: boolean;
+  // Epoch ms past which the session is dead regardless of activity — unlike the normal idle/
+  // absolute TTLs, this can't be extended by touching the session. Used for impersonation
+  // sessions, which must actually end, not just hide their banner.
+  hardExpiresAt?: number;
 }
 
 export const MERCHANT_SESSION_COOKIE = "ocean_ms";

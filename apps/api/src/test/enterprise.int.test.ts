@@ -196,6 +196,80 @@ describe.skipIf(!INTEGRATION_ENABLED)("phase 16: custom roles, expanded audit, b
     }
   });
 
+  it("refuses SSO login as a pre-existing user who isn't already a member of the configuring organization (account-takeover regression)", async () => {
+    // A domain unique to this run: SsoConnection.domain has no uniqueness constraint and this
+    // is a shared, long-lived dev DB, so a fixed literal here would let a stale connection row
+    // from an earlier run of this same test (pointing at a mock IdP that's long since closed)
+    // get matched instead of the one this run just created — see the same fix already applied
+    // to the SSO test above.
+    const victimDomain = `${uniqueEmail("victim-co").split("@")[0]}.test`;
+    const victimEmail = `person@${victimDomain}`;
+
+    // The victim: a real user with no relationship at all to `organizationId`/`owner`.
+    const victim = t.http();
+    await signupVerified(t, victim, victimEmail);
+    await createOrgAndStore(victim, "Victim Co");
+
+    // The attacker: a fresh org they fully control, so this test never touches the shared
+    // `organizationId` other tests in this file depend on.
+    const attacker = t.http();
+    await signupVerified(t, attacker);
+    const attackerOrg = await createOrgAndStore(attacker, "Attacker Co");
+
+    const assertedEmail = victimEmail; // the attacker's fake IdP asserts the VICTIM's real email
+    const idp: Server = createServer((req, res) => {
+      if (req.url?.startsWith("/token")) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ access_token: "mock-access-token" }));
+        return;
+      }
+      if (req.url?.startsWith("/userinfo")) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ email: assertedEmail, name: "Not The Victim" }));
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    await new Promise<void>((resolve) => idp.listen(0, "127.0.0.1", resolve));
+    const port = (idp.address() as AddressInfo).port;
+    const idpUrl = (path: string) => `http://127.0.0.1:${port}${path}`;
+
+    try {
+      // The attacker configures their OWN org's SSO connection to claim the victim's exact
+      // email domain — exactly what an attacker would do; nothing here verifies they actually
+      // own that domain.
+      await attacker
+        .put(`/admin/v1/organizations/${attackerOrg.organizationId}/sso`)
+        .send({
+          domain: victimDomain,
+          issuer: idpUrl(""),
+          authorizationEndpoint: idpUrl("/authorize"),
+          tokenEndpoint: idpUrl("/token"),
+          userinfoEndpoint: idpUrl("/userinfo"),
+          clientId: "mock-client",
+          clientSecret: "mock-secret",
+          defaultRole: "owner",
+        })
+        .expect(200);
+
+      const startRes = await attacker.get(`/admin/v1/auth/sso/${victimDomain}/start`).expect(302);
+      const state = new URL(startRes.headers.location as string).searchParams.get("state") as string;
+      const callbackRes = await attacker
+        .get(`/admin/v1/auth/sso/callback?code=mock-code&state=${encodeURIComponent(state)}`)
+        .expect(401);
+      expect(callbackRes.headers["set-cookie"]).toBeUndefined();
+
+      // The victim's account is completely untouched — no membership in the attacker's org.
+      const victimMe = (await victim.get("/admin/v1/auth/me").expect(200)).body.data;
+      expect(
+        victimMe.organizations.some((o: { id: string }) => o.id === attackerOrg.organizationId),
+      ).toBe(false);
+    } finally {
+      await new Promise<void>((resolve) => idp.close(() => resolve()));
+    }
+  });
+
   it("lets a store owner impersonate a member, browse as them with their (lower) permissions, and end back into their own session", async () => {
     const memberEmail = uniqueEmail("imp");
     await owner.post(`${base}/invitations`).send({ email: memberEmail, role: "viewer" }).expect(201);
