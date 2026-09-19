@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { CartLink } from "./cart-link";
 import { NavMenu } from "./nav-menu";
+import { SearchBox } from "./search-box";
 
 export function Header({
   logoUrl,
@@ -33,6 +34,9 @@ export function Header({
           </Link>
           {nav && <NavMenu items={nav.items ?? []} />}
         </nav>
+        <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:px-4">
+          <SearchBox />
+        </div>
         <div className="flex items-center gap-1">
           <Link
             href="/account"
