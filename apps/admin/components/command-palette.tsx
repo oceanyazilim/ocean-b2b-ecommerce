@@ -59,6 +59,9 @@ export function CommandPalette({
   const [entityResults, setEntityResults] = useState<PaletteResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Tracks the most recently kicked-off entity search query so a slower, now-stale response
+  // (e.g. for a query the user has since changed or cleared) can't overwrite fresher results.
+  const latestEntityQueryRef = useRef("");
 
   // Global Cmd+K / Ctrl+K toggle, available on every page inside the dashboard shell.
   useEffect(() => {
@@ -112,6 +115,7 @@ export function CommandPalette({
   // pages already call (products/orders/customers/companies), reusing their `q` param.
   useEffect(() => {
     const q = query.trim();
+    latestEntityQueryRef.current = q;
     if (q.length < ENTITY_MIN_QUERY_LENGTH) {
       setEntityResults([]);
       setSearching(false);
@@ -184,6 +188,9 @@ export function CommandPalette({
       }
 
       void Promise.all(requests).then((all) => {
+        // Ignore a response for a query that's no longer current — e.g. this was the request
+        // for a longer query that resolves after the user has since shortened/changed it.
+        if (latestEntityQueryRef.current !== q) return;
         setEntityResults(all.flat());
         setSearching(false);
       });

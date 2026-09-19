@@ -79,7 +79,14 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
     (id: string) => {
       const target = allViews.find((v) => v.id === id);
       setActiveViewId(id);
-      setQ(target?.filters.q ?? "");
+      // Built-in tabs (Open/Unfulfilled/etc.) all carry an empty saved `q`, so switching between
+      // them must leave whatever the merchant has typed in the search box alone — search narrows
+      // within a tab, it isn't reset by clicking one. A custom saved view, on the other hand, is
+      // meant to restore the exact combination (including search term) the merchant saved, so
+      // only custom views should override `q`.
+      if (target && !target.builtin) {
+        setQ(target.filters.q);
+      }
       saveActiveViewId(storeId, id);
     },
     [allViews, storeId],
