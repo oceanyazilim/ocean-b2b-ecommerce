@@ -13,6 +13,7 @@ import { HealthModule } from "./health/health.module";
 import { MailModule } from "./infrastructure/mail/mail.module";
 import { PrismaModule } from "./infrastructure/prisma/prisma.module";
 import { RedisModule } from "./infrastructure/redis/redis.module";
+import { SearchModule } from "./infrastructure/search/search.module";
 import { StorageModule } from "./infrastructure/storage/storage.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -66,6 +67,7 @@ import { PlatformModule } from "./modules/platform/platform.module";
     RedisModule,
     MailModule,
     StorageModule,
+    SearchModule,
     EventsModule,
     TenantModule,
     AuditModule,

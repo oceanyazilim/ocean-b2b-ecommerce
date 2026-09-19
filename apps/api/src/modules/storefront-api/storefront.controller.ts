@@ -3,12 +3,14 @@ import {
   storefrontArticleListQuerySchema,
   storefrontCollectionListQuerySchema,
   storefrontProductListQuerySchema,
+  storefrontSearchQuerySchema,
   storefrontVariantSearchQuerySchema,
   type ArticleDetail,
   type ArticleSummary,
   type StorefrontArticleListQuery,
   type StorefrontCollectionListQuery,
   type StorefrontProductListQuery,
+  type StorefrontSearchQuery,
   type StorefrontVariantSearchQuery,
 } from "@ocean/types";
 
@@ -42,6 +44,14 @@ export class StorefrontController {
     @Query(new ZodValidationPipe(storefrontProductListQuerySchema)) query: StorefrontProductListQuery,
   ) {
     return this.catalog.listProducts(tenant, query);
+  }
+
+  @Get("search")
+  search(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(storefrontSearchQuerySchema)) query: StorefrontSearchQuery,
+  ) {
+    return this.catalog.search(tenant, query);
   }
 
   // Quick order (spec §25): declared before the :idOrHandle route below so a literal path

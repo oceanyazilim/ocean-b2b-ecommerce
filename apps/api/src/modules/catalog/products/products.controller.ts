@@ -49,6 +49,13 @@ export class ProductsController {
     return this.products.create(tenant, body, meta);
   }
 
+  @Post("reindex-search")
+  @RequireStore("products.write")
+  @HttpCode(200)
+  reindexSearch(@CurrentTenant() tenant: TenantContext) {
+    return this.products.reindexSearch(tenant);
+  }
+
   @Post("bulk")
   @RequireStore("products.write")
   @HttpCode(200)

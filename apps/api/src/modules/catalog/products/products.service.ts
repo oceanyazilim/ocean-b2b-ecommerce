@@ -20,6 +20,7 @@ import {
   STORAGE_ADAPTER,
   type StorageAdapter,
 } from "../../../infrastructure/storage/storage.types";
+import { SearchService } from "../../../infrastructure/search/search.service";
 import { AuditService } from "../../audit/audit.service";
 import { EventsService } from "../../events/events.service";
 import { CollectionsService } from "../collections/collections.service";
@@ -42,6 +43,7 @@ export class ProductsService {
     private readonly collections: CollectionsService,
     private readonly audit: AuditService,
     private readonly events: EventsService,
+    private readonly search: SearchService,
     @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
   ) {}
 
@@ -154,6 +156,7 @@ export class ProductsService {
       await this.events.publish(ctx, "product.created", { productId: product.id }, tx);
       return product.id;
     });
+    this.search.indexProduct(ctx.storeId as string, created);
     const row = await this.repo.findDetail(ctx, created);
     return toProductDetail(row!, currency, this.storage);
   }
@@ -245,6 +248,7 @@ export class ProductsService {
       );
       await this.events.publish(ctx, "product.updated", { productId: id }, tx);
     });
+    this.search.indexProduct(ctx.storeId as string, id);
     const row = await this.repo.findDetail(ctx, id);
     return toProductDetail(row!, currency, this.storage);
   }
@@ -284,6 +288,7 @@ export class ProductsService {
         tx,
       );
     });
+    this.search.indexProduct(ctx.storeId as string, id);
     const row = await this.repo.findDetail(ctx, id);
     return toProductDetail(row!, currency, this.storage);
   }
@@ -308,6 +313,14 @@ export class ProductsService {
       );
       await this.events.publish(ctx, "product.deleted", { productId: id }, tx);
     });
+    this.search.deleteProduct(ctx.storeId as string, id);
+  }
+
+  // Admin-triggered backfill (spec: "Reindex search"). Needed once for stores/products that
+  // predate this feature, and safe to re-run any time as a manual repair — it fully replaces the
+  // store's Meilisearch index from the current Postgres state.
+  async reindexSearch(ctx: TenantContext): Promise<{ indexed: number }> {
+    return this.search.reindexStore(ctx.storeId as string);
   }
 
   async bulk(
@@ -315,10 +328,12 @@ export class ProductsService {
     action: ProductBulkAction,
     meta: RequestMeta,
   ): Promise<{ affected: number }> {
-    return this.prisma.$transaction(async (tx) => {
+    let indexedIds: string[] = [];
+    const result = await this.prisma.$transaction(async (tx) => {
       const found = await this.repo.findMany(ctx, action.ids, tx);
       const ids = found.map((p) => p.id);
       if (ids.length === 0) return { affected: 0 };
+      indexedIds = ids;
 
       switch (action.action) {
         case "archive":
@@ -369,6 +384,12 @@ export class ProductsService {
       );
       return { affected: ids.length };
     });
+    const storeId = ctx.storeId as string;
+    for (const id of indexedIds) {
+      if (action.action === "delete") this.search.deleteProduct(storeId, id);
+      else this.search.indexProduct(storeId, id);
+    }
+    return result;
   }
 
   // ---- media --------------------------------------------------------------------------------

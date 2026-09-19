@@ -42,6 +42,10 @@ export const envSchema = z
       .enum(["true", "false"])
       .default("true")
       .transform((v) => v === "true"),
+    // Search (Meilisearch; one index per store — see SearchModule). Defaults match the
+    // native dev binary so a fresh checkout works without extra setup beyond starting it.
+    MEILI_HOST: z.string().url().default("http://localhost:7700"),
+    MEILI_MASTER_KEY: z.string().min(1).default("ocean-dev-master-key"),
   })
   .transform((env) => ({
     ...env,

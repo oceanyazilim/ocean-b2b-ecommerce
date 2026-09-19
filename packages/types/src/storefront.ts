@@ -53,6 +53,20 @@ export interface StorefrontProductSummary {
   priceRange: { min: Money; max: Money } | null;
 }
 
+// Real full-text search (Meilisearch-backed — see apps/api SearchModule), distinct from the
+// plain `q` substring filter on GET /products above. Typo-tolerant, ranked by relevance, and
+// still catalog-access-filtered + buyer-priced like every other storefront product read.
+export const storefrontSearchQuerySchema = z.object({
+  q: z.string().trim().min(1).max(120),
+  limit: z.coerce.number().int().min(1).max(48).default(24),
+});
+export type StorefrontSearchQuery = z.infer<typeof storefrontSearchQuerySchema>;
+
+export interface StorefrontSearchResult {
+  query: string;
+  products: StorefrontProductSummary[];
+}
+
 export interface StorefrontProductDetail extends StorefrontProductSummary {
   descriptionHtml: string;
   seoTitle: string | null;

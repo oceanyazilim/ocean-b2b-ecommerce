@@ -9,6 +9,8 @@ import type {
   StorefrontProductDetail,
   StorefrontProductListQuery,
   StorefrontProductSummary,
+  StorefrontSearchQuery,
+  StorefrontSearchResult,
   StorefrontVariantSearchQuery,
   StorefrontVariantSearchResult,
   StorefrontVariantSummary,
@@ -17,6 +19,7 @@ import type {
 import { NotFoundError } from "../../common/errors/domain-error";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
+import { SearchService } from "../../infrastructure/search/search.service";
 import { STORAGE_ADAPTER, type StorageAdapter } from "../../infrastructure/storage/storage.types";
 import { CatalogAccessService } from "../catalogs/catalog-access.service";
 import { InventoryReservationsService } from "../inventory/inventory-reservations.service";
@@ -44,6 +47,7 @@ export class StorefrontCatalogService {
     private readonly catalogAccess: CatalogAccessService,
     private readonly pricing: PricingService,
     private readonly reservations: InventoryReservationsService,
+    private readonly searchIndex: SearchService,
     @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
   ) {}
 
@@ -135,6 +139,45 @@ export class StorefrontCatalogService {
     return {
       data: page.map((p) => this.toSummary(p, priceByVariant)),
       pageInfo: { hasNextPage, endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null },
+    };
+  }
+
+  // Real buyer-facing full-text search (Meilisearch-backed, typo-tolerant, ranked by
+  // relevance) — distinct from the plain ILIKE `q` filter on listProducts above. Meilisearch is
+  // trusted only to answer "which product ids matched the text query" for this store's own
+  // index; every id it returns is then re-verified against CatalogAccessService and re-priced
+  // through PricingService exactly like every other storefront read, so a buyer can never see a
+  // product their catalog access excludes just because it matched the text query.
+  async search(ctx: TenantContext, query: StorefrontSearchQuery): Promise<StorefrontSearchResult> {
+    const storeId = ctx.storeId as string;
+    const buyer = await this.resolveBuyer(ctx);
+    const access = await this.catalogAccess.resolve(ctx, buyer);
+
+    // Over-fetch: some Meilisearch hits may fall outside this buyer's catalog access, and we
+    // still want `limit` results after that filter (when enough matches exist).
+    const matchIds = await this.searchIndex.matchProductIds(storeId, query.q, query.limit * 3);
+    if (matchIds.length === 0) return { query: query.q, products: [] };
+
+    const visibleIds = await this.catalogAccess.visibleProductIds(ctx, access, matchIds);
+    const orderedIds = matchIds.filter((id) => visibleIds.has(id)).slice(0, query.limit);
+    if (orderedIds.length === 0) return { query: query.q, products: [] };
+
+    const rows = await this.prisma.product.findMany({
+      where: { id: { in: orderedIds }, storeId, deletedAt: null, status: "active" },
+      include: { variants: { orderBy: { position: "asc" } }, media: mediaFirst },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    // Re-apply Meilisearch's relevance order — findMany(id IN (...)) makes no ordering promise.
+    const ordered = orderedIds.map((id) => byId.get(id)).filter((r): r is ProductRow => !!r);
+
+    const priceByVariant = await this.priceByVariant(
+      ctx,
+      buyer,
+      ordered.flatMap((p) => p.variants.map((v) => v.id)),
+    );
+    return {
+      query: query.q,
+      products: ordered.map((p) => this.toSummary(p, priceByVariant)),
     };
   }
 
