@@ -14,7 +14,6 @@ import {
   FormField,
   Input,
 } from "@ocean/ui";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { api } from "@/lib/api";
@@ -83,7 +82,13 @@ function CreateFlagForm({ onCreated }: { onCreated: (flag: PlatformFeatureFlagSu
   );
 }
 
-function AddTargetForm({ flagKey, onChanged }: { flagKey: string; onChanged: () => void }) {
+function AddTargetForm({
+  flagKey,
+  onChanged,
+}: {
+  flagKey: string;
+  onChanged: (flag: PlatformFeatureFlagSummary) => void;
+}) {
   const { pending, error, run } = useSubmit();
   const [scope, setScope] = useState<"organization" | "store">("organization");
   const [id, setId] = useState("");
@@ -91,15 +96,15 @@ function AddTargetForm({ flagKey, onChanged }: { flagKey: string; onChanged: () 
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await run(() =>
-      api(`/feature-flags/${flagKey}/targets`, {
+    const res = await run(() =>
+      api<{ data: PlatformFeatureFlagSummary }>(`/feature-flags/${flagKey}/targets`, {
         method: "PUT",
         body: scope === "organization" ? { organizationId: id, enabled } : { storeId: id, enabled },
       }),
     );
-    if (ok === undefined) return;
+    if (!res) return;
     setId("");
-    onChanged();
+    onChanged(res.data);
   }
 
   return (
@@ -143,7 +148,6 @@ function FlagCard({
   flag: PlatformFeatureFlagSummary;
   onUpdate: (flag: PlatformFeatureFlagSummary) => void;
 }) {
-  const router = useRouter();
   const { run } = useSubmit();
 
   async function toggleDefault(defaultOn: boolean) {
@@ -201,7 +205,7 @@ function FlagCard({
             ))}
           </ul>
         )}
-        <AddTargetForm flagKey={flag.key} onChanged={() => router.refresh()} />
+        <AddTargetForm flagKey={flag.key} onChanged={onUpdate} />
       </CardContent>
     </Card>
   );
