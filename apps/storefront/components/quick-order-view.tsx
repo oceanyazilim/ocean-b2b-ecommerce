@@ -157,22 +157,26 @@ export function QuickOrderView() {
   async function resolveRow(key: string) {
     const row = rows.find((r) => r.key === key);
     if (!row || row.variantId || !row.sku.trim()) return;
+    const lookedUpSku = row.sku.trim();
     try {
       const res = await api<{ data: StorefrontVariantSearchResult[] }>(
-        `/products/variant-search?skus=${encodeURIComponent(row.sku.trim())}&limit=1`,
+        `/products/variant-search?skus=${encodeURIComponent(lookedUpSku)}&limit=1`,
       );
       const match = res.data[0];
       setRows((prev) =>
-        prev.map((r) =>
-          r.key === key
-            ? match
-              ? rowFromResult(match, r.quantity, "manual", key)
-              : { ...r, error: "SKU not found in catalog" }
-            : r,
-        ),
+        prev.map((r) => {
+          if (r.key !== key) return r;
+          // The user may have edited this row's SKU field while the lookup was in
+          // flight. If the current value no longer matches what we looked up,
+          // discard this stale response instead of overwriting their edit.
+          if (r.sku.trim() !== lookedUpSku) return r;
+          return match ? rowFromResult(match, r.quantity, "manual", key) : { ...r, error: "SKU not found in catalog" };
+        }),
       );
     } catch {
-      setRows((prev) => prev.map((r) => (r.key === key ? { ...r, error: "Couldn't look that up. Try again." } : r)));
+      setRows((prev) =>
+        prev.map((r) => (r.key === key && r.sku.trim() === lookedUpSku ? { ...r, error: "Couldn't look that up. Try again." } : r)),
+      );
     }
   }
 
