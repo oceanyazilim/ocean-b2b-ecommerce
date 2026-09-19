@@ -35,3 +35,4 @@ export * from "./developers";
 export * from "./custom-roles";
 export * from "./support";
 export * from "./sso";
+export * from "./platform";

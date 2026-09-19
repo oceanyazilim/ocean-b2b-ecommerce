@@ -117,6 +117,33 @@ model UserToken {
 }
 
 // ---------------------------------------------------------------------------
+// Platform operators — Ocean's own internal staff, never a merchant or store member.
+// Deliberately a separate identity model from User: apps/platform-admin is a genuinely separate
+// internal application with its own session realm ("platform", see
+// apps/api/src/common/auth/session.types.ts), so a merchant account (however over-permissioned)
+// can never reach the cross-tenant platform surface, and a platform operator's account carries
+// no organization/store membership to accidentally scope-leak from. Rows are provisioned by an
+// operator (seed/console), not self-serve signup.
+// ---------------------------------------------------------------------------
+
+enum PlatformOperatorStatus {
+  active
+  suspended
+}
+
+model PlatformOperator {
+  id           String                 @id @default(uuid()) @db.Uuid
+  email        String                 @unique
+  name         String
+  passwordHash String                 @map("password_hash")
+  status       PlatformOperatorStatus @default(active)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_operators")
+}
+
+// ---------------------------------------------------------------------------
 // Tenancy: Organization -> Store
 // ---------------------------------------------------------------------------
 

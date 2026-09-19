@@ -18,6 +18,10 @@ export interface SessionRecord {
 
 export const MERCHANT_SESSION_COOKIE = "ocean_ms";
 
+// Platform operators (apps/platform-admin) get their own cookie, name and all — never the
+// merchant cookie — so a merchant browser session can never be mistaken for one, and vice versa.
+export const PLATFORM_SESSION_COOKIE = "ocean_ps";
+
 // One customer session cookie per store: a shopper can be signed into different stores
 // (different tenants) independently, unlike merchant staff whose session spans their orgs.
 export function customerSessionCookie(storeId: string): string {

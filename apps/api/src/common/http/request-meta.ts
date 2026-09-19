@@ -12,7 +12,7 @@ export function requestMetaFrom(req: Request): RequestMeta {
   return {
     ip: req.ip ?? null,
     userAgent: req.header("user-agent") ?? null,
-    sessionId: req.session?.id ?? null,
+    sessionId: req.session?.id ?? req.platformSession?.id ?? req.customerSession?.id ?? null,
     requestId: req.requestId,
   };
 }

@@ -9,6 +9,7 @@ import { RedisService } from "../../infrastructure/redis/redis.service";
 import {
   customerSessionCookie,
   MERCHANT_SESSION_COOKIE,
+  PLATFORM_SESSION_COOKIE,
   type SessionRealm,
   type SessionRecord,
 } from "./session.types";
@@ -172,6 +173,25 @@ export class SessionService {
 
   clearCookie(res: Response): void {
     res.clearCookie(MERCHANT_SESSION_COOKIE, {
+      httpOnly: true,
+      secure: this.secureCookie,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+
+  attachPlatformCookie(res: Response, record: SessionRecord): void {
+    res.cookie(PLATFORM_SESSION_COOKIE, this.cookieValue(record.id), {
+      httpOnly: true,
+      secure: this.secureCookie,
+      sameSite: "lax",
+      path: "/",
+      maxAge: this.idleTtl * 1000,
+    });
+  }
+
+  clearPlatformCookie(res: Response): void {
+    res.clearCookie(PLATFORM_SESSION_COOKIE, {
       httpOnly: true,
       secure: this.secureCookie,
       sameSite: "lax",

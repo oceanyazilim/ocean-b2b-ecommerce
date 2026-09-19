@@ -50,6 +50,7 @@ import { DevelopersModule } from "./modules/developers/developers.module";
 import { CustomRolesModule } from "./modules/custom-roles/custom-roles.module";
 import { SsoModule } from "./modules/sso/sso.module";
 import { SupportModule } from "./modules/support/support.module";
+import { PlatformModule } from "./modules/platform/platform.module";
 
 // Domain modules are registered flat and talk to each other only through exported services.
 // Guard order: SessionGuard (who) → PermissionGuard (which tenant, which permission).
@@ -103,6 +104,7 @@ import { SupportModule } from "./modules/support/support.module";
     CustomRolesModule,
     SsoModule,
     SupportModule,
+    PlatformModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

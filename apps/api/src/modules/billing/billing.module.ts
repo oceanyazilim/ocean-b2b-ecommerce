@@ -9,6 +9,6 @@ import { SubscriptionsService } from "./subscriptions.service";
 @Module({
   controllers: [PlansController, BillingController],
   providers: [PlansService, SubscriptionsService, EntitlementsService, FeatureFlagsService],
-  exports: [EntitlementsService, SubscriptionsService],
+  exports: [EntitlementsService, SubscriptionsService, PlansService],
 })
 export class BillingModule {}

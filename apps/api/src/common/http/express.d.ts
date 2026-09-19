@@ -8,6 +8,7 @@ declare global {
       requestId: string;
       session?: SessionRecord;
       customerSession?: SessionRecord;
+      platformSession?: SessionRecord;
       tenant?: TenantContext;
       apiKey?: ApiKeyPrincipal;
     }

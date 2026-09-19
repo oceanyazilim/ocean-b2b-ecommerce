@@ -7,6 +7,12 @@ const prisma = new PrismaClient();
 const DEMO_EMAIL = "owner@demo.local";
 const DEMO_PASSWORD = "DemoPass123!";
 
+// A platform operator is provisioned here, not through self-serve signup (there is none —
+// PlatformOperator rows are seeded/console-provisioned by design, see the model's comment in
+// schema.prisma). This is the account apps/platform-admin logs in with.
+const PLATFORM_OPERATOR_EMAIL = "operator@ocean.internal";
+const PLATFORM_OPERATOR_PASSWORD = "PlatformOps123!";
+
 // Minimal but real manifest: enough templates/sections/blocks for the theme editor (Phase 10)
 // and a storefront renderer to have something to work with, without pretending to be a full
 // theme.
@@ -258,9 +264,27 @@ async function seedBilling(): Promise<void> {
   });
 }
 
+async function seedPlatformOperator(): Promise<void> {
+  const passwordHash = await hash(PLATFORM_OPERATOR_PASSWORD, {
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 1,
+  });
+  await prisma.platformOperator.upsert({
+    where: { email: PLATFORM_OPERATOR_EMAIL },
+    update: { passwordHash, status: "active" },
+    create: {
+      email: PLATFORM_OPERATOR_EMAIL,
+      name: "Ocean Platform Ops",
+      passwordHash,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   await seedThemes();
   await seedBilling();
+  await seedPlatformOperator();
 
   const passwordHash = await hash(DEMO_PASSWORD, {
     memoryCost: 65536,
@@ -318,6 +342,7 @@ async function main(): Promise<void> {
   });
 
   console.warn(`Seeded ${DEMO_EMAIL} / ${DEMO_PASSWORD} -> ${organization.slug} / ${store.slug}`);
+  console.warn(`Seeded platform operator ${PLATFORM_OPERATOR_EMAIL} / ${PLATFORM_OPERATOR_PASSWORD}`);
 }
 
 main()
