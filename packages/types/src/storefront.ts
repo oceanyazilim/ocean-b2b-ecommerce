@@ -62,6 +62,30 @@ export interface StorefrontProductDetail extends StorefrontProductSummary {
   media: { id: string; kind: string; url: string; alt: string | null }[];
 }
 
+// Quick order (spec §25): a variant-level type-ahead by SKU/title/barcode, and an exact-SKU
+// batch lookup for CSV bulk-add — both return buyer-priced variants, never the raw base price.
+export const storefrontVariantSearchQuerySchema = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    skus: z.string().trim().max(4000).optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .refine((v) => !!v.q || !!v.skus, "Provide q or skus");
+export type StorefrontVariantSearchQuery = z.infer<typeof storefrontVariantSearchQuerySchema>;
+
+export interface StorefrontVariantSearchResult {
+  variantId: string;
+  productId: string;
+  productTitle: string;
+  productHandle: string;
+  variantTitle: string;
+  sku: string | null;
+  image: { url: string; alt: string | null } | null;
+  price: Money;
+  compareAtPrice: Money | null;
+  available: number | null;
+}
+
 export const storefrontCollectionListQuerySchema = cursorPaginationQuerySchema;
 export type StorefrontCollectionListQuery = z.infer<typeof storefrontCollectionListQuerySchema>;
 

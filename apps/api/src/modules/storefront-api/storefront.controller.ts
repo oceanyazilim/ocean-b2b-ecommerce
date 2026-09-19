@@ -2,8 +2,10 @@ import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import {
   storefrontCollectionListQuerySchema,
   storefrontProductListQuerySchema,
+  storefrontVariantSearchQuerySchema,
   type StorefrontCollectionListQuery,
   type StorefrontProductListQuery,
+  type StorefrontVariantSearchQuery,
 } from "@ocean/types";
 
 import { Public } from "../../common/auth/public.decorator";
@@ -36,6 +38,16 @@ export class StorefrontController {
     @Query(new ZodValidationPipe(storefrontProductListQuerySchema)) query: StorefrontProductListQuery,
   ) {
     return this.catalog.listProducts(tenant, query);
+  }
+
+  // Quick order (spec §25): declared before the :idOrHandle route below so a literal path
+  // segment never gets swallowed as a product id/handle.
+  @Get("products/variant-search")
+  searchVariants(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(storefrontVariantSearchQuerySchema)) query: StorefrontVariantSearchQuery,
+  ) {
+    return this.catalog.searchVariants(tenant, query);
   }
 
   @Get("products/:idOrHandle")

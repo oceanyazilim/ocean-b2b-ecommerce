@@ -9,6 +9,8 @@ import type {
   StorefrontProductDetail,
   StorefrontProductListQuery,
   StorefrontProductSummary,
+  StorefrontVariantSearchQuery,
+  StorefrontVariantSearchResult,
   StorefrontVariantSummary,
 } from "@ocean/types";
 
@@ -134,6 +136,74 @@ export class StorefrontCatalogService {
       data: page.map((p) => this.toSummary(p, priceByVariant)),
       pageInfo: { hasNextPage, endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null },
     };
+  }
+
+  // Quick order (spec §25): a buyer-priced, variant-level lookup either by exact SKU list (CSV
+  // bulk-add) or by a free-text match against SKU / barcode / product title (type-ahead search).
+  // Never browses by product card — one row per sellable variant, same catalog/access rules as
+  // the rest of the storefront.
+  async searchVariants(
+    ctx: TenantContext,
+    query: StorefrontVariantSearchQuery,
+  ): Promise<StorefrontVariantSearchResult[]> {
+    const storeId = ctx.storeId as string;
+    const buyer = await this.resolveBuyer(ctx);
+    const access = await this.catalogAccess.resolve(ctx, buyer);
+    const productWhere: Prisma.ProductWhereInput = {
+      storeId,
+      deletedAt: null,
+      status: "active",
+      ...this.catalogAccess.productWhere(access),
+    };
+    const skuList = query.skus
+      ? [...new Set(query.skus.split(",").map((s) => s.trim()).filter(Boolean))]
+      : null;
+    const where: Prisma.ProductVariantWhereInput = {
+      storeId,
+      deletedAt: null,
+      product: productWhere,
+      ...(skuList && skuList.length > 0
+        ? { sku: { in: skuList, mode: "insensitive" } }
+        : query.q
+          ? {
+              OR: [
+                { sku: { contains: query.q, mode: "insensitive" } },
+                { barcode: { contains: query.q, mode: "insensitive" } },
+                { product: { title: { contains: query.q, mode: "insensitive" } } },
+              ],
+            }
+          : {}),
+    };
+    const rows = await this.prisma.productVariant.findMany({
+      where,
+      include: { product: { include: { media: mediaFirst } } },
+      orderBy: { position: "asc" },
+      take: skuList ? Math.max(skuList.length, query.limit) : query.limit,
+    });
+    if (rows.length === 0) return [];
+    const variantIds = rows.map((v) => v.id);
+    const [priceByVariant, availability, store] = await Promise.all([
+      this.priceByVariant(ctx, buyer, variantIds),
+      this.reservations.availability(ctx, variantIds),
+      this.prisma.store.findUnique({ where: { id: storeId }, select: { defaultCurrency: true } }),
+    ]);
+    const currency = store?.defaultCurrency ?? "TRY";
+    return rows.map((v): StorefrontVariantSearchResult => {
+      const priced = priceByVariant.get(v.id);
+      const first = v.product.media.find((m) => !m.media.deletedAt);
+      return {
+        variantId: v.id,
+        productId: v.productId,
+        productTitle: v.product.title,
+        productHandle: v.product.handle,
+        variantTitle: v.title,
+        sku: v.sku,
+        image: first ? { url: this.storage.publicUrl(first.media.storageKey), alt: first.media.alt } : null,
+        price: priced?.unitPrice ?? { amount: Number(v.price), currency },
+        compareAtPrice: priced?.compareAtPrice ?? null,
+        available: availability.get(v.id) ?? null,
+      };
+    });
   }
 
   async getProduct(ctx: TenantContext, idOrHandle: string): Promise<StorefrontProductDetail> {
