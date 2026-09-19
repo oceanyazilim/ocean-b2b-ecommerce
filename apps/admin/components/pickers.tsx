@@ -14,7 +14,7 @@ import { api } from "@/lib/api";
 // Search-as-you-type pickers shared by the pricing and catalog screens. Each renders its own
 // input plus a listbox of results; the caller keeps the selection.
 
-function ResultList<T>({
+export function ResultList<T>({
   items,
   selectedId,
   getId,
@@ -238,6 +238,149 @@ export function CustomerPicker({
           </>
         )}
       />
+    </div>
+  );
+}
+
+// Reusable link-target field: a raw URL, or a search-as-you-type pick of a product, collection
+// or page (resolved to that resource's storefront path). Used by the menu builder for both
+// simple item links and mega-menu column/promo links.
+export const LINK_TARGET_TYPES = ["url", "product", "collection", "page"] as const;
+export type LinkTargetType = (typeof LINK_TARGET_TYPES)[number];
+
+export interface LinkTargetValue {
+  url: string;
+  linkType: LinkTargetType | null;
+  resourceId: string | null;
+}
+
+export const EMPTY_LINK_TARGET: LinkTargetValue = { url: "", linkType: null, resourceId: null };
+
+const LINK_TARGET_LABEL: Record<LinkTargetType, string> = {
+  url: "URL",
+  product: "Product",
+  collection: "Collection",
+  page: "Page",
+};
+
+const RESOURCE_ENDPOINT: Record<Exclude<LinkTargetType, "url">, string> = {
+  product: "products",
+  collection: "collections",
+  page: "pages",
+};
+
+const RESOURCE_PATH_PREFIX: Record<Exclude<LinkTargetType, "url">, string> = {
+  product: "/products",
+  collection: "/collections",
+  page: "/pages",
+};
+
+interface ResourceCandidate {
+  id: string;
+  title: string;
+  handle: string;
+}
+
+export function LinkTargetField({
+  storeId,
+  value,
+  onChange,
+  id,
+  label = "Link",
+}: {
+  storeId: string;
+  value: LinkTargetValue;
+  onChange: (value: LinkTargetValue) => void;
+  id: string;
+  label?: string;
+}) {
+  const mode: LinkTargetType = value.linkType ?? "url";
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState<ResourceCandidate[]>([]);
+
+  useEffect(() => {
+    if (mode === "url") {
+      setItems([]);
+      return;
+    }
+    const handle = setTimeout(() => {
+      const params = new URLSearchParams({ limit: "20" });
+      if (q.trim()) params.set("q", q.trim());
+      void api<{ data: ResourceCandidate[] }>(`/stores/${storeId}/${RESOURCE_ENDPOINT[mode]}?${params}`)
+        .then((res) => setItems(res.data))
+        .catch(() => setItems([]));
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [mode, q, storeId]);
+
+  function setMode(next: LinkTargetType) {
+    setQ("");
+    if (next === "url") {
+      onChange({ url: mode === "url" ? value.url : "", linkType: null, resourceId: null });
+    } else {
+      onChange({ url: "", linkType: next, resourceId: null });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <FormField id={id} label={label}>
+        <div className="flex gap-2">
+          <Select
+            aria-label={`${label} type`}
+            value={mode}
+            onChange={(e) => setMode(e.target.value as LinkTargetType)}
+            className="w-32 shrink-0"
+          >
+            {LINK_TARGET_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {LINK_TARGET_LABEL[t]}
+              </option>
+            ))}
+          </Select>
+          {mode === "url" ? (
+            <Input
+              id={id}
+              placeholder="https:// or /path"
+              value={value.url}
+              onChange={(e) => onChange({ url: e.target.value, linkType: null, resourceId: null })}
+            />
+          ) : (
+            <Input
+              placeholder={`Search ${LINK_TARGET_LABEL[mode].toLowerCase()}s`}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          )}
+        </div>
+      </FormField>
+      {mode !== "url" && value.resourceId && value.url && (
+        <p className="text-sm">
+          Selected: <span className="font-medium">{value.url}</span>
+        </p>
+      )}
+      {mode !== "url" && (
+        <ResultList
+          label={`Matching ${LINK_TARGET_LABEL[mode].toLowerCase()}s`}
+          items={items}
+          selectedId={value.resourceId}
+          getId={(r) => r.id}
+          onPick={(r) =>
+            onChange({
+              url: `${RESOURCE_PATH_PREFIX[mode]}/${r.handle}`,
+              linkType: mode,
+              resourceId: r.id,
+            })
+          }
+          emptyText={`No matching ${LINK_TARGET_LABEL[mode].toLowerCase()}s.`}
+          render={(r) => (
+            <>
+              <span>{r.title}</span>
+              <span className="text-xs text-muted-foreground">/{r.handle}</span>
+            </>
+          )}
+        />
+      )}
     </div>
   );
 }

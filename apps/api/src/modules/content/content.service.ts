@@ -6,11 +6,12 @@ import type {
   UpdatePageInput,
   MenuInput,
   MenuSummary,
+  MenuItemInput,
   MenuItemSummary,
   UpdateMenuInput,
 } from "@ocean/types";
 
-import { ConflictError, NotFoundError } from "../../common/errors/domain-error";
+import { ConflictError, NotFoundError, ValidationError } from "../../common/errors/domain-error";
 import type { RequestMeta } from "../../common/http/request-meta";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
@@ -206,6 +207,13 @@ export class ContentService {
           label: item.label,
           url: item.url,
           position: item.position,
+          linkType: (item.linkType as MenuItemSummary["linkType"]) ?? null,
+          resourceId: item.resourceId,
+          megaMenuEnabled: item.megaMenuEnabled,
+          promoImageUrl: item.promoImageUrl,
+          promoImageAlt: item.promoImageAlt,
+          promoLinkLabel: item.promoLinkLabel,
+          promoLinkUrl: item.promoLinkUrl,
           children: buildTree(items, item.id),
         }));
     };
@@ -238,28 +246,90 @@ export class ContentService {
     return this.toMenuSummary(row);
   }
 
+  // Items form a tree via self-referencing parentId, but a client save has no server-assigned
+  // ids yet — items reference each other by client `tempId`. Create level-by-level (parents
+  // before children) inside the transaction so each parent's real db id is known before its
+  // children are written.
+  private async createMenuItemsTree(
+    tx: Prisma.TransactionClient,
+    menuId: string,
+    items: MenuItemInput[],
+  ): Promise<void> {
+    const byTempId = new Map<string, MenuItemInput>();
+    for (const item of items) {
+      if (byTempId.has(item.tempId)) {
+        throw new ValidationError(`Duplicate menu item id "${item.tempId}".`);
+      }
+      byTempId.set(item.tempId, item);
+    }
+
+    const resolvedIds = new Map<string, string>(); // tempId -> real db id
+    const pending = new Set(byTempId.keys());
+    let guard = pending.size + 1;
+
+    while (pending.size > 0) {
+      if (guard-- <= 0) {
+        throw new ValidationError("Menu items form an invalid or circular parent/child structure.");
+      }
+      let progressed = false;
+      for (const tempId of [...pending]) {
+        const item = byTempId.get(tempId) as MenuItemInput;
+        const parentTempId = item.parentId ?? null;
+        let parentDbId: string | null = null;
+        if (parentTempId) {
+          if (!byTempId.has(parentTempId)) {
+            throw new ValidationError(`Menu item "${item.label}" references an unknown parent.`);
+          }
+          const resolved = resolvedIds.get(parentTempId);
+          if (resolved === undefined) continue; // parent not created yet, retry next pass
+          parentDbId = resolved;
+        }
+        const createdItem = await tx.menuItem.create({
+          data: {
+            menuId,
+            parentId: parentDbId,
+            label: item.label,
+            url: item.url ?? null,
+            position: item.position,
+            linkType: item.linkType ?? null,
+            resourceId: item.resourceId ?? null,
+            megaMenuEnabled: item.megaMenuEnabled ?? false,
+            promoImageUrl: item.promoImageUrl ?? null,
+            promoImageAlt: item.promoImageAlt ?? null,
+            promoLinkLabel: item.promoLinkLabel ?? null,
+            promoLinkUrl: item.promoLinkUrl ?? null,
+          },
+        });
+        resolvedIds.set(tempId, createdItem.id);
+        pending.delete(tempId);
+        progressed = true;
+      }
+      if (!progressed) {
+        throw new ValidationError("Menu items form an invalid or circular parent/child structure.");
+      }
+    }
+  }
+
   async createMenu(ctx: TenantContext, input: MenuInput, meta: RequestMeta): Promise<MenuSummary> {
-    const created = await this.prisma.menu
-      .create({
-        data: {
-          storeId: ctx.storeId as string,
-          organizationId: ctx.organizationId,
-          title: input.title,
-          handle: input.handle,
-          items: input.items ? {
-            create: input.items.map(item => ({
-              label: item.label,
-              url: item.url,
-              position: item.position,
-              parentId: item.parentId,
-            }))
-          } : undefined,
-        },
-        include: { items: true },
-      })
-      .catch((error: unknown) => {
-        if (isUniqueViolation(error)) throw new ConflictError("A menu with this handle already exists.");
-        throw error;
+    const created = await this.prisma
+      .$transaction(async (tx) => {
+        const menu = await tx.menu
+          .create({
+            data: {
+              storeId: ctx.storeId as string,
+              organizationId: ctx.organizationId,
+              title: input.title,
+              handle: input.handle,
+            },
+          })
+          .catch((error: unknown) => {
+            if (isUniqueViolation(error)) throw new ConflictError("A menu with this handle already exists.");
+            throw error;
+          });
+        if (input.items && input.items.length > 0) {
+          await this.createMenuItemsTree(tx, menu.id, input.items);
+        }
+        return menu;
       });
 
     await this.audit.record(
@@ -276,7 +346,7 @@ export class ContentService {
       this.prisma,
     );
     await this.events.publish(ctx, "content.menu.created", { menuId: created.id });
-    return this.toMenuSummary(created);
+    return this.getMenu(ctx, created.id);
   }
 
   async updateMenu(
@@ -302,15 +372,7 @@ export class ContentService {
         if (input.items !== undefined) {
           await tx.menuItem.deleteMany({ where: { menuId: id } });
           if (input.items.length > 0) {
-            await tx.menuItem.createMany({
-              data: input.items.map((item) => ({
-                menuId: id,
-                label: item.label,
-                url: item.url,
-                position: item.position,
-                parentId: item.parentId,
-              })),
-            });
+            await this.createMenuItemsTree(tx, id, input.items);
           }
         }
       })

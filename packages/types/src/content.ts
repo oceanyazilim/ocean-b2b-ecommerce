@@ -39,11 +39,32 @@ export interface PageSummary {
 // Menus
 // ---------------------------------------------------------------------------
 
+export const menuItemLinkTypes = ["url", "product", "collection", "page"] as const;
+export const menuItemLinkTypeSchema = z.enum(menuItemLinkTypes);
+export type MenuItemLinkType = z.infer<typeof menuItemLinkTypeSchema>;
+
 export const menuItemInputSchema = z.object({
+  // Client-assigned id, unique within a single save request. A save always replaces the whole
+  // item list (items have no stable identity from the client's perspective — same pattern as a
+  // theme template's configuration), so `tempId` / `parentId` below are used purely to wire up
+  // parent-child relationships within *this* request; the server assigns real ids on write.
+  tempId: z.string().trim().min(1).max(64),
   label: z.string().trim().min(1).max(255),
   url: z.string().trim().nullable().optional(),
   position: z.number().int().min(0).default(0),
-  parentId: z.string().uuid().nullable().optional(),
+  // References another item's `tempId` in the same request, or null for a top-level item.
+  parentId: z.string().trim().max(64).nullable().optional(),
+  // Link-target metadata: set when the link was chosen via a resource picker instead of typed
+  // as a raw URL. `url` must still be populated with the resolved href.
+  linkType: menuItemLinkTypeSchema.nullable().optional(),
+  resourceId: z.string().uuid().nullable().optional(),
+  // Mega menu: meaningful on top-level items only. When enabled, this item's children are
+  // rendered as columns (heading + links) instead of a flat flyout list.
+  megaMenuEnabled: z.boolean().optional().default(false),
+  promoImageUrl: z.string().trim().max(2048).nullable().optional(),
+  promoImageAlt: z.string().trim().max(255).nullable().optional(),
+  promoLinkLabel: z.string().trim().max(255).nullable().optional(),
+  promoLinkUrl: z.string().trim().max(2048).nullable().optional(),
 });
 export type MenuItemInput = z.infer<typeof menuItemInputSchema>;
 
@@ -67,6 +88,13 @@ export interface MenuItemSummary {
   label: string;
   url: string | null;
   position: number;
+  linkType: MenuItemLinkType | null;
+  resourceId: string | null;
+  megaMenuEnabled: boolean;
+  promoImageUrl: string | null;
+  promoImageAlt: string | null;
+  promoLinkLabel: string | null;
+  promoLinkUrl: string | null;
   children: MenuItemSummary[];
 }
 

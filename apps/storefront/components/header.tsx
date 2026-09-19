@@ -3,6 +3,7 @@ import { UserIcon } from "@ocean/ui";
 import Link from "next/link";
 
 import { CartLink } from "./cart-link";
+import { NavMenu } from "./nav-menu";
 
 export function Header({
   logoUrl,
@@ -30,16 +31,7 @@ export function Header({
           <Link href="/collections" className="text-foreground/80 transition-colors hover:text-foreground">
             Shop
           </Link>
-          {nav &&
-            nav.items?.map((item) => (
-              <Link
-                key={item.id}
-                href={item.url ?? "#"}
-                className="text-foreground/80 transition-colors hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
+          {nav && <NavMenu items={nav.items ?? []} />}
         </nav>
         <div className="flex items-center gap-1">
           <Link

@@ -2224,6 +2224,22 @@ model MenuItem {
   url      String?
   position Int     @default(0)
 
+  // Link-target metadata: when the link was chosen via a resource picker (product/collection/
+  // page) rather than typed as a raw URL, `linkType` + `resourceId` record the original target
+  // so the admin builder can re-select it on edit; `url` always holds the resolved href used by
+  // the storefront regardless of how the link was picked.
+  linkType String? @map("link_type") // "url" | "product" | "collection" | "page"
+  resourceId String? @map("resource_id") @db.Uuid
+
+  // Mega menu (top-level items only): when enabled, this item's children are rendered as
+  // columns (child = column heading, grandchild = column link) instead of a flat flyout list,
+  // plus an optional single featured image/link promo block.
+  megaMenuEnabled Boolean @default(false) @map("mega_menu_enabled")
+  promoImageUrl   String? @map("promo_image_url")
+  promoImageAlt   String? @map("promo_image_alt")
+  promoLinkLabel  String? @map("promo_link_label")
+  promoLinkUrl    String? @map("promo_link_url")
+
   menu     Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
   parent   MenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
   children MenuItem[] @relation("MenuTree")
