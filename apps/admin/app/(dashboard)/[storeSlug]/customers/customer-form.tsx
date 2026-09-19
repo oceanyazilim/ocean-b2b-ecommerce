@@ -17,17 +17,21 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CheckIcon,
   Checkbox,
+  CompaniesIcon,
   ConfirmDialog,
   FormField,
   Input,
   Select,
+  Tabs,
   TagInput,
   Textarea,
+  type TabItem,
 } from "@ocean/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   AddressFields,
@@ -42,6 +46,7 @@ import { formatMoney } from "@/lib/money";
 import { useSubmit } from "@/lib/use-submit";
 
 import { CustomerAddresses } from "./customer-addresses";
+import { CustomerOrders } from "./customer-orders";
 
 const CONSENT_LABEL: Record<MarketingConsent, string> = {
   not_subscribed: "Not subscribed",
@@ -51,8 +56,11 @@ const CONSENT_LABEL: Record<MarketingConsent, string> = {
 
 const FORM_ID = "customer-form";
 
-// The editable fields live in one <form>; the address manager (which opens its own dialog
-// forms) and the company list render outside it so forms never nest.
+type ProfileTab = "overview" | "orders" | "addresses" | "notes" | "timeline";
+
+// The editable fields live in one <form>, always mounted regardless of which tab is active (so
+// the header's Save button — which targets it by id — always works); the address manager (which
+// opens its own dialog forms) renders outside it so forms never nest.
 export function CustomerForm({
   storeId,
   storeSlug,
@@ -60,6 +68,7 @@ export function CustomerForm({
   definitions,
   metafields,
   readOnly = false,
+  canViewOrders = false,
 }: {
   storeId: string;
   storeSlug: string;
@@ -67,9 +76,11 @@ export function CustomerForm({
   definitions: MetafieldDefinitionSummary[];
   metafields: MetafieldValue[];
   readOnly?: boolean;
+  canViewOrders?: boolean;
 }) {
   const router = useRouter();
   const { pending, error, fieldErrors, run } = useSubmit();
+  const [tab, setTab] = useState<ProfileTab>("overview");
   const [email, setEmail] = useState(customer?.email ?? "");
   const [firstName, setFirstName] = useState(customer?.firstName ?? "");
   const [lastName, setLastName] = useState(customer?.lastName ?? "");
@@ -88,6 +99,12 @@ export function CustomerForm({
   const [conflict, setConflict] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 4000);
+    return () => clearTimeout(timer);
+  }, [saved]);
 
   const payload = () => ({
     email,
@@ -153,6 +170,18 @@ export function CustomerForm({
   const title = customer ? customer.displayName : "New customer";
   const metaError = Object.entries(fieldErrors).find(([p]) => p.startsWith("metafields"))?.[1];
 
+  const tabItems: TabItem<ProfileTab>[] = customer
+    ? [
+        { value: "overview", label: "Overview" },
+        ...(canViewOrders
+          ? ([{ value: "orders", label: "Orders", count: customer.ordersCount }] as const)
+          : []),
+        { value: "addresses", label: "Addresses", count: customer.addresses.length },
+        { value: "notes", label: "Notes" },
+        { value: "timeline", label: "Timeline" },
+      ]
+    : [];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -169,7 +198,19 @@ export function CustomerForm({
               <Badge variant={customer.status === "active" ? "success" : "secondary"}>
                 {customer.status}
               </Badge>
-              {customer.kind === "company_buyer" && <Badge>Company buyer</Badge>}
+              {customer.emailMarketing === "subscribed" && (
+                <Badge variant="secondary">Subscribed</Badge>
+              )}
+              {customer.kind === "company_buyer" && customer.companies.length > 0 && (
+                <Link
+                  href={`/${storeSlug}/companies/${customer.companies[0]!.companyId}/users`}
+                  className="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-xs font-medium text-foreground hover:underline"
+                >
+                  <CompaniesIcon className="h-3.5 w-3.5" />
+                  {customer.companies[0]!.companyName}
+                  {customer.companies.length > 1 ? ` +${customer.companies.length - 1}` : ""}
+                </Link>
+              )}
               <span>
                 {customer.hasAccount ? "Has storefront account" : "No storefront account"}
               </span>
@@ -179,6 +220,12 @@ export function CustomerForm({
         </div>
         {!readOnly && (
           <div className="flex items-center gap-2">
+            {saved && !pending && (
+              <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                <CheckIcon className="h-4 w-4 text-success" />
+                Saved
+              </span>
+            )}
             {customer && (
               <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)}>
                 Delete
@@ -197,10 +244,14 @@ export function CustomerForm({
         </Alert>
       )}
       {error && !conflict && <Alert variant="error">{error}</Alert>}
-      {saved && <Alert variant="success">Saved.</Alert>}
+      {readOnly && <Alert variant="info">You can view this customer but not change it.</Alert>}
+
+      {customer && <Tabs aria-label="Customer profile sections" value={tab} onChange={setTab} items={tabItems} />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr] lg:items-start">
         <form id={FORM_ID} onSubmit={(e) => void onSubmit(e)} className="contents">
+        {(!customer || tab === "overview") && (
+          <>
           <div className="flex flex-col gap-6">
             <Card>
               <CardHeader>
@@ -309,7 +360,7 @@ export function CustomerForm({
                     <div className="text-lg font-semibold tabular-nums">{customer.ordersCount}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Total spent</div>
+                    <div className="text-muted-foreground">Lifetime value</div>
                     <div className="text-lg font-semibold tabular-nums">
                       {formatMoney(customer.totalSpent)}
                     </div>
@@ -317,7 +368,7 @@ export function CustomerForm({
                   <div className="col-span-2 text-xs text-muted-foreground">
                     {customer.lastOrderAt
                       ? `Last order ${new Date(customer.lastOrderAt).toLocaleDateString()}`
-                      : "No orders yet (orders arrive in Phase 6)."}
+                      : "No orders yet."}
                   </div>
                 </CardContent>
               </Card>
@@ -372,39 +423,11 @@ export function CustomerForm({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Tags &amp; notes</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <FormField id="c-tags" label="Tags" error={fieldErrors.tags}>
-                  <TagInput id="c-tags" value={tags} onChange={setTags} disabled={readOnly} />
-                </FormField>
-                <FormField id="c-note" label="Note" error={fieldErrors.note}>
-                  <Textarea
-                    id="c-note"
-                    rows={4}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    maxLength={2000}
-                    disabled={readOnly}
-                  />
-                </FormField>
-              </CardContent>
-            </Card>
-          </div>
-        </form>
-
-        {customer && (
-          <div className="flex flex-col gap-6">
-            <CustomerAddresses storeId={storeId} customer={customer} readOnly={readOnly} />
-            {customer.companies.length > 0 && (
+            {customer && customer.companies.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Companies</CardTitle>
-                  <CardDescription>
-                    B2B accounts this customer can buy on behalf of.
-                  </CardDescription>
+                  <CardDescription>B2B accounts this customer can buy on behalf of.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col divide-y">
                   {customer.companies.map((m) => (
@@ -438,8 +461,48 @@ export function CustomerForm({
               </Card>
             )}
           </div>
+          </>
         )}
+
+        {customer && tab === "notes" && (
+          <div className="flex flex-col gap-6 lg:col-span-2">
+            <Card className="max-w-2xl">
+              <CardHeader>
+                <CardTitle>Notes &amp; tags</CardTitle>
+                <CardDescription>
+                  A single freeform note plus tags used for search, filtering and bulk actions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <FormField id="c-tags" label="Tags" error={fieldErrors.tags}>
+                  <TagInput id="c-tags" value={tags} onChange={setTags} disabled={readOnly} />
+                </FormField>
+                <FormField id="c-note" label="Note" error={fieldErrors.note}>
+                  <Textarea
+                    id="c-note"
+                    rows={8}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    maxLength={2000}
+                    disabled={readOnly}
+                  />
+                </FormField>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        </form>
       </div>
+
+      {customer && tab === "orders" && canViewOrders && (
+        <CustomerOrders storeId={storeId} storeSlug={storeSlug} customerId={customer.id} />
+      )}
+
+      {customer && tab === "addresses" && (
+        <CustomerAddresses storeId={storeId} customer={customer} readOnly={readOnly} />
+      )}
+
+      {customer && tab === "timeline" && <CustomerTimeline customer={customer} />}
 
       <ConfirmDialog
         open={confirmDelete}
@@ -452,5 +515,52 @@ export function CustomerForm({
         pending={pending}
       />
     </div>
+  );
+}
+
+// There's no audit-log lookup by resourceId (the audit-logs endpoint only filters by
+// resourceType/date range across the whole store, which doesn't scale to "this one customer's
+// history"), so this timeline is built from the real timestamped fields already on the customer
+// record rather than a fabricated activity feed.
+function CustomerTimeline({ customer }: { customer: CustomerDetail }) {
+  const events: { at: string; label: string }[] = [
+    { at: customer.createdAt, label: "Customer created" },
+  ];
+  if (customer.emailMarketingUpdatedAt) {
+    events.push({
+      at: customer.emailMarketingUpdatedAt,
+      label: `Email marketing set to "${CONSENT_LABEL[customer.emailMarketing]}"`,
+    });
+  }
+  if (customer.lastOrderAt) {
+    events.push({ at: customer.lastOrderAt, label: "Last order placed" });
+  }
+  if (customer.updatedAt && customer.updatedAt !== customer.createdAt) {
+    events.push({ at: customer.updatedAt, label: "Profile last updated" });
+  }
+  events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Timeline</CardTitle>
+        <CardDescription>Key lifecycle events for this customer.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ol className="flex flex-col gap-4">
+          {events.map((e, i) => (
+            <li key={i} className="flex items-start gap-3 text-sm">
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
+              <div>
+                <div className="font-medium">{e.label}</div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(e.at).toLocaleString()}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }

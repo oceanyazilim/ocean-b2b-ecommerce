@@ -48,6 +48,7 @@ export default async function CustomerPage({
       definitions={definitions.data}
       metafields={metafields.data}
       readOnly={!can(store, "customers.write")}
+      canViewOrders={can(store, "orders.read")}
     />
   );
 }

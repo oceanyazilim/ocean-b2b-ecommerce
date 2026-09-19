@@ -1,6 +1,6 @@
 "use client";
 
-import type { Paginated, ProductStatus, ProductSummary } from "@ocean/types";
+import type { CollectionSummary, Paginated, ProductStatus, ProductSummary } from "@ocean/types";
 import {
   Alert,
   Badge,
@@ -8,6 +8,7 @@ import {
   ConfirmDialog,
   DataGrid,
   Input,
+  Select,
   Tabs,
   type DataGridColumn,
 } from "@ocean/ui";
@@ -42,6 +43,9 @@ export function ProductsList({
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusTab>("all");
   const [sort, setSort] = useState<Sort>("created_desc");
+  const [collectionId, setCollectionId] = useState("");
+  const [tag, setTag] = useState("");
+  const [collections, setCollections] = useState<CollectionSummary[]>([]);
   const [pages, setPages] = useState<ProductSummary[][]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasNext, setHasNext] = useState(false);
@@ -52,6 +56,14 @@ export function ProductsList({
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Collections back a real filter (the API's collectionId param); this is display-only, so a
+  // role without collections.read just sees the filter stay empty instead of erroring the page.
+  useEffect(() => {
+    api<Paginated<CollectionSummary>>(`/stores/${storeId}/collections?limit=100`)
+      .then((res) => setCollections(res.data))
+      .catch(() => setCollections([]));
+  }, [storeId]);
+
   const load = useCallback(
     async (after: string | null, append: boolean) => {
       setLoading(!append);
@@ -60,6 +72,8 @@ export function ProductsList({
         const params = new URLSearchParams({ limit: "25", sort });
         if (q.trim()) params.set("q", q.trim());
         if (status !== "all") params.set("status", status);
+        if (collectionId) params.set("collectionId", collectionId);
+        if (tag.trim()) params.set("tag", tag.trim());
         if (after) params.set("cursor", after);
         const res = await api<Paginated<ProductSummary>>(`/stores/${storeId}/products?${params}`);
         setPages((prev) => (append ? [...prev, res.data] : [res.data]));
@@ -71,15 +85,16 @@ export function ProductsList({
         setLoading(false);
       }
     },
-    [storeId, q, status, sort],
+    [storeId, q, status, collectionId, tag, sort],
   );
 
   useEffect(() => {
-    const handle = setTimeout(() => void load(null, false), q ? 250 : 0);
+    const handle = setTimeout(() => void load(null, false), q || tag ? 250 : 0);
     return () => clearTimeout(handle);
-  }, [load, q]);
+  }, [load, q, tag]);
 
   const rows = useMemo(() => pages.flat(), [pages]);
+  const filtersActive = !!collectionId || !!tag.trim();
 
   async function bulk(action: "archive" | "unarchive" | "delete") {
     setBusy(true);
@@ -144,7 +159,9 @@ export function ProductsList({
             <Link href={`/${storeSlug}/products/${p.id}`} className="font-medium hover:underline">
               {p.title}
             </Link>
-            <div className="text-xs text-muted-foreground">{p.vendor ?? "—"}</div>
+            <div className="text-xs text-muted-foreground">
+              {p.variantCount} variant{p.variantCount === 1 ? "" : "s"}
+            </div>
           </div>
         </div>
       ),
@@ -155,14 +172,14 @@ export function ProductsList({
       cell: (p) => <Badge variant={STATUS_BADGE[p.status]}>{p.status}</Badge>,
     },
     {
+      key: "vendor",
+      header: "Vendor",
+      cell: (p) => <span className="text-muted-foreground">{p.vendor ?? "—"}</span>,
+    },
+    {
       key: "type",
       header: "Type",
       cell: (p) => <span className="text-muted-foreground">{p.productType ?? "—"}</span>,
-    },
-    {
-      key: "variants",
-      header: "Variants",
-      cell: (p) => <span className="tabular-nums">{p.variantCount}</span>,
     },
     {
       key: "price",
@@ -232,13 +249,49 @@ export function ProductsList({
         ]}
       />
 
-      <Input
-        placeholder="Search by title, vendor, type or SKU"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        className="max-w-md"
-        aria-label="Search products"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          placeholder="Search by title, vendor, type or SKU"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="max-w-md"
+          aria-label="Search products"
+        />
+        <Select
+          aria-label="Filter by collection"
+          value={collectionId}
+          onChange={(e) => setCollectionId(e.target.value)}
+          className="w-auto max-w-[220px]"
+        >
+          <option value="">All collections</option>
+          {collections.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </Select>
+        <Input
+          placeholder="Filter by tag"
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+          className="w-auto max-w-[180px]"
+          aria-label="Filter by tag"
+        />
+        {(filtersActive || q) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setQ("");
+              setCollectionId("");
+              setTag("");
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
 
       {error && <Alert variant="error">{error}</Alert>}
 
@@ -269,13 +322,14 @@ export function ProductsList({
           </>
         }
         empty={{
-          title: q || status !== "all" ? "No products match" : "No products yet",
+          title:
+            q || status !== "all" || filtersActive ? "No products match" : "No products yet",
           description:
-            q || status !== "all"
-              ? "Try a different search or status."
+            q || status !== "all" || filtersActive
+              ? "Try a different search, status or filter."
               : "Add your first product to start building your catalog.",
           action:
-            canWrite && !q && status === "all" ? (
+            canWrite && !q && status === "all" && !filtersActive ? (
               <Link href={`/${storeSlug}/products/new`}>
                 <Button>Add your first product</Button>
               </Link>

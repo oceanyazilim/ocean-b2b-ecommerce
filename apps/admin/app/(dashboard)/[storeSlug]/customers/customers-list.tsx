@@ -1,6 +1,12 @@
 "use client";
 
-import type { CustomerKind, CustomerStats, CustomerSummary, Paginated } from "@ocean/types";
+import type {
+  CompanySummary,
+  CustomerKind,
+  CustomerStats,
+  CustomerSummary,
+  Paginated,
+} from "@ocean/types";
 import {
   Alert,
   Badge,
@@ -10,6 +16,7 @@ import {
   Dialog,
   FormField,
   Input,
+  Select,
   Tabs,
   type DataGridColumn,
 } from "@ocean/ui";
@@ -36,6 +43,9 @@ export function CustomersList({
   const [q, setQ] = useState("");
   const [view, setView] = useState<View>("all");
   const [sort, setSort] = useState<Sort>("created_desc");
+  const [companyId, setCompanyId] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [pages, setPages] = useState<CustomerSummary[][]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasNext, setHasNext] = useState(false);
@@ -48,6 +58,14 @@ export function CustomersList({
   const [tag, setTag] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Companies back the real companyId filter (B2B buyers belong to a company); display-only, so
+  // a role without companies.read just sees the filter stay empty.
+  useEffect(() => {
+    api<Paginated<CompanySummary>>(`/stores/${storeId}/companies?limit=100`)
+      .then((res) => setCompanies(res.data))
+      .catch(() => setCompanies([]));
+  }, [storeId]);
+
   const load = useCallback(
     async (after: string | null, append: boolean) => {
       setLoading(!append);
@@ -57,6 +75,8 @@ export function CustomersList({
         if (q.trim()) params.set("q", q.trim());
         if (view === "disabled") params.set("status", "disabled");
         else if (view !== "all") params.set("kind", view satisfies CustomerKind);
+        if (companyId) params.set("companyId", companyId);
+        if (tagFilter.trim()) params.set("tag", tagFilter.trim());
         if (after) params.set("cursor", after);
         const [res, s] = await Promise.all([
           api<Paginated<CustomerSummary>>(`/stores/${storeId}/customers?${params}`),
@@ -72,15 +92,16 @@ export function CustomersList({
         setLoading(false);
       }
     },
-    [storeId, q, view, sort],
+    [storeId, q, view, companyId, tagFilter, sort],
   );
 
   useEffect(() => {
-    const handle = setTimeout(() => void load(null, false), q ? 250 : 0);
+    const handle = setTimeout(() => void load(null, false), q || tagFilter ? 250 : 0);
     return () => clearTimeout(handle);
-  }, [load, q]);
+  }, [load, q, tagFilter]);
 
   const rows = useMemo(() => pages.flat(), [pages]);
+  const filtersActive = !!companyId || !!tagFilter.trim();
 
   async function bulk(action: "add_tag" | "remove_tag" | "disable" | "enable" | "delete") {
     setBusy(true);
@@ -138,6 +159,25 @@ export function CustomersList({
       ),
     },
     {
+      key: "tags",
+      header: "Tags",
+      cell: (c) =>
+        c.tags.length ? (
+          <div className="flex flex-wrap gap-1">
+            {c.tags.slice(0, 3).map((t) => (
+              <Badge key={t} variant="secondary">
+                {t}
+              </Badge>
+            ))}
+            {c.tags.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{c.tags.length - 3}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
       key: "location",
       header: "Location",
       cell: (c) => (
@@ -156,10 +196,19 @@ export function CustomersList({
     },
     {
       key: "spent",
-      header: "Spent",
+      header: "Lifetime value",
       sortable: true,
       className: "text-right",
       cell: (c) => <span className="tabular-nums">{formatMoney(c.totalSpent)}</span>,
+    },
+    {
+      key: "lastOrder",
+      header: "Last order",
+      cell: (c) => (
+        <span className="text-muted-foreground">
+          {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString() : "—"}
+        </span>
+      ),
     },
     {
       key: "created",
@@ -186,7 +235,7 @@ export function CustomersList({
             direction: sort === "created_asc" ? ("asc" as const) : ("desc" as const),
           };
 
-  const filtered = q.trim() !== "" || view !== "all";
+  const filtered = q.trim() !== "" || view !== "all" || filtersActive;
 
   return (
     <div className="flex flex-col gap-4">
@@ -219,13 +268,49 @@ export function CustomersList({
         ]}
       />
 
-      <Input
-        placeholder="Search by name, email, phone or tag"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        className="max-w-md"
-        aria-label="Search customers"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          placeholder="Search by name, email, phone or tag"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="max-w-md"
+          aria-label="Search customers"
+        />
+        <Select
+          aria-label="Filter by company"
+          value={companyId}
+          onChange={(e) => setCompanyId(e.target.value)}
+          className="w-auto max-w-[220px]"
+        >
+          <option value="">All companies</option>
+          {companies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.displayName}
+            </option>
+          ))}
+        </Select>
+        <Input
+          placeholder="Filter by tag"
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+          className="w-auto max-w-[180px]"
+          aria-label="Filter by tag"
+        />
+        {(filtersActive || q) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setQ("");
+              setCompanyId("");
+              setTagFilter("");
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
 
       {error && <Alert variant="error">{error}</Alert>}
 
