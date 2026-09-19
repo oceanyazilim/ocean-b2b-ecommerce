@@ -2,10 +2,29 @@ import { Badge, EmptyState } from "@ocean/ui";
 import Link from "next/link";
 
 import { listAccountQuotes } from "@/lib/account";
+import { isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
 export default async function AccountQuotesPage() {
-  const quotes = await listAccountQuotes(50);
+  // A signed-in individual buyer (no company) can land here directly (bookmark, back button,
+  // typed URL) even though AccountSidebar hides this link for them. The API throws
+  // ForbiddenError in that case — treat it the same way company/page.tsx treats "no membership":
+  // a graceful not-available message, not a crash.
+  let quotes: Awaited<ReturnType<typeof listAccountQuotes>> | null = null;
+  try {
+    quotes = await listAccountQuotes(50);
+  } catch (error) {
+    if (!isApiError(error, "forbidden")) throw error;
+  }
+
+  if (!quotes) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
+        <p className="text-sm text-muted-foreground">Quotes aren&apos;t available for your account.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

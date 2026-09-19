@@ -59,10 +59,20 @@ export class OrdersService {
     return { storeId: ctx.storeId as string, organizationId: ctx.organizationId };
   }
 
-  async list(ctx: TenantContext, query: OrderListQuery): Promise<Paginated<OrderSummary>> {
+  // extraWhere is ANDed onto the rest of the filters below. It exists for callers (the storefront
+  // account portal) that need an OR condition — e.g. "my own orders OR my company's orders" —
+  // that the flat customerId/companyId query fields can't express, without changing what those
+  // fields mean for the admin UI or the public orders API, which both still get plain AND
+  // semantics when they pass customerId/companyId through the query.
+  async list(
+    ctx: TenantContext,
+    query: OrderListQuery,
+    extraWhere?: Prisma.OrderWhereInput,
+  ): Promise<Paginated<OrderSummary>> {
     const numeric = query.q?.replace(/^#/, "");
     const where: Prisma.OrderWhereInput = {
       ...this.scope(ctx),
+      ...(extraWhere ?? {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.open ? { status: { in: [...OPEN_STATUSES] } } : {}),
       ...(query.paymentStatus ? { paymentStatus: query.paymentStatus } : {}),

@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@ocean/db";
 import type { CompanyPermission } from "@ocean/permissions";
 import { satisfies } from "@ocean/permissions";
 import type {
@@ -134,11 +135,17 @@ export class AccountService {
       status: query.status,
       open: query.open,
       sort: "created_desc",
-      // A company buyer sees every order placed for their company; an individual (no company
-      // membership) sees only orders placed under their own customer id.
-      ...(membership ? { companyId: membership.companyId } : { customerId }),
     };
-    return this.orders.list(tenant, scoped);
+    // A company buyer sees every order placed for their company (Order.companyId), PLUS any
+    // order they personally placed themselves (Order.customerId), including orders placed as an
+    // individual before they joined a company (customerId = them, companyId = null, so it isn't
+    // covered by the companyId clause alone). An individual with no membership only gets the
+    // customerId clause. Both halves of the OR are anchored to *this* customer's id or *their*
+    // own company's id, so this can't surface another customer's or another company's orders.
+    const buyerScope: Prisma.OrderWhereInput = membership
+      ? { OR: [{ customerId }, { companyId: membership.companyId }] }
+      : { customerId };
+    return this.orders.list(tenant, scoped, buyerScope);
   }
 
   async getOrder(
@@ -148,9 +155,12 @@ export class AccountService {
     id: string,
   ): Promise<OrderDetail> {
     const order = await this.orders.get(tenant, id);
-    const owns = membership
-      ? order.buyer.company?.id === membership.companyId
-      : order.buyer.customer?.id === customerId;
+    // Same two-way check as listOrders: an order the customer placed themselves is always theirs
+    // (even a pre-membership individual order with no companyId), and a company member also owns
+    // every order placed for their company by any teammate.
+    const owns =
+      order.buyer.customer?.id === customerId ||
+      (membership !== null && order.buyer.company?.id === membership.companyId);
     // 404, not 403: a buyer must not learn that some other company's order id exists at all.
     if (!owns) throw new NotFoundError("Order");
     return order;
