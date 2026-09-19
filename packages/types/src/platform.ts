@@ -20,6 +20,7 @@ export interface PlatformOperatorSummary {
   email: string;
   name: string;
   status: "active" | "suspended";
+  role: "viewer" | "operator" | "admin";
   createdAt: string;
 }
 

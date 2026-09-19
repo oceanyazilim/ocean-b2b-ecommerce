@@ -10,14 +10,19 @@ import {
 
 import { CurrentPlatformOperatorId } from "../../common/auth/current-platform-operator.decorator";
 import { Public } from "../../common/auth/public.decorator";
+import { PlatformRoleGuard } from "../../common/auth/platform-role.guard";
 import { PlatformSessionGuard } from "../../common/auth/platform-session.guard";
+import { RequirePlatformRole } from "../../common/auth/require-platform-role.decorator";
 import { ReqMeta, type RequestMeta } from "../../common/http/request-meta";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { PlatformFeatureFlagsService } from "./platform-feature-flags.service";
 
+// list/read stays open to any active operator (viewer and up); every mutation below requires at
+// least the "operator" role — see PlatformRoleGuard and the PlatformOperator model's comment in
+// schema.prisma.
 @Controller("platform/feature-flags")
 @Public()
-@UseGuards(PlatformSessionGuard)
+@UseGuards(PlatformSessionGuard, PlatformRoleGuard)
 export class PlatformFeatureFlagsController {
   constructor(private readonly flags: PlatformFeatureFlagsService) {}
 
@@ -27,6 +32,7 @@ export class PlatformFeatureFlagsController {
   }
 
   @Post()
+  @RequirePlatformRole("operator")
   create(
     @Body(new ZodValidationPipe(createFeatureFlagInputSchema)) body: CreateFeatureFlagInput,
     @CurrentPlatformOperatorId() operatorId: string,
@@ -36,6 +42,7 @@ export class PlatformFeatureFlagsController {
   }
 
   @Patch(":key")
+  @RequirePlatformRole("operator")
   update(
     @Param("key") key: string,
     @Body(new ZodValidationPipe(updateFeatureFlagInputSchema)) body: UpdateFeatureFlagInput,
@@ -46,6 +53,7 @@ export class PlatformFeatureFlagsController {
   }
 
   @Put(":key/targets")
+  @RequirePlatformRole("operator")
   setTarget(
     @Param("key") key: string,
     @Body(new ZodValidationPipe(setFeatureFlagTargetInputSchema)) body: SetFeatureFlagTargetInput,
@@ -56,6 +64,7 @@ export class PlatformFeatureFlagsController {
   }
 
   @Delete(":key/targets/:targetId")
+  @RequirePlatformRole("operator")
   removeTarget(
     @Param("key") key: string,
     @Param("targetId") targetId: string,

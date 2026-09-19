@@ -270,13 +270,18 @@ async function seedPlatformOperator(): Promise<void> {
     timeCost: 3,
     parallelism: 1,
   });
+  // Seeded as "admin" (not the schema default of "viewer") so this account — the one
+  // apps/platform-admin's own login screen and this repo's manual/verification testing use — can
+  // still exercise every mutating platform route, same as it always implicitly could before
+  // PlatformOperatorRole existed.
   await prisma.platformOperator.upsert({
     where: { email: PLATFORM_OPERATOR_EMAIL },
-    update: { passwordHash, status: "active" },
+    update: { passwordHash, status: "active", role: "admin" },
     create: {
       email: PLATFORM_OPERATOR_EMAIL,
       name: "Ocean Platform Ops",
       passwordHash,
+      role: "admin",
     },
   });
 }

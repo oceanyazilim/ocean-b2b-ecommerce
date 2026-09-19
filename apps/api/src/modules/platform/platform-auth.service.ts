@@ -14,6 +14,7 @@ function toSummary(operator: {
   email: string;
   name: string;
   status: string;
+  role: string;
   createdAt: Date;
 }): PlatformOperatorSummary {
   return {
@@ -21,6 +22,7 @@ function toSummary(operator: {
     email: operator.email,
     name: operator.name,
     status: operator.status as PlatformOperatorSummary["status"],
+    role: operator.role as PlatformOperatorSummary["role"],
     createdAt: operator.createdAt.toISOString(),
   };
 }
@@ -49,7 +51,14 @@ export class PlatformAuthService {
       throw new UnauthenticatedError("Email or password is incorrect.");
     }
 
-    const session = await this.sessions.create("platform", operator.id, meta, { mfaVerified: true });
+    // There is no MFA challenge anywhere in the platform-operator auth flow (unlike the merchant
+    // flow's real mfa-verify/mfa-disable/mfa-recovery routes in apps/api/src/modules/auth) — so
+    // this must not claim mfaVerified: true, which would be a lie about a factor that was never
+    // checked. Nothing downstream currently branches on a platform session's mfaVerified (it's
+    // merchant-only: AuthService gates the new-device email and SessionSummary display on it),
+    // but omitting it here — same as SessionService's own default — means any future gate fails
+    // closed instead of trusting a false claim baked in at login time.
+    const session = await this.sessions.create("platform", operator.id, meta);
     await this.audit.record({
       actorType: "platform",
       actorId: operator.id,

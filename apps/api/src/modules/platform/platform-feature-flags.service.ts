@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Injectable } from "@nestjs/common";
 import type {
   CreateFeatureFlagInput,
@@ -153,38 +155,50 @@ export class PlatformFeatureFlagsService {
       if (!store) throw new ValidationError("Store not found.", [{ path: "storeId", message: "Not found" }]);
     }
 
-    const existing = await this.prisma.featureFlagTarget.findFirst({
-      where: {
-        flagId: flag.id,
-        organizationId: input.organizationId ?? null,
-        storeId: input.storeId ?? null,
-      },
-    });
-    if (existing) {
-      await this.prisma.featureFlagTarget.update({
-        where: { id: existing.id },
-        data: { enabled: input.enabled },
-      });
-    } else {
-      await this.prisma.featureFlagTarget.create({
-        data: {
-          flagId: flag.id,
+    // A real DB-level upsert against the partial unique index that backs "one target row per
+    // (flag, organization) / (flag, store)" (see this table's @@index comment in schema.prisma and
+    // the feature_flag_targets_one_target migration) — not the findFirst-then-create/update this
+    // replaced, which raced: two concurrent setTarget calls for the same target could both see no
+    // existing row and both insert one. Postgres now rejects the second insert's conflict itself,
+    // and ON CONFLICT ... DO UPDATE turns that into the intended update. Prisma's schema DSL can't
+    // express a partial unique constraint, so there's no generated `upsert()` for it — this is the
+    // raw-SQL equivalent. Wrapped in a transaction so the row write and its audit entry commit
+    // together.
+    await this.prisma.$transaction(async (tx) => {
+      if (input.organizationId) {
+        await tx.$executeRaw`
+          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "enabled", "created_at", "updated_at")
+          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, ${input.organizationId}::uuid, NULL, ${input.enabled}, now(), now())
+          ON CONFLICT ("flag_id", "organization_id") WHERE "organization_id" IS NOT NULL
+          DO UPDATE SET "enabled" = EXCLUDED."enabled", "updated_at" = now()
+        `;
+      } else {
+        await tx.$executeRaw`
+          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "enabled", "created_at", "updated_at")
+          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, NULL, ${input.storeId}::uuid, ${input.enabled}, now(), now())
+          ON CONFLICT ("flag_id", "store_id") WHERE "store_id" IS NOT NULL
+          DO UPDATE SET "enabled" = EXCLUDED."enabled", "updated_at" = now()
+        `;
+      }
+      await this.audit.record(
+        {
           organizationId: input.organizationId ?? null,
           storeId: input.storeId ?? null,
-          enabled: input.enabled,
+          actorType: "platform",
+          actorId: operatorId,
+          action: "feature_flag.target_set",
+          resourceType: "feature_flag",
+          resourceId: flag.id,
+          after: {
+            key: flag.key,
+            organizationId: input.organizationId,
+            storeId: input.storeId,
+            enabled: input.enabled,
+          },
+          meta,
         },
-      });
-    }
-    await this.audit.record({
-      organizationId: input.organizationId ?? null,
-      storeId: input.storeId ?? null,
-      actorType: "platform",
-      actorId: operatorId,
-      action: "feature_flag.target_set",
-      resourceType: "feature_flag",
-      resourceId: flag.id,
-      after: { key: flag.key, organizationId: input.organizationId, storeId: input.storeId, enabled: input.enabled },
-      meta,
+        tx,
+      );
     });
     return this.toSummary(await this.findByKeyOrThrow(key));
   }

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { RateLimitGuard } from "../../common/rate-limit/rate-limit.guard";
+import { PlatformRoleGuard } from "../../common/auth/platform-role.guard";
 import { PlatformSessionGuard } from "../../common/auth/platform-session.guard";
 import { BillingModule } from "../billing/billing.module";
 import { UsersModule } from "../users/users.module";
@@ -47,6 +48,7 @@ import { PlatformOrganizationsService } from "./platform-organizations.service";
   ],
   providers: [
     PlatformSessionGuard,
+    PlatformRoleGuard,
     RateLimitGuard,
     PlatformAuthService,
     PlatformOrganizationsService,

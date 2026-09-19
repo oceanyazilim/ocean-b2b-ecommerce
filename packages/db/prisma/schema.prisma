@@ -131,12 +131,27 @@ enum PlatformOperatorStatus {
   suspended
 }
 
+// viewer: read-only across every platform/* route (the "read-only by design" a controller like
+// PlatformBillingController assumes of every operator, before this enum existed).
+// operator: viewer, plus the mutating routes (feature-flag create/update/target).
+// admin: operator, plus anything added later that should stay operator-only (e.g. provisioning
+// other PlatformOperator rows, once that exists). Ordered low-to-high; guards compare by index,
+// same shape as StoreRole/CompanyRole elsewhere in this schema.
+enum PlatformOperatorRole {
+  viewer
+  operator
+  admin
+}
+
 model PlatformOperator {
   id           String                 @id @default(uuid()) @db.Uuid
   email        String                 @unique
   name         String
   passwordHash String                 @map("password_hash")
   status       PlatformOperatorStatus @default(active)
+  // Defaults to the least-privileged role: a freshly provisioned operator can look but not touch
+  // until someone deliberately elevates them (console/seed), not the other way around.
+  role         PlatformOperatorRole   @default(viewer)
   createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -2971,6 +2986,12 @@ model FeatureFlagTarget {
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   store        Store?        @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  // A target is exactly one of org-level or store-level (never both, never neither — enforced by
+  // SetFeatureFlagTargetInput's zod refine, and at the DB layer by a CHECK constraint plus two
+  // partial unique indexes added in migration 20260919090000_platform_operator_role_and_flag_target_unique,
+  // same "one-of-two" shape as CatalogAssignment/PriceListAssignment above. Prisma's schema
+  // language has no WHERE-clause unique index, so those two constraints exist only in the
+  // migration SQL, not modeled here — same as those other models.
   @@index([flagId, organizationId])
   @@index([flagId, storeId])
   @@map("feature_flag_targets")
