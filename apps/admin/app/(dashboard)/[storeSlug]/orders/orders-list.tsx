@@ -1,10 +1,17 @@
 "use client";
 
-import type { OrderStats, OrderSummary, Paginated } from "@ocean/types";
+import {
+  FULFILLMENT_STATUSES,
+  PAYMENT_STATUSES,
+  type OrderStats,
+  type OrderSummary,
+  type Paginated,
+} from "@ocean/types";
 import {
   Alert,
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -14,7 +21,9 @@ import {
   FormField,
   Input,
   PlusIcon,
+  Select,
   Tabs,
+  Textarea,
   type DataGridColumn,
 } from "@ocean/ui";
 import Link from "next/link";
@@ -24,7 +33,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
-import { FulfillmentStatusBadge, OrderStatusBadge, PaymentStatusBadge } from "./order-badges";
+import { bulkCancel, bulkConfirmPayments, bulkMarkFulfilled, type BulkResult } from "./bulk-actions";
+import { FulfillmentStatusBadge, PaymentStatusBadge } from "./order-badges";
 import {
   BUILTIN_VIEWS,
   DEFAULT_VIEW_ID,
@@ -35,6 +45,14 @@ import {
   type OrderViewFilters,
   type SavedView,
 } from "./saved-views";
+
+const SOURCE_LABEL: Record<string, string> = {
+  storefront: "Online store",
+  draft_order: "Draft order",
+  quote: "Quote",
+  admin: "Admin",
+  api: "API",
+};
 
 export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug: string }) {
   const router = useRouter();
@@ -52,11 +70,33 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<OrderStats | null>(null);
 
+  // Extra filters beyond the saved-view tabs: date range, plus explicit payment/fulfillment
+  // filters for when a merchant wants a combination a tab doesn't cover.
+  const [showFilters, setShowFilters] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState("");
+  const [fulfillmentStatus, setFulfillmentStatus] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ action: string; result: BulkResult } | null>(
+    null,
+  );
+  const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
+  const [bulkCancelReason, setBulkCancelReason] = useState("");
+
   // Saved views live in localStorage, scoped per store, so they never leak across tenants and
-  // never touch the backend. Loaded once on mount (and whenever the store changes).
+  // never touch the backend. Loaded once on mount (and whenever the store changes). A `?view=`
+  // query param (used by the dashboard's "needs attention" links) overrides the remembered tab
+  // for that navigation, so "12 orders waiting for fulfillment" actually lands on that tab.
   useEffect(() => {
     const views = loadCustomViews(storeId);
-    const savedActiveId = loadActiveViewId(storeId);
+    const fromUrl =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("view")
+        : null;
+    const savedActiveId = fromUrl ?? loadActiveViewId(storeId);
     setCustomViews(views);
     const all = [...BUILTIN_VIEWS, ...views];
     const restored = all.find((v) => v.id === savedActiveId);
@@ -88,9 +128,15 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
         setQ(target.filters.q);
       }
       saveActiveViewId(storeId, id);
+      setSelected(new Set());
     },
     [allViews, storeId],
   );
+
+  // Explicit filters are ANDed on top of whatever the active tab already narrows to — e.g.
+  // "Open" + payment status "pending" + a date range all apply together.
+  const effectivePaymentStatus = filters.paymentStatus || paymentStatus;
+  const effectiveFulfillmentStatus = filters.fulfillmentStatus || fulfillmentStatus;
 
   const load = useCallback(
     async (after: string | null, append: boolean) => {
@@ -101,8 +147,10 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
         if (filters.q.trim()) params.set("q", filters.q.trim());
         if (filters.status) params.set("status", filters.status);
         if (filters.open) params.set("open", "true");
-        if (filters.paymentStatus) params.set("paymentStatus", filters.paymentStatus);
-        if (filters.fulfillmentStatus) params.set("fulfillmentStatus", filters.fulfillmentStatus);
+        if (effectivePaymentStatus) params.set("paymentStatus", effectivePaymentStatus);
+        if (effectiveFulfillmentStatus) params.set("fulfillmentStatus", effectiveFulfillmentStatus);
+        if (dateFrom) params.set("from", new Date(`${dateFrom}T00:00:00.000Z`).toISOString());
+        if (dateTo) params.set("to", new Date(`${dateTo}T23:59:59.999Z`).toISOString());
         if (after) params.set("cursor", after);
         const [res, s] = await Promise.all([
           api<Paginated<OrderSummary>>(`/stores/${storeId}/orders?${params}`),
@@ -118,7 +166,7 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
         setLoading(false);
       }
     },
-    [storeId, filters],
+    [storeId, filters, effectivePaymentStatus, effectiveFulfillmentStatus, dateFrom, dateTo],
   );
   useEffect(() => {
     if (!hydrated) return;
@@ -143,16 +191,22 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
           <Link href={`/${storeSlug}/orders/${o.id}`} className="font-medium hover:underline">
             {o.name}
           </Link>
-          <div className="text-xs text-muted-foreground">
-            {new Date(o.createdAt).toLocaleString()}
-            {o.poNumber ? ` · PO ${o.poNumber}` : ""}
-          </div>
+          {o.poNumber && <div className="text-xs text-muted-foreground">PO {o.poNumber}</div>}
         </div>
       ),
     },
     {
+      key: "date",
+      header: "Date",
+      cell: (o) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(o.createdAt).toLocaleString()}
+        </span>
+      ),
+    },
+    {
       key: "buyer",
-      header: "Buyer",
+      header: "Customer",
       cell: (o) => (
         <div>
           <div>
@@ -166,7 +220,21 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
         </div>
       ),
     },
-    { key: "status", header: "Status", cell: (o) => <OrderStatusBadge status={o.status} /> },
+    {
+      key: "channel",
+      header: "Channel",
+      cell: (o) => (
+        <span className="text-xs text-muted-foreground">
+          {SOURCE_LABEL[o.source] ?? o.source}
+        </span>
+      ),
+    },
+    {
+      key: "total",
+      header: "Total",
+      className: "text-right",
+      cell: (o) => <span className="tabular-nums font-medium">{formatMoney(o.total)}</span>,
+    },
     {
       key: "payment",
       header: "Payment",
@@ -184,10 +252,11 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
       cell: (o) => <span className="tabular-nums">{o.itemCount}</span>,
     },
     {
-      key: "total",
-      header: "Total",
-      className: "text-right",
-      cell: (o) => <span className="tabular-nums font-medium">{formatMoney(o.total)}</span>,
+      key: "delivery",
+      header: "Delivery",
+      cell: (o) => (
+        <span className="text-xs text-muted-foreground">{o.shippingRateName ?? "—"}</span>
+      ),
     },
   ];
 
@@ -195,9 +264,11 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
     filters.q.trim() !== "" ||
     filters.status !== "" ||
     filters.open ||
-    filters.paymentStatus !== "" ||
-    filters.fulfillmentStatus !== "" ||
-    filters.minTotal !== null;
+    effectivePaymentStatus !== "" ||
+    effectiveFulfillmentStatus !== "" ||
+    filters.minTotal !== null ||
+    dateFrom !== "" ||
+    dateTo !== "";
 
   const canSaveView = filtered && currentView.id !== "builtin:all";
 
@@ -227,6 +298,24 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
     selectView(DEFAULT_VIEW_ID);
   }
 
+  async function runBulkAction(
+    label: string,
+    action: (ids: string[]) => Promise<BulkResult>,
+  ) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setBulkPending(true);
+    setBulkResult(null);
+    try {
+      const result = await action(ids);
+      setBulkResult({ action: label, result });
+      setSelected(new Set());
+      void load(null, false);
+    } finally {
+      setBulkPending(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {stats && (
@@ -250,12 +339,12 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
             value: v.id,
             label: v.name,
             count:
-              v.id === "builtin:open"
-                ? stats?.openOrders
-                : v.id === "builtin:unpaid"
-                  ? stats?.awaitingPayment
-                  : v.id === "builtin:unfulfilled"
-                    ? stats?.toFulfill
+              v.id === "builtin:unpaid"
+                ? stats?.awaitingPayment
+                : v.id === "builtin:unfulfilled"
+                  ? stats?.toFulfill
+                  : v.id === "builtin:open"
+                    ? stats?.openOrders
                     : undefined,
           }))}
         />
@@ -284,20 +373,141 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
           </Button>
         </div>
       </div>
-      <Input
-        placeholder="Search by order number, buyer, PO number or SKU"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        className="max-w-md"
-        aria-label="Search orders"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          placeholder="Search by order number, buyer, PO number or SKU"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="max-w-md"
+          aria-label="Search orders"
+        />
+        <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)}>
+          {showFilters ? "Hide filters" : "Filters"}
+        </Button>
+      </div>
+      {showFilters && (
+        <Card>
+          <CardContent className="flex flex-wrap items-end gap-3 pt-4">
+            <FormField id="f-payment" label="Payment status">
+              <Select
+                id="f-payment"
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value)}
+                disabled={!!filters.paymentStatus}
+              >
+                <option value="">Any</option>
+                {PAYMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField id="f-fulfillment" label="Fulfillment status">
+              <Select
+                id="f-fulfillment"
+                value={fulfillmentStatus}
+                onChange={(e) => setFulfillmentStatus(e.target.value)}
+                disabled={!!filters.fulfillmentStatus}
+              >
+                <option value="">Any</option>
+                {FULFILLMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField id="f-from" label="From">
+              <Input
+                id="f-from"
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </FormField>
+            <FormField id="f-to" label="To">
+              <Input
+                id="f-to"
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </FormField>
+            {(paymentStatus || fulfillmentStatus || dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPaymentStatus("");
+                  setFulfillmentStatus("");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
       {error && <Alert variant="error">{error}</Alert>}
+      {bulkResult && (
+        <Alert
+          variant={bulkResult.result.failed.length === 0 ? "success" : "warning"}
+          title={bulkResult.action}
+        >
+          {bulkResult.result.succeeded} succeeded
+          {bulkResult.result.failed.length > 0 &&
+            `, ${bulkResult.result.failed.length} failed: ${bulkResult.result.failed
+              .map((f) => f.message)
+              .slice(0, 3)
+              .join("; ")}`}
+        </Alert>
+      )}
       <DataGrid
         columns={columns}
         rows={rows}
         rowKey={(o) => o.id}
         loading={loading}
+        selectable
+        selected={selected}
+        onSelectedChange={setSelected}
         onRowClick={(o) => router.push(`/${storeSlug}/orders/${o.id}`)}
+        bulkActions={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              loading={bulkPending}
+              onClick={() => void runBulkAction("Mark fulfilled", (ids) => bulkMarkFulfilled(storeId, ids))}
+            >
+              Mark fulfilled
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              loading={bulkPending}
+              onClick={() =>
+                void runBulkAction("Confirm payment", (ids) => bulkConfirmPayments(storeId, ids))
+              }
+            >
+              Confirm payment
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setBulkCancelReason("");
+                setBulkCancelOpen(true);
+              }}
+            >
+              Cancel
+            </Button>
+          </>
+        }
         empty={{
           title: filtered ? "No orders match" : "No orders yet",
           description: filtered
@@ -352,6 +562,43 @@ export function OrdersList({ storeId, storeSlug }: { storeId: string; storeSlug:
         confirmLabel="Delete view"
         destructive
       />
+      <Dialog
+        open={bulkCancelOpen}
+        onClose={() => setBulkCancelOpen(false)}
+        title={`Cancel ${selected.size} order${selected.size === 1 ? "" : "s"}?`}
+        description="Reserved stock is released and each order's totals are reverted. This cannot be undone."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setBulkCancelOpen(false)} disabled={bulkPending}>
+              Keep orders
+            </Button>
+            <Button
+              variant="destructive"
+              loading={bulkPending}
+              disabled={!bulkCancelReason.trim()}
+              onClick={() => {
+                setBulkCancelOpen(false);
+                void runBulkAction("Cancel orders", (ids) =>
+                  bulkCancel(storeId, ids, bulkCancelReason.trim()),
+                );
+              }}
+            >
+              Cancel orders
+            </Button>
+          </>
+        }
+      >
+        <FormField id="bulk-cancel-reason" label="Reason">
+          <Textarea
+            id="bulk-cancel-reason"
+            rows={3}
+            value={bulkCancelReason}
+            onChange={(e) => setBulkCancelReason(e.target.value)}
+            maxLength={500}
+            autoFocus
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }

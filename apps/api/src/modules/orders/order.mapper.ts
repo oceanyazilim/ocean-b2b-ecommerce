@@ -91,6 +91,7 @@ export function toOrderSummary(row: OrderSummaryRow): OrderSummary {
     tags: row.tags,
     itemCount: row.itemCount,
     total: toMoney(row.total, row.currency),
+    shippingRateName: row.shippingRateName,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

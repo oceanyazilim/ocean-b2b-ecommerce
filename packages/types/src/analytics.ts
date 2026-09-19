@@ -15,6 +15,12 @@ export interface RevenuePoint {
   revenue: Money;
 }
 
+export interface RefundPoint {
+  date: string;
+  count: number;
+  refunds: Money;
+}
+
 export interface OrderStatusBreakdown {
   status: string;
   count: number;
@@ -28,6 +34,15 @@ export interface AnalyticsOverview {
   averageOrderValue: Money;
   revenueByDay: RevenuePoint[];
   ordersByStatus: OrderStatusBreakdown[];
+  // Refunds actually settled ("succeeded") within the range — not merely requested.
+  refunds: Money;
+  refundsByDay: RefundPoint[];
+  // revenue - refunds, both already scoped to the same range.
+  netRevenue: Money;
+  // Share of distinct known (non-guest) customers who ordered in the range that placed more than
+  // one order in the range. Null when nobody with a known customerId ordered in the range at all
+  // (0/0 is undefined, not 0%).
+  returningCustomerRate: number | null;
 }
 
 export interface TopProductRow {

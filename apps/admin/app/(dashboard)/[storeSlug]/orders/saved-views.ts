@@ -29,12 +29,33 @@ export interface SavedView {
   filters: OrderViewFilters;
 }
 
-// Built-in presets, in the spirit of Shopify's "All / Unfulfilled / Unpaid / Open" order tabs,
-// mapped to fields that actually exist on this system's Order model (packages/db/prisma/schema.prisma):
-// OrderStatus (incl. the phase-12 B2B approval workflow's `pending_approval`), PaymentStatus,
-// FulfillmentStatus and total. Order matches the previous fixed tab order (open/unpaid/unfulfilled/
-// cancelled/all) so existing muscle memory / defaults don't shift.
+// Built-in presets, matching the spec's "All / Unfulfilled / Unpaid / Open / Closed / Cancelled"
+// vocabulary, mapped to fields that actually exist on this system's Order model
+// (packages/db/prisma/schema.prisma): OrderStatus (incl. the phase-12 B2B approval workflow's
+// `pending_approval`), PaymentStatus, FulfillmentStatus and total. "Closed" maps to `completed` —
+// there's no separate "closed" flag on Order, and `completed` is the terminal non-cancelled
+// status. Pending approval and High value are additional store-specific views kept from before
+// this pass (they're real, useful and don't collide with the spec's vocabulary), appended after
+// the six spec tabs rather than removed.
 export const BUILTIN_VIEWS: SavedView[] = [
+  {
+    id: "builtin:all",
+    name: "All",
+    builtin: true,
+    filters: { ...EMPTY_FILTERS },
+  },
+  {
+    id: "builtin:unfulfilled",
+    name: "Unfulfilled",
+    builtin: true,
+    filters: { ...EMPTY_FILTERS, open: true, fulfillmentStatus: "unfulfilled" },
+  },
+  {
+    id: "builtin:unpaid",
+    name: "Unpaid",
+    builtin: true,
+    filters: { ...EMPTY_FILTERS, open: true, paymentStatus: "pending" },
+  },
   {
     id: "builtin:open",
     name: "Open",
@@ -42,16 +63,16 @@ export const BUILTIN_VIEWS: SavedView[] = [
     filters: { ...EMPTY_FILTERS, open: true },
   },
   {
-    id: "builtin:unpaid",
-    name: "Awaiting payment",
+    id: "builtin:closed",
+    name: "Closed",
     builtin: true,
-    filters: { ...EMPTY_FILTERS, open: true, paymentStatus: "pending" },
+    filters: { ...EMPTY_FILTERS, status: "completed" },
   },
   {
-    id: "builtin:unfulfilled",
-    name: "Unfulfilled",
+    id: "builtin:cancelled",
+    name: "Cancelled",
     builtin: true,
-    filters: { ...EMPTY_FILTERS, open: true, fulfillmentStatus: "unfulfilled" },
+    filters: { ...EMPTY_FILTERS, status: "cancelled" },
   },
   {
     id: "builtin:pending_approval",
@@ -64,18 +85,6 @@ export const BUILTIN_VIEWS: SavedView[] = [
     name: "High value",
     builtin: true,
     filters: { ...EMPTY_FILTERS, minTotal: 100000 },
-  },
-  {
-    id: "builtin:cancelled",
-    name: "Cancelled",
-    builtin: true,
-    filters: { ...EMPTY_FILTERS, status: "cancelled" },
-  },
-  {
-    id: "builtin:all",
-    name: "All orders",
-    builtin: true,
-    filters: { ...EMPTY_FILTERS },
   },
 ];
 

@@ -176,6 +176,8 @@ export const orderListQuerySchema = cursorPaginationQuerySchema.extend({
   fulfillmentStatus: fulfillmentStatusSchema.optional(),
   customerId: idSchema.optional(),
   companyId: idSchema.optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
   sort: z.enum(ORDER_SORTS).default("created_desc"),
 });
 export type OrderListQuery = z.infer<typeof orderListQuerySchema>;
@@ -249,6 +251,10 @@ export interface OrderSummary {
   tags: string[];
   itemCount: number;
   total: Money;
+  // The shipping method chosen at checkout (e.g. "Standard shipping", "Local pickup"), null for
+  // orders with nothing to ship or placed before a rate was recorded. Drives the Orders list's
+  // "Delivery" column.
+  shippingRateName: string | null;
   createdAt: string;
   updatedAt: string;
 }

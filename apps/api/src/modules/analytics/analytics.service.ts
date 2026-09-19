@@ -4,6 +4,7 @@ import type {
   AnalyticsOverview,
   AnalyticsRangeQuery,
   OrderStatusBreakdown,
+  RefundPoint,
   RevenuePoint,
   TopCompanyRow,
   TopCustomerRow,
@@ -40,7 +41,7 @@ export class AnalyticsService {
     const currency = await this.currency(storeId);
     const scope = { storeId, organizationId: ctx.organizationId };
 
-    const [agg, statusGroups, dayRows] = await Promise.all([
+    const [agg, statusGroups, dayRows, refundAgg, refundDayRows, returningRows] = await Promise.all([
       this.prisma.order.aggregate({
         where: { ...scope, status: { not: "cancelled" }, createdAt: { gte: from, lte: to } },
         _count: { _all: true },
@@ -59,6 +60,32 @@ export class AnalyticsService {
         GROUP BY 1
         ORDER BY 1
       `),
+      this.prisma.refund.aggregate({
+        where: { ...scope, status: "succeeded", createdAt: { gte: from, lte: to } },
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      this.prisma.$queryRaw<{ day: Date; count: bigint; refunds: bigint | null }[]>(Prisma.sql`
+        SELECT date_trunc('day', created_at) AS day, count(*)::bigint AS count, sum(amount)::bigint AS refunds
+        FROM refunds
+        WHERE store_id = ${storeId}::uuid AND organization_id = ${ctx.organizationId}::uuid
+          AND status = 'succeeded' AND created_at >= ${from} AND created_at <= ${to}
+        GROUP BY 1
+        ORDER BY 1
+      `),
+      // Distinct known (non-guest) customers who ordered in range, and how many of those placed
+      // more than one order in range — the raw ingredients for a returning-customer rate.
+      this.prisma.$queryRaw<{ total: bigint; returning: bigint }[]>(Prisma.sql`
+        SELECT count(*)::bigint AS total, count(*) FILTER (WHERE orders_in_range > 1)::bigint AS returning
+        FROM (
+          SELECT customer_id, count(*) AS orders_in_range
+          FROM orders
+          WHERE store_id = ${storeId}::uuid AND organization_id = ${ctx.organizationId}::uuid
+            AND customer_id IS NOT NULL AND status <> 'cancelled'
+            AND created_at >= ${from} AND created_at <= ${to}
+          GROUP BY customer_id
+        ) c
+      `),
     ]);
 
     const orderCount = agg._count._all;
@@ -72,6 +99,16 @@ export class AnalyticsService {
       orders: Number(r.orders),
       revenue: toMoney(r.revenue ?? 0n, currency),
     }));
+    const refundsMinor = Number(refundAgg._sum.amount ?? 0);
+    const refundsByDay: RefundPoint[] = refundDayRows.map((r) => ({
+      date: r.day.toISOString().slice(0, 10),
+      count: Number(r.count),
+      refunds: toMoney(r.refunds ?? 0n, currency),
+    }));
+    const returning = returningRows[0];
+    const returningTotal = returning ? Number(returning.total) : 0;
+    const returningCustomerRate =
+      returningTotal > 0 ? Number(returning!.returning) / returningTotal : null;
 
     return {
       currency,
@@ -81,6 +118,10 @@ export class AnalyticsService {
       averageOrderValue: toMoney(orderCount > 0 ? Math.round(revenueMinor / orderCount) : 0, currency),
       revenueByDay,
       ordersByStatus,
+      refunds: toMoney(refundsMinor, currency),
+      refundsByDay,
+      netRevenue: toMoney(revenueMinor - refundsMinor, currency),
+      returningCustomerRate,
     };
   }
 

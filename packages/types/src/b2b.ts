@@ -61,6 +61,11 @@ export const quoteListQuerySchema = cursorPaginationQuerySchema.extend({
 });
 export type QuoteListQuery = z.infer<typeof quoteListQuerySchema>;
 
+// Counts by status, for the quotes list header and the dashboard's "needs attention" section.
+// `awaitingResponse` mirrors `sent` — it's the count a merchant cares about at a glance (quotes
+// out with a buyer, not yet accepted/declined/expired).
+export type QuoteStats = Record<QuoteStatus, number> & { awaitingResponse: number };
+
 export interface QuoteLineSummary {
   id: string;
   variantId: string;

@@ -40,7 +40,15 @@ export function StockList({
   canWrite: boolean;
 }) {
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  // Supports a `?status=low` deep link (used by the dashboard's "needs attention" section) that
+  // preselects the matching tab on load, same idea as the orders list's `?view=`.
+  const [status, setStatus] = useState<StatusFilter>(() => {
+    if (typeof window === "undefined") return "all";
+    const fromUrl = new URLSearchParams(window.location.search).get("status");
+    return fromUrl === "low" || fromUrl === "out_of_stock" || fromUrl === "in_stock"
+      ? fromUrl
+      : "all";
+  });
   const [locationId, setLocationId] = useState("");
   const [rows, setRows] = useState<InventoryItemSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);

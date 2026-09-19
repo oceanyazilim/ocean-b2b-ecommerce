@@ -79,6 +79,14 @@ export class OrdersService {
       ...(query.fulfillmentStatus ? { fulfillmentStatus: query.fulfillmentStatus } : {}),
       ...(query.customerId ? { customerId: query.customerId } : {}),
       ...(query.companyId ? { companyId: query.companyId } : {}),
+      ...(query.from || query.to
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
       ...(query.q
         ? {
             OR: [

@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import type { Prisma } from "@ocean/db";
+import { QUOTE_STATUSES } from "@ocean/types";
 import type {
   CreateQuoteInput,
   DeclineQuoteInput,
   Paginated,
   QuoteDetail,
   QuoteListQuery,
+  QuoteStats,
   QuoteSummary,
   UpdateQuoteInput,
 } from "@ocean/types";
@@ -84,6 +86,19 @@ export class QuotesService {
       data: page.map((r) => this.toSummary(r)),
       pageInfo: { hasNextPage, endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null },
     };
+  }
+
+  async stats(ctx: TenantContext): Promise<QuoteStats> {
+    const groups = await this.prisma.quote.groupBy({
+      by: ["status"],
+      where: this.scope(ctx),
+      _count: { _all: true },
+    });
+    const byStatus = new Map(groups.map((g) => [g.status, g._count._all]));
+    const counts = Object.fromEntries(
+      QUOTE_STATUSES.map((s) => [s, byStatus.get(s) ?? 0]),
+    ) as Record<(typeof QUOTE_STATUSES)[number], number>;
+    return { ...counts, awaitingResponse: counts.sent };
   }
 
   async get(ctx: TenantContext, id: string): Promise<QuoteDetail> {

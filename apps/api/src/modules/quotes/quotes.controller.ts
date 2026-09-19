@@ -30,6 +30,12 @@ export class QuotesController {
     return this.quotes.list(tenant, query);
   }
 
+  @Get("stats")
+  @RequireStore("quotes.read")
+  stats(@CurrentTenant() tenant: TenantContext) {
+    return this.quotes.stats(tenant);
+  }
+
   @Get(":quoteId")
   @RequireStore("quotes.read")
   get(@CurrentTenant() tenant: TenantContext, @Param("quoteId") id: string) {
