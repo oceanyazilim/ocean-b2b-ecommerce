@@ -47,6 +47,9 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { BillingModule } from "./modules/billing/billing.module";
 import { DevelopersModule } from "./modules/developers/developers.module";
+import { CustomRolesModule } from "./modules/custom-roles/custom-roles.module";
+import { SsoModule } from "./modules/sso/sso.module";
+import { SupportModule } from "./modules/support/support.module";
 
 // Domain modules are registered flat and talk to each other only through exported services.
 // Guard order: SessionGuard (who) → PermissionGuard (which tenant, which permission).
@@ -97,6 +100,9 @@ import { DevelopersModule } from "./modules/developers/developers.module";
     NotificationsModule,
     BillingModule,
     DevelopersModule,
+    CustomRolesModule,
+    SsoModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

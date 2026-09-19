@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
 import {
   attachMediaSchema,
   createProductSchema,
@@ -58,6 +58,14 @@ export class ProductsController {
     @ReqMeta() meta: RequestMeta,
   ) {
     return this.products.bulk(tenant, body, meta);
+  }
+
+  @Get("export")
+  @RequireStore("products.read")
+  @Header("Content-Type", "text/csv")
+  @Header("Content-Disposition", 'attachment; filename="products.csv"')
+  exportCsv(@CurrentTenant() tenant: TenantContext) {
+    return this.products.exportCsv(tenant);
   }
 
   @Get(":productId")

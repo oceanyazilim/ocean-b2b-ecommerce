@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { ActorType, Prisma } from "@ocean/db";
-import type { AuditLogEntry, Paginated } from "@ocean/types";
+import type { AuditLogEntry, AuditLogQuery, Paginated } from "@ocean/types";
 
 import type { RequestMeta } from "../../common/http/request-meta";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
@@ -47,12 +47,24 @@ export class AuditService {
     });
   }
 
-  async listForStore(
-    storeId: string,
-    query: { cursor?: string; limit: number },
-  ): Promise<Paginated<AuditLogEntry>> {
+  private filterWhere(storeId: string, query: Pick<AuditLogQuery, "resourceType" | "from" | "to">): Prisma.AuditLogWhereInput {
+    return {
+      storeId,
+      ...(query.resourceType ? { resourceType: query.resourceType } : {}),
+      ...(query.from || query.to
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
+    };
+  }
+
+  async listForStore(storeId: string, query: AuditLogQuery): Promise<Paginated<AuditLogEntry>> {
     const rows = await this.prisma.auditLog.findMany({
-      where: { storeId },
+      where: this.filterWhere(storeId, query),
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: query.limit + 1,
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -86,4 +98,33 @@ export class AuditService {
       pageInfo: { hasNextPage, endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null },
     };
   }
+
+  async exportCsv(storeId: string, query: Pick<AuditLogQuery, "resourceType" | "from" | "to">): Promise<string> {
+    const rows = await this.prisma.auditLog.findMany({
+      where: this.filterWhere(storeId, query),
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+    });
+    const actorIds = [...new Set(rows.map((r) => r.actorId).filter((v): v is string => !!v))];
+    const actors = actorIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, email: true } })
+      : [];
+    const emailById = new Map(actors.map((a) => [a.id, a.email]));
+    const header = "Timestamp,Actor,Action,Resource type,Resource ID,IP";
+    const lines = rows.map((r) =>
+      [
+        r.createdAt.toISOString(),
+        csvField(r.actorId ? (emailById.get(r.actorId) ?? r.actorId) : r.actorType),
+        csvField(r.action),
+        csvField(r.resourceType),
+        csvField(r.resourceId ?? ""),
+        csvField(r.ip ?? ""),
+      ].join(","),
+    );
+    return [header, ...lines].join("\n");
+  }
+}
+
+function csvField(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

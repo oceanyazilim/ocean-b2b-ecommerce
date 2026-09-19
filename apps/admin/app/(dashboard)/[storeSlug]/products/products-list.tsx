@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api, errorMessage } from "@/lib/api";
+import { api, API_URL, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
 type StatusTab = "all" | ProductStatus;
@@ -50,6 +50,7 @@ export function ProductsList({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(
     async (after: string | null, append: boolean) => {
@@ -93,6 +94,25 @@ export function ProductsList({
       setError(errorMessage(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/v1/stores/${storeId}/products/export`, {
+        credentials: "include",
+      });
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "products.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -178,11 +198,16 @@ export function ProductsList({
             Everything you sell, with variants, media and pricing.
           </p>
         </div>
-        {canWrite && (
-          <Link href={`/${storeSlug}/products/new`}>
-            <Button>Add product</Button>
-          </Link>
-        )}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => void exportCsv()} loading={exporting}>
+            Export CSV
+          </Button>
+          {canWrite && (
+            <Link href={`/${storeSlug}/products/new`}>
+              <Button>Add product</Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <Tabs

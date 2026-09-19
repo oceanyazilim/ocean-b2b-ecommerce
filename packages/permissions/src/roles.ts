@@ -14,6 +14,9 @@ export const STORE_ROLES = [
   "finance",
   "developer",
   "viewer",
+  // A StoreMember with this role has no permissions of its own here — TenantService.forStore
+  // looks up its actual grants from CustomRole (Phase 16), never hard-coded in this file.
+  "custom",
 ] as const;
 export type StoreRole = (typeof STORE_ROLES)[number];
 
@@ -112,6 +115,7 @@ export const STORE_ROLE_PERMISSIONS: Record<StoreRole, readonly StorePermission[
     "settings.write",
   ],
   viewer: readOnlyStore,
+  custom: [],
 };
 
 export const ORGANIZATION_ROLE_PERMISSIONS: Record<

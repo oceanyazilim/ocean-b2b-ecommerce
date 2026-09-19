@@ -4,7 +4,10 @@ import type { Invitation, Prisma, StoreMember, StoreRole, User } from "@ocean/db
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 
-export type StoreMemberWithUser = StoreMember & { user: User };
+export type StoreMemberWithUser = StoreMember & {
+  user: User;
+  customRole: { id: string; name: string } | null;
+};
 export type InvitationWithInviter = Invitation & { invitedBy: { id: string; name: string } };
 
 @Injectable()
@@ -18,7 +21,7 @@ export class MembershipsRepository {
         organizationId: ctx.organizationId,
         status: "active",
       },
-      include: { user: true },
+      include: { user: true, customRole: { select: { id: true, name: true } } },
       orderBy: { createdAt: "asc" },
     });
   }
@@ -47,10 +50,11 @@ export class MembershipsRepository {
     memberId: string,
     role: StoreRole,
     tx: Prisma.TransactionClient,
+    customRoleId: string | null = null,
   ): Promise<StoreMember> {
     return tx.storeMember.update({
       where: { id: memberId, storeId: ctx.storeId as string },
-      data: { role },
+      data: { role, customRoleId: role === "custom" ? customRoleId : null },
     });
   }
 

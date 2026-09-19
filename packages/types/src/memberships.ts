@@ -12,6 +12,7 @@ export const STORE_ROLES = [
   "finance",
   "developer",
   "viewer",
+  "custom",
 ] as const;
 export const storeRoleSchema = z.enum(STORE_ROLES);
 
@@ -28,6 +29,7 @@ export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
 
 export const updateMemberRoleSchema = z.object({
   role: storeRoleSchema,
+  customRoleId: z.string().uuid().nullable().optional(),
 });
 export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
 
@@ -36,6 +38,7 @@ export interface StoreMemberSummary {
   email: string;
   name: string;
   role: string;
+  customRole: { id: string; name: string } | null;
   status: string;
   joinedAt: string;
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationBell } from "@/components/notification-bell";
 import { SidebarNav, type NavItem } from "@/components/sidebar-nav";
@@ -76,6 +77,7 @@ export default async function StoreLayout({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <ImpersonationBanner storeId={store.id} />
         <header className="flex items-center justify-between gap-4 border-b px-6 py-3">
           <div className="flex items-center gap-2">
             <Badge variant={store.status === "active" ? "success" : "secondary"}>

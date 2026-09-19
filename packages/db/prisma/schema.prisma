@@ -54,6 +54,8 @@ model User {
   pagesCreated         Page[]
   approvals            Approval[]
   notifications        Notification[]
+  impersonatorSessions ImpersonationSession[] @relation("ImpersonatorUser")
+  targetedSessions     ImpersonationSession[] @relation("TargetUser")
 
   @@map("users")
 }
@@ -189,6 +191,7 @@ model Organization {
   subscription          Subscription?
   platformInvoices      PlatformInvoice[]
   featureFlagTargets    FeatureFlagTarget[]
+  ssoConnection         SsoConnection?
 
   @@map("organizations")
 }
@@ -227,6 +230,10 @@ enum StoreRole {
   finance
   developer
   viewer
+  // A StoreMember with this role carries no built-in permissions of its own (see
+  // STORE_ROLE_PERMISSIONS.custom in packages/permissions) — its actual grants come from
+  // customRoleId, resolved by the same engine as the built-in roles (TenantService.forStore).
+  custom
 }
 
 model Store {
@@ -305,6 +312,8 @@ model Store {
   developerApps         DeveloperApp[]
   apiKeys               ApiKey[]
   webhooks              Webhook[]
+  customRoles           CustomRole[]
+  impersonationSessions ImpersonationSession[]
 
   @@index([organizationId])
   @@map("stores")
@@ -316,6 +325,7 @@ model StoreMember {
   organizationId String           @map("organization_id") @db.Uuid
   userId         String           @map("user_id") @db.Uuid
   role           StoreRole
+  customRoleId   String?          @map("custom_role_id") @db.Uuid
   status         MembershipStatus @default(active)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -323,6 +333,7 @@ model StoreMember {
   store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customRole   CustomRole?  @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
 
   @@unique([storeId, userId])
   @@index([userId])
@@ -2996,4 +3007,82 @@ model AppBlockDefinition {
 
   @@unique([appId, type])
   @@map("app_block_definitions")
+}
+
+// ---------------------------------------------------------------------------
+// Enterprise (Phase 16) — custom roles, SSO, impersonation for support.
+// ---------------------------------------------------------------------------
+
+// A store-defined role: a name plus a flat permission list, resolved by the exact same
+// engine as the built-in StoreRole roles (see resolveStorePermissions's call site in
+// TenantService.forStore) — never hard-coded, per docs/architecture/07-auth-and-rbac.md.
+model CustomRole {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  permissions    String[]
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store   Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  members StoreMember[]
+
+  @@unique([storeId, name])
+  @@map("custom_roles")
+}
+
+enum SsoConnectionStatus {
+  active
+  disabled
+}
+
+// One per organization — SSO is an organization-wide login policy, not a per-store one (see
+// the tenancy hierarchy in docs/architecture/00-overview.md). A real OIDC authorization-code
+// relying party (WellKnownEndpoint discovery is not implemented — the three endpoint URLs are
+// entered directly, since there's no library dependency added for OIDC discovery/JWKS in this
+// codebase). clientSecretEnc uses EncryptionService, same pattern as Phase 15's webhook secrets.
+model SsoConnection {
+  id                    String              @id @default(uuid()) @db.Uuid
+  organizationId        String              @unique @map("organization_id") @db.Uuid
+  domain                String
+  issuer                String
+  authorizationEndpoint String              @map("authorization_endpoint")
+  tokenEndpoint         String              @map("token_endpoint")
+  userinfoEndpoint      String              @map("userinfo_endpoint")
+  clientId              String              @map("client_id")
+  clientSecretEnc       String              @map("client_secret_enc")
+  defaultRole           OrganizationRole    @default(member) @map("default_role")
+  status                SsoConnectionStatus @default(active)
+  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("sso_connections")
+}
+
+// A support-initiated "view as" session: the impersonator's own merchant session stays valid,
+// but a second session is minted for the target user and both are logged here + in AuditLog.
+// There's no separate platform-operator role/app in this codebase, so this is scoped to a
+// store owner/admin impersonating a member of their OWN store (Zendesk/Intercom-style account
+// troubleshooting), not cross-tenant platform support.
+model ImpersonationSession {
+  id                String    @id @default(uuid()) @db.Uuid
+  storeId           String    @map("store_id") @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  impersonatorUserId String   @map("impersonator_user_id") @db.Uuid
+  targetUserId      String    @map("target_user_id") @db.Uuid
+  reason            String
+  sessionId         String    @map("session_id")
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  endedAt           DateTime? @map("ended_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  store        Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  impersonator User  @relation("ImpersonatorUser", fields: [impersonatorUserId], references: [id], onDelete: Cascade)
+  target       User  @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt(sort: Desc)])
+  @@map("impersonation_sessions")
 }

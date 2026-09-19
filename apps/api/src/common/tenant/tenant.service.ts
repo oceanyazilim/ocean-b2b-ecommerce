@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { resolveOrganizationPermissions, resolveStorePermissions } from "@ocean/permissions";
+import { createPermissionSet, resolveOrganizationPermissions, resolveStorePermissions, type StorePermission } from "@ocean/permissions";
 
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { NotFoundError } from "../errors/domain-error";
@@ -29,13 +29,22 @@ export class TenantService {
       }),
       this.prisma.storeMember.findUnique({
         where: { storeId_userId: { storeId: store.id, userId } },
-        select: { role: true, status: true },
+        select: { role: true, status: true, customRole: { select: { permissions: true } } },
       }),
     ]);
 
     const organizationRole = orgMember?.status === "active" ? orgMember.role : null;
     const storeRole = storeMember?.status === "active" ? storeMember.role : null;
     if (!organizationRole && !storeRole) throw new NotFoundError("Store");
+
+    // A "custom" role carries no built-in grants (STORE_ROLE_PERMISSIONS.custom is empty) —
+    // its actual permissions come from the linked CustomRole row, resolved here rather than
+    // hard-coded, per docs/architecture/07-auth-and-rbac.md.
+    const base = resolveStorePermissions(organizationRole, storeRole);
+    const customPermissions = storeMember?.customRole?.permissions ?? [];
+    const storePermissions = customPermissions.length
+      ? createPermissionSet([...base, ...(customPermissions as StorePermission[])])
+      : base;
 
     return {
       organizationId: store.organizationId,
@@ -44,7 +53,7 @@ export class TenantService {
       organizationRole,
       storeRole,
       organizationPermissions: resolveOrganizationPermissions(organizationRole),
-      storePermissions: resolveStorePermissions(organizationRole, storeRole),
+      storePermissions,
       requestId,
     };
   }

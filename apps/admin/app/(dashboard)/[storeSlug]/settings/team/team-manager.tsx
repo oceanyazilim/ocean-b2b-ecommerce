@@ -1,6 +1,6 @@
 "use client";
 
-import { STORE_ROLES, type InvitationSummary, type StoreMemberSummary } from "@ocean/types";
+import { STORE_ROLES, type CustomRoleSummary, type InvitationSummary, type StoreMemberSummary } from "@ocean/types";
 import {
   Alert,
   Badge,
@@ -21,18 +21,25 @@ import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useSubmit } from "@/lib/use-submit";
 
+import { CustomRolesCard } from "./custom-roles-card";
+
 const roleLabel = (role: string) => role.replace(/_/g, " ");
+const BUILT_IN_ROLES = STORE_ROLES.filter((r) => r !== "custom");
 
 export function TeamManager({
   storeId,
+  storeSlug,
   currentUserId,
   members,
   invitations,
+  customRoles,
 }: {
   storeId: string;
+  storeSlug: string;
   currentUserId: string;
   members: StoreMemberSummary[];
   invitations: InvitationSummary[];
+  customRoles: CustomRoleSummary[];
 }) {
   const router = useRouter();
   const invite = useSubmit();
@@ -40,6 +47,23 @@ export function TeamManager({
   const [role, setRole] = useState<string>("viewer");
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [impersonateBusy, setImpersonateBusy] = useState<string | null>(null);
+
+  async function viewAs(userId: string, name: string) {
+    const reason = window.prompt(`Why are you viewing as ${name}? (recorded in the audit log)`);
+    if (!reason || reason.trim().length < 3) return;
+    setImpersonateBusy(userId);
+    setRowError(null);
+    try {
+      await api(`/stores/${storeId}/support/impersonate`, { body: { userId, reason: reason.trim() } });
+      // A full navigation, not a client-side route change: the impersonated session's cookie
+      // needs to be the one every subsequent request (including this page's own data) uses.
+      window.location.href = `/${storeSlug}`;
+    } catch (err) {
+      setRowError(errorMessage(err));
+      setImpersonateBusy(null);
+    }
+  }
 
   async function onInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -100,7 +124,7 @@ export function TeamManager({
               className="sm:w-48"
             >
               <Select id="invite-role" value={role} onChange={(e) => setRole(e.target.value)}>
-                {STORE_ROLES.map((r) => (
+                {BUILT_IN_ROLES.map((r) => (
                   <option key={r} value={r}>
                     {roleLabel(r)}
                   </option>
@@ -120,6 +144,8 @@ export function TeamManager({
       </Card>
 
       {rowError && <Alert variant="error">{rowError}</Alert>}
+
+      <CustomRolesCard storeId={storeId} customRoles={customRoles} />
 
       <Card>
         <CardHeader>
@@ -151,23 +177,36 @@ export function TeamManager({
                       <td className="px-6 py-3">
                         <Select
                           aria-label={`Role for ${m.name}`}
-                          value={m.role}
+                          value={m.customRole ? `custom:${m.customRole.id}` : m.role}
                           disabled={busy === m.userId}
-                          onChange={(e) =>
-                            mutate(m.userId, () =>
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const body = v.startsWith("custom:")
+                              ? { role: "custom", customRoleId: v.slice(7) }
+                              : { role: v };
+                            void mutate(m.userId, () =>
                               api(`/stores/${storeId}/members/${m.userId}`, {
                                 method: "PATCH",
-                                body: { role: e.target.value },
+                                body,
                               }),
-                            )
-                          }
+                            );
+                          }}
                           className="h-8 w-44"
                         >
-                          {STORE_ROLES.map((r) => (
+                          {BUILT_IN_ROLES.map((r) => (
                             <option key={r} value={r}>
                               {roleLabel(r)}
                             </option>
                           ))}
+                          {customRoles.length > 0 && (
+                            <optgroup label="Custom roles">
+                              {customRoles.map((cr) => (
+                                <option key={cr.id} value={`custom:${cr.id}`}>
+                                  {cr.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </Select>
                       </td>
                       <td className="px-6 py-3 text-muted-foreground">
@@ -175,19 +214,29 @@ export function TeamManager({
                       </td>
                       <td className="px-6 py-3 text-right">
                         {!self && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            loading={busy === m.userId}
-                            onClick={() => {
-                              if (!window.confirm(`Remove ${m.name} from this store?`)) return;
-                              void mutate(m.userId, () =>
-                                api(`/stores/${storeId}/members/${m.userId}`, { method: "DELETE" }),
-                              );
-                            }}
-                          >
-                            Remove
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              loading={impersonateBusy === m.userId}
+                              onClick={() => void viewAs(m.userId, m.name)}
+                            >
+                              View as
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              loading={busy === m.userId}
+                              onClick={() => {
+                                if (!window.confirm(`Remove ${m.name} from this store?`)) return;
+                                void mutate(m.userId, () =>
+                                  api(`/stores/${storeId}/members/${m.userId}`, { method: "DELETE" }),
+                                );
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </div>
                         )}
                       </td>
                     </tr>

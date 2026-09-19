@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { resolveOrganizationPermissions, resolveStorePermissions } from "@ocean/permissions";
+import { createPermissionSet, resolveOrganizationPermissions, resolveStorePermissions, type StorePermission } from "@ocean/permissions";
 import type {
   AuthUser,
   LoginInput,
@@ -309,11 +309,16 @@ export class AuthService {
       }),
       this.prisma.storeMember.findMany({
         where: { userId, status: "active" },
-        select: { storeId: true, role: true },
+        select: { storeId: true, role: true, customRole: { select: { permissions: true } } },
       }),
       this.mfa.isEnabled(userId),
     ]);
     const storeRoleById = new Map(storeMemberships.map((m) => [m.storeId, m.role]));
+    // A "custom" role carries no built-in grants — its real permissions come from the linked
+    // CustomRole row, same merge TenantService.forStore does for actual API authorization.
+    const customPermissionsById = new Map(
+      storeMemberships.map((m) => [m.storeId, m.customRole?.permissions ?? []]),
+    );
 
     return {
       user: { ...toAuthUser(user), mfaEnabled },
@@ -326,7 +331,11 @@ export class AuthService {
         stores: m.organization.stores
           .map((s) => {
             const storeRole = storeRoleById.get(s.id) ?? null;
-            const permissions = resolveStorePermissions(m.role, storeRole);
+            const base = resolveStorePermissions(m.role, storeRole);
+            const customPermissions = customPermissionsById.get(s.id) ?? [];
+            const permissions = customPermissions.length
+              ? createPermissionSet([...base, ...(customPermissions as StorePermission[])])
+              : base;
             return {
               id: s.id,
               name: s.name,

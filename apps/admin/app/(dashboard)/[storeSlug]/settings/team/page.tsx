@@ -1,4 +1,4 @@
-import type { InvitationSummary, StoreMemberSummary } from "@ocean/types";
+import type { CustomRoleSummary, InvitationSummary, StoreMemberSummary } from "@ocean/types";
 import { Alert } from "@ocean/ui";
 import { notFound } from "next/navigation";
 
@@ -26,17 +26,20 @@ export default async function TeamPage({ params }: { params: Promise<{ storeSlug
   }
 
   const cookie = await cookieHeader();
-  const [members, invitations] = await Promise.all([
+  const [members, invitations, customRoles] = await Promise.all([
     api<{ data: StoreMemberSummary[] }>(`/stores/${store.id}/members`, { cookie }),
     api<{ data: InvitationSummary[] }>(`/stores/${store.id}/invitations`, { cookie }),
+    api<{ data: CustomRoleSummary[] }>(`/stores/${store.id}/custom-roles`, { cookie }),
   ]);
 
   return (
     <TeamManager
       storeId={store.id}
+      storeSlug={storeSlug}
       currentUserId={me.user.id}
       members={members.data}
       invitations={invitations.data}
+      customRoles={customRoles.data}
     />
   );
 }

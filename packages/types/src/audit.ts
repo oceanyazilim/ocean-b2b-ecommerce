@@ -1,3 +1,7 @@
+import { z } from "zod";
+
+import { cursorPaginationQuerySchema } from "./api";
+
 export interface AuditLogEntry {
   id: string;
   action: string;
@@ -11,3 +15,10 @@ export interface AuditLogEntry {
   ip: string | null;
   createdAt: string;
 }
+
+export const auditLogQuerySchema = cursorPaginationQuerySchema.extend({
+  resourceType: z.string().trim().min(1).max(60).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+export type AuditLogQuery = z.infer<typeof auditLogQuerySchema>;

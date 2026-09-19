@@ -12,20 +12,32 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { api } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import { can, cookieHeader, findStore, requireMe } from "@/lib/session";
 
 export const metadata = { title: "Audit log · Ocean Admin" };
+
+const RESOURCE_TYPES = [
+  "order",
+  "product",
+  "customer",
+  "company",
+  "custom_role",
+  "developer_app",
+  "api_key",
+  "webhook",
+  "impersonation_session",
+];
 
 export default async function AuditPage({
   params,
   searchParams,
 }: {
   params: Promise<{ storeSlug: string }>;
-  searchParams: Promise<{ cursor?: string }>;
+  searchParams: Promise<{ cursor?: string; resourceType?: string }>;
 }) {
   const { storeSlug } = await params;
-  const { cursor } = await searchParams;
+  const { cursor, resourceType } = await searchParams;
   const me = await requireMe(`/${storeSlug}/settings/audit`);
   const found = findStore(me, storeSlug);
   if (!found) notFound();
@@ -35,17 +47,46 @@ export default async function AuditPage({
     return <Alert variant="warning">Your role cannot view the audit log.</Alert>;
   }
 
-  const query = new URLSearchParams({ limit: "50", ...(cursor ? { cursor } : {}) });
+  const query = new URLSearchParams({
+    limit: "50",
+    ...(cursor ? { cursor } : {}),
+    ...(resourceType ? { resourceType } : {}),
+  });
   const page = await api<Paginated<AuditLogEntry>>(
     `/stores/${store.id}/audit-logs?${query.toString()}`,
     { cookie: await cookieHeader() },
   );
+  const exportUrl = `${API_URL}/admin/v1/stores/${store.id}/audit-logs/export${resourceType ? `?resourceType=${encodeURIComponent(resourceType)}` : ""}`;
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Audit log</CardTitle>
-        <CardDescription>Who changed what in this store. Newest first.</CardDescription>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+        <div>
+          <CardTitle>Audit log</CardTitle>
+          <CardDescription>Who changed what in this store. Newest first.</CardDescription>
+        </div>
+        <div className="flex items-center gap-2">
+          <form method="GET" className="flex items-center gap-2">
+            <select
+              name="resourceType"
+              defaultValue={resourceType ?? ""}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="">All resource types</option>
+              {RESOURCE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="text-sm font-medium hover:underline">
+              Filter
+            </button>
+          </form>
+          <a href={exportUrl} className="text-sm font-medium hover:underline">
+            Export CSV
+          </a>
+        </div>
       </CardHeader>
       <CardContent className={page.data.length ? "p-0" : undefined}>
         {page.data.length === 0 ? (
@@ -77,7 +118,7 @@ export default async function AuditPage({
             {page.pageInfo.hasNextPage && page.pageInfo.endCursor && (
               <div className="border-t px-6 py-3">
                 <Link
-                  href={`/${storeSlug}/settings/audit?cursor=${encodeURIComponent(page.pageInfo.endCursor)}`}
+                  href={`/${storeSlug}/settings/audit?cursor=${encodeURIComponent(page.pageInfo.endCursor)}${resourceType ? `&resourceType=${encodeURIComponent(resourceType)}` : ""}`}
                   className="text-sm font-medium hover:underline"
                 >
                   Older entries →

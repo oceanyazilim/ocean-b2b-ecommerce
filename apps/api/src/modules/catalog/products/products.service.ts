@@ -62,6 +62,40 @@ export class ProductsService {
     };
   }
 
+  // Large-catalog export: pages through the whole catalog with the same cursor mechanism the
+  // list endpoint uses (never a single unbounded query), so this scales the same way a
+  // paginated UI scroll would regardless of catalog size.
+  async exportCsv(ctx: TenantContext): Promise<string> {
+    const header = "Handle,Title,Status,Variant count,Min price,Max price,Currency";
+    const lines: string[] = [];
+    let cursor: string | undefined;
+    const currency = await this.currency(ctx);
+    for (let page = 0; page < 2000; page++) {
+      const { rows, hasNextPage } = await this.repo.list(ctx, {
+        limit: 250,
+        cursor,
+        sort: "created_desc",
+      } as ProductListQuery);
+      for (const r of rows) {
+        const summary = toProductSummary(r, currency, this.storage);
+        lines.push(
+          [
+            csvField(summary.handle),
+            csvField(summary.title),
+            summary.status,
+            String(summary.variantCount),
+            summary.priceRange ? (summary.priceRange.min.amount / 100).toFixed(2) : "",
+            summary.priceRange ? (summary.priceRange.max.amount / 100).toFixed(2) : "",
+            summary.priceRange?.min.currency ?? currency,
+          ].join(","),
+        );
+      }
+      if (!hasNextPage) break;
+      cursor = rows.at(-1)?.id;
+    }
+    return [header, ...lines].join("\n");
+  }
+
   async get(ctx: TenantContext, id: string): Promise<ProductDetail> {
     const row = await this.repo.findDetail(ctx, id);
     if (!row) throw new NotFoundError("Product");
@@ -610,4 +644,8 @@ export class ProductsService {
 
 function normalizeTags(tags: string[]): string[] {
   return [...new Set(tags.map((t) => t.trim()).filter(Boolean))];
+}
+
+function csvField(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

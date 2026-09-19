@@ -37,6 +37,7 @@ function toMemberSummary(m: StoreMemberWithUser): StoreMemberSummary {
     email: m.user.email,
     name: m.user.name,
     role: m.role,
+    customRole: m.customRole,
     status: m.status,
     joinedAt: m.createdAt.toISOString(),
   };
@@ -76,13 +77,20 @@ export class MembershipsService {
     await this.prisma.$transaction(async (tx) => {
       const member = await this.repo.findMember(tenant, userId, tx);
       if (!member || member.status !== "active") throw new NotFoundError("Member");
-      if (member.role === input.role) return;
+      const nextCustomRoleId = input.role === "custom" ? (input.customRoleId ?? null) : null;
+      if (member.role === input.role && member.customRoleId === nextCustomRoleId) return;
       if (member.role === "store_owner" && (await this.repo.countActiveOwners(tenant, tx)) <= 1) {
         throw new ConflictError(
           "A store must keep at least one owner. Assign another owner first.",
         );
       }
-      await this.repo.updateMemberRole(tenant, member.id, input.role, tx);
+      if (input.role === "custom" && nextCustomRoleId) {
+        const customRole = await tx.customRole.findFirst({
+          where: { id: nextCustomRoleId, storeId: tenant.storeId as string },
+        });
+        if (!customRole) throw new NotFoundError("Custom role");
+      }
+      await this.repo.updateMemberRole(tenant, member.id, input.role, tx, nextCustomRoleId);
       await this.audit.record(
         {
           organizationId: tenant.organizationId,
