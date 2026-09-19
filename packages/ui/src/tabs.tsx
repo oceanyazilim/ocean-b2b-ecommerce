@@ -48,7 +48,7 @@ export function Tabs<T extends string>({
           >
             {item.label}
             {item.count !== undefined && (
-              <span className="ml-1.5 rounded-full bg-muted px-1.5 text-xs text-muted-foreground">
+              <span className="ml-1.5 rounded bg-muted px-1.5 text-xs text-muted-foreground">
                 {item.count}
               </span>
             )}

@@ -44,7 +44,7 @@ export function TagInput({
   return (
     <div
       className={cn(
-        "flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm",
+        "flex min-h-8 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1 text-sm",
         "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
         disabled && "opacity-50",
         className,
@@ -53,7 +53,7 @@ export function TagInput({
       {value.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+          className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
         >
           {tag}
           {!disabled && (

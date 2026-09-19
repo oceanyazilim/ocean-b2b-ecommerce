@@ -1,8 +1,8 @@
 import { Badge } from "@ocean/ui";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { type AppNavGroup, type AppNavLink, AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette, type PaletteNavItem, type PaletteSearchScope } from "@/components/command-palette";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { LogoutButton } from "@/components/logout-button";
@@ -25,70 +25,140 @@ export default async function StoreLayout({
   const { organization, store } = found;
 
   const base = `/${store.slug}`;
-  const items: NavItem[] = [
-    { label: "Home", href: base, icon: "home" },
-    { label: "Orders", href: `${base}/orders`, icon: "orders", disabled: !can(store, "orders.read") },
+  const canContent = can(store, "content.read") && can(store, "settings.read");
+  const canStorefront =
+    can(store, "content.read") && !can(store, "settings.read") && !can(store, "themes.read");
+
+  // Grouped information architecture for the main sidebar (AppSidebar) — mirrors the redesign
+  // spec's IA (Orders / Products / Customers / B2B / Content / Sales / Analytics), but every
+  // group here only contains entries that map to a real, working page in this codebase. Spec
+  // entries with no backing route today (Segments, Purchase orders, Gift cards, POS,
+  // Marketplaces, Social commerce, Metaobjects, Marketing, Discounts, Finance, Markets, Apps,
+  // Automations as top-level areas) are intentionally omitted rather than stubbed out.
+  const home: AppNavLink = { label: "Home", href: base, icon: "home" };
+  const settingsItem: AppNavLink = { label: "Settings", href: `${base}/settings/general`, icon: "settings" };
+
+  const groupDefs: { label: string; items: (AppNavLink & { allowed: boolean })[] }[] = [
+    {
+      label: "Orders",
+      items: [
+        { label: "All orders", href: `${base}/orders`, icon: "orders", allowed: can(store, "orders.read") },
+        {
+          label: "Draft orders",
+          href: `${base}/orders/drafts`,
+          icon: "orders",
+          allowed: can(store, "orders.read"),
+        },
+      ],
+    },
     {
       label: "Products",
-      href: `${base}/products`,
-      icon: "products",
-      disabled: !can(store, "products.read"),
-    },
-    {
-      label: "Collections",
-      href: `${base}/collections`,
-      icon: "collections",
-      disabled: !can(store, "collections.read"),
-    },
-    {
-      label: "Inventory",
-      href: `${base}/inventory`,
-      icon: "inventory",
-      disabled: !can(store, "inventory.read"),
+      items: [
+        {
+          label: "All products",
+          href: `${base}/products`,
+          icon: "products",
+          allowed: can(store, "products.read"),
+        },
+        {
+          label: "Collections",
+          href: `${base}/collections`,
+          icon: "collections",
+          allowed: can(store, "collections.read"),
+        },
+        {
+          label: "Inventory",
+          href: `${base}/inventory`,
+          icon: "inventory",
+          allowed: can(store, "inventory.read"),
+        },
+      ],
     },
     {
       label: "Customers",
-      href: `${base}/customers`,
-      icon: "customers",
-      disabled: !can(store, "customers.read"),
+      items: [
+        {
+          label: "Customers",
+          href: `${base}/customers`,
+          icon: "customers",
+          allowed: can(store, "customers.read"),
+        },
+      ],
     },
     {
-      label: "Companies",
-      href: `${base}/companies`,
-      icon: "companies",
-      disabled: !can(store, "companies.read"),
+      label: "B2B",
+      items: [
+        {
+          label: "Companies",
+          href: `${base}/companies`,
+          icon: "companies",
+          allowed: can(store, "companies.read"),
+        },
+        { label: "Catalogs", href: `${base}/catalogs`, icon: "catalogs", allowed: can(store, "catalogs.read") },
+        { label: "Price lists", href: `${base}/pricing`, icon: "pricing", allowed: can(store, "pricing.read") },
+        { label: "Quotes", href: `${base}/quotes`, icon: "quotes", allowed: can(store, "quotes.read") },
+      ],
     },
     {
-      label: "Catalogs",
-      href: `${base}/catalogs`,
-      icon: "catalogs",
-      disabled: !can(store, "catalogs.read"),
+      label: "Content",
+      items: [
+        {
+          label: "Pages",
+          href: `${base}/storefront/pages`,
+          icon: "storefront",
+          allowed: canContent,
+        },
+        {
+          label: "Blog",
+          href: `${base}/storefront/blogs`,
+          icon: "storefront",
+          allowed: canContent,
+        },
+        {
+          label: "Menus",
+          href: `${base}/storefront/menus`,
+          icon: "storefront",
+          allowed: canContent,
+        },
+      ],
     },
     {
-      label: "Pricing",
-      href: `${base}/pricing`,
-      icon: "pricing",
-      disabled: !can(store, "pricing.read"),
-    },
-    { label: "Quotes", href: `${base}/quotes`, icon: "quotes", disabled: !can(store, "quotes.read") },
-    {
-      label: "Storefront",
-      href: `${base}/storefront`,
-      icon: "storefront",
-      disabled: !can(store, "content.read") && !can(store, "settings.read") && !can(store, "themes.read"),
+      label: "Sales",
+      items: [
+        {
+          label: "Online store",
+          href: `${base}/storefront`,
+          icon: "storefront",
+          allowed: canContent || canStorefront,
+        },
+      ],
     },
     {
       label: "Analytics",
-      href: `${base}/analytics`,
-      icon: "analytics",
-      disabled: !can(store, "analytics.read"),
+      items: [
+        {
+          label: "Analytics",
+          href: `${base}/analytics`,
+          icon: "analytics",
+          allowed: can(store, "analytics.read"),
+        },
+      ],
     },
-    {
-      label: "Settings",
-      href: `${base}/settings/general`,
-      icon: "settings",
-      disabled: !can(store, "settings.read"),
-    },
+  ];
+
+  const groups: AppNavGroup[] = groupDefs
+    .map((group) => ({
+      label: group.label,
+      items: group.items.filter((item) => item.allowed).map(({ allowed: _allowed, ...link }) => link),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  // Flat list used by the mobile fallback menu and by the "disabled" convention the plain
+  // SidebarNav component already understands.
+  const items: NavItem[] = [
+    home,
+    ...groups.flatMap((g) => g.items),
+    { ...settingsItem, disabled: !can(store, "settings.read") },
   ];
 
   // The command palette's static "Go to" results — every enabled top-level section plus the
@@ -142,63 +212,50 @@ export default async function StoreLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas lg:flex-row">
-      <aside className="flex w-full flex-col border-b bg-background lg:w-64 lg:border-b-0 lg:border-r">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-            O
-          </span>
-          <Link href="/" className="text-sm font-semibold tracking-tight">
-            Ocean
-          </Link>
-        </div>
-        <div className="px-3 pb-3">
+      {/* Mobile fallback: the collapsible/pinnable AppSidebar is a desktop-oriented rail, so
+          small screens get a simple flat menu instead. */}
+      <div className="flex w-full flex-col border-b bg-background lg:hidden">
+        <div className="flex items-center justify-between gap-2 px-3 py-3">
           <StoreSwitcher stores={switcherStores} current={store.slug} />
-          <p className="mt-1 truncate px-1 text-xs text-muted-foreground">{organization.name}</p>
         </div>
-        <div className="hidden flex-1 px-2 pb-4 lg:block">
-          <SidebarNav items={items} />
-        </div>
-        <details className="px-2 pb-3 lg:hidden">
-          <summary className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium">
-            Menu
-          </summary>
+        <details className="px-2 pb-3">
+          <summary className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium">Menu</summary>
           <div className="pt-1">
             <SidebarNav items={items} />
           </div>
         </details>
-        <div className="hidden border-t px-3 py-3 lg:block">
-          <Link
-            href="/account/security"
-            className="flex items-center gap-2.5 rounded-md px-1 py-1.5 text-sm hover:bg-accent/60"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold">
-              {initials || "U"}
-            </span>
-            <span className="min-w-0 flex-1 truncate font-medium">{me.user.name}</span>
-          </Link>
-        </div>
-      </aside>
+      </div>
+
+      <div className="hidden lg:flex">
+        <AppSidebar
+          storeId={store.id}
+          orgName={organization.name}
+          home={home}
+          groups={groups}
+          settingsItem={settingsItem}
+          switcher={<StoreSwitcher stores={switcherStores} current={store.slug} />}
+          user={{ name: me.user.name, initials, href: "/account/security" }}
+        />
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <ImpersonationBanner storeId={store.id} />
-        <header className="flex items-center justify-between gap-4 border-b bg-background px-6 py-3">
+        <header className="flex items-center justify-between gap-3 border-b bg-background px-4 py-2.5 sm:px-6">
           <div className="flex items-center gap-2">
-            <Badge variant={store.status === "active" ? "success" : "secondary"}>
-              {store.status}
-            </Badge>
+            <Badge variant={store.status === "active" ? "success" : "secondary"}>{store.status}</Badge>
             {store.role && (
-              <span className="text-xs text-muted-foreground">{store.role.replace(/_/g, " ")}</span>
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {store.role.replace(/_/g, " ")}
+              </span>
             )}
           </div>
-          <div className="flex flex-1 items-center justify-end gap-3 text-sm text-muted-foreground sm:justify-center">
+          <div className="flex items-center gap-2">
             <CommandPalette
               storeId={store.id}
               storeSlug={store.slug}
               navItems={paletteNavItems}
               searchScope={paletteSearchScope}
             />
-          </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <NotificationBell storeId={store.id} />
             <LogoutButton />
           </div>

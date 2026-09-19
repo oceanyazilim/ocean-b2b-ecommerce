@@ -61,6 +61,9 @@ export interface NavItem {
   disabled?: boolean;
 }
 
+// Flat, single-level nav list — used for sub-area navigation (Settings, Account) where a simple
+// vertical list is all that's needed. The main app shell uses AppSidebar (app-sidebar.tsx) for
+// the grouped, collapsible, pinnable top-level navigation.
 export function SidebarNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   return (
@@ -74,9 +77,9 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
               key={item.href}
               aria-disabled
               title="Coming in a later phase"
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted-foreground/50"
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground/50"
             >
-              {Icon && <Icon size={17} className="shrink-0" />}
+              {Icon && <Icon size={16} className="shrink-0" />}
               {item.label}
             </span>
           );
@@ -87,13 +90,13 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
               active
-                ? "bg-accent font-semibold text-foreground"
+                ? "bg-accent font-medium text-foreground"
                 : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
             )}
           >
-            {Icon && <Icon size={17} className="shrink-0" />}
+            {Icon && <Icon size={16} className="shrink-0" />}
             {item.label}
           </Link>
         );

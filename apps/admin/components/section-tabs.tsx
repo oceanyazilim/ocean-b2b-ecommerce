@@ -32,7 +32,7 @@ export function SectionTabs({
           >
             {item.label}
             {item.count !== undefined && item.count > 0 && (
-              <span className="ml-1.5 rounded-full bg-muted px-1.5 text-xs text-muted-foreground">
+              <span className="ml-1.5 rounded bg-muted px-1.5 text-xs text-muted-foreground">
                 {item.count}
               </span>
             )}

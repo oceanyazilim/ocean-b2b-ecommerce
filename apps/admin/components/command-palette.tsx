@@ -7,7 +7,7 @@ import type {
   Paginated,
   ProductSummary,
 } from "@ocean/types";
-import { SearchIcon } from "@ocean/ui";
+import { ClockIcon, SearchIcon } from "@ocean/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -37,6 +37,39 @@ interface PaletteResult {
 
 const ENTITY_MIN_QUERY_LENGTH = 2;
 const ENTITY_DEBOUNCE_MS = 250;
+const RECENTS_LIMIT = 5;
+
+interface RecentEntry {
+  label: string;
+  sublabel?: string | undefined;
+  href: string;
+}
+
+function recentsKey(storeId: string) {
+  return `ocean.recentSearches.${storeId}`;
+}
+
+function readRecents(storeId: string): RecentEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(recentsKey(storeId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as RecentEntry[]).slice(0, RECENTS_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecent(storeId: string, entry: RecentEntry) {
+  try {
+    const existing = readRecents(storeId).filter((r) => r.href !== entry.href);
+    const next = [entry, ...existing].slice(0, RECENTS_LIMIT);
+    window.localStorage.setItem(recentsKey(storeId), JSON.stringify(next));
+  } catch {
+    // Recent searches are a convenience only — a blocked/full localStorage shouldn't error out.
+  }
+}
 
 export function CommandPalette({
   storeId,
@@ -59,6 +92,7 @@ export function CommandPalette({
   const [entityResults, setEntityResults] = useState<PaletteResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [recents, setRecents] = useState<RecentEntry[]>([]);
   // Tracks the most recently kicked-off entity search query so a slower, now-stale response
   // (e.g. for a query the user has since changed or cleared) can't overwrite fresher results.
   const latestEntityQueryRef = useRef("");
@@ -90,9 +124,23 @@ export function CommandPalette({
     setQuery("");
     setEntityResults([]);
     setActiveIndex(0);
+    setRecents(readRecents(storeId));
     const frame = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(frame);
-  }, [open]);
+  }, [open, storeId]);
+
+  // Shown before the user types anything — the spec's "recent searches" affordance. Cleared away
+  // as soon as there's a query, same as the nav/entity result groups below.
+  const recentResults = useMemo<PaletteResult[]>(() => {
+    if (query.trim()) return [];
+    return recents.map((r) => ({
+      key: `recent:${r.href}`,
+      label: r.label,
+      sublabel: r.sublabel,
+      href: r.href,
+      group: "Recent",
+    }));
+  }, [recents, query]);
 
   const navResults = useMemo<PaletteResult[]>(() => {
     const q = query.trim().toLowerCase();
@@ -199,8 +247,8 @@ export function CommandPalette({
   }, [query, storeId, storeSlug, searchScope]);
 
   const results = useMemo<PaletteResult[]>(
-    () => [...navResults, ...entityResults],
-    [navResults, entityResults],
+    () => [...recentResults, ...navResults, ...entityResults],
+    [recentResults, navResults, entityResults],
   );
 
   // Clamp instead of resetting to 0, so an in-flight entity search resolving doesn't yank
@@ -223,11 +271,14 @@ export function CommandPalette({
   }, [results]);
 
   const go = useCallback(
-    (href: string) => {
+    (result: PaletteResult) => {
       setOpen(false);
-      router.push(href);
+      if (result.group !== "Recent") {
+        pushRecent(storeId, { label: result.label, sublabel: result.sublabel, href: result.href });
+      }
+      router.push(result.href);
     },
-    [router],
+    [router, storeId],
   );
 
   function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -240,7 +291,7 @@ export function CommandPalette({
     } else if (e.key === "Enter") {
       e.preventDefault();
       const target = results[activeIndex];
-      if (target) go(target.href);
+      if (target) go(target);
     }
   }
 
@@ -271,7 +322,7 @@ export function CommandPalette({
         onClick={(e) => {
           if (e.target === dialogRef.current) setOpen(false);
         }}
-        className="w-full max-w-xl rounded-xl border bg-card p-0 text-card-foreground shadow-popover backdrop:bg-black/40 open:animate-in"
+        className="w-full max-w-xl rounded-lg border bg-card p-0 text-card-foreground shadow-popover backdrop:bg-black/40 open:animate-in"
         aria-label="Command palette"
       >
       <div className="flex max-h-[70vh] flex-col" onClick={(e) => e.stopPropagation()}>
@@ -302,7 +353,8 @@ export function CommandPalette({
           )}
           {groups.map(({ group, items }) => (
             <div key={group} className="mb-2 last:mb-0">
-              <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {group === "Recent" && <ClockIcon size={12} />}
                 {group}
               </p>
               {items.map((item) => {
@@ -314,8 +366,8 @@ export function CommandPalette({
                     type="button"
                     data-active={isActive || undefined}
                     onMouseEnter={() => setActiveIndex(flatIndex)}
-                    onClick={() => go(item.href)}
-                    className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm ${
+                    onClick={() => go(item)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left text-sm ${
                       isActive ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/60"
                     }`}
                   >
