@@ -122,7 +122,9 @@ export const menuItemInputSchema = z.object({
   // item list (items have no stable identity from the client's perspective — same pattern as a
   // theme template's configuration), so `tempId` / `parentId` below are used purely to wire up
   // parent-child relationships within *this* request; the server assigns real ids on write.
-  tempId: z.string().trim().min(1).max(64),
+  // Optional: a caller building parent/child structure (e.g. mega-menu columns) supplies one to
+  // reference from a child's `parentId` in the same request; a flat item list can omit it.
+  tempId: z.string().trim().min(1).max(64).optional(),
   label: z.string().trim().min(1).max(255),
   url: z.string().trim().nullable().optional(),
   position: z.number().int().min(0).default(0),

@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import type { Prisma } from "@ocean/db";
 import type {
   PageInput,
@@ -630,12 +631,16 @@ export class ContentService {
     menuId: string,
     items: MenuItemInput[],
   ): Promise<void> {
-    const byTempId = new Map<string, MenuItemInput>();
+    // `tempId` is optional on the wire (a flat item list with no parent/child structure has no
+    // need for it) — assign a request-scoped fallback for any item that omitted one, so the rest
+    // of this method can keep treating it as always present.
+    const byTempId = new Map<string, MenuItemInput & { tempId: string }>();
     for (const item of items) {
-      if (byTempId.has(item.tempId)) {
-        throw new ValidationError(`Duplicate menu item id "${item.tempId}".`);
+      const tempId = item.tempId ?? randomUUID();
+      if (byTempId.has(tempId)) {
+        throw new ValidationError(`Duplicate menu item id "${tempId}".`);
       }
-      byTempId.set(item.tempId, item);
+      byTempId.set(tempId, { ...item, tempId });
     }
 
     const resolvedIds = new Map<string, string>(); // tempId -> real db id
