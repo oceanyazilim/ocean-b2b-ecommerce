@@ -78,9 +78,9 @@ export function DataGrid<T>({
   }
 
   return (
-    <div className={cn("overflow-hidden rounded-lg border bg-card", className)}>
+    <div className={cn("overflow-hidden rounded-lg border bg-card shadow-card", className)}>
       {selectable && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-4 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b bg-accent/70 px-4 py-2.5 text-sm">
           <span className="font-medium">{selected.size} selected</span>
           <div className="flex flex-wrap gap-2">{bulkActions}</div>
           <Button
@@ -95,10 +95,10 @@ export function DataGrid<T>({
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="border-b bg-muted/50 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <tr>
               {selectable && (
-                <th className="w-10 px-4 py-2">
+                <th className="w-10 px-4 py-2.5">
                   <Checkbox
                     aria-label="Select all"
                     checked={allSelected}
@@ -114,7 +114,7 @@ export function DataGrid<T>({
                 return (
                   <th
                     key={col.key}
-                    className={cn("px-4 py-2 font-medium", col.className)}
+                    className={cn("px-4 py-2.5 font-semibold", col.className)}
                     style={col.width ? { width: col.width } : undefined}
                   >
                     {col.sortable && onSortChange ? (
@@ -140,9 +140,9 @@ export function DataGrid<T>({
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={`skeleton-${i}`}>
-                  {selectable && <td className="px-4 py-3" />}
+                  {selectable && <td className="px-4 py-3.5" />}
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3">
+                    <td key={col.key} className="px-4 py-3.5">
                       <Skeleton className="h-4 w-3/4" />
                     </td>
                   ))}
@@ -157,13 +157,13 @@ export function DataGrid<T>({
                     key={key}
                     className={cn(
                       "transition-colors",
-                      onRowClick && "cursor-pointer hover:bg-accent/60",
-                      isSelected && "bg-accent/40",
+                      onRowClick && "cursor-pointer hover:bg-muted/60",
+                      isSelected && "bg-accent/50",
                     )}
                     onClick={() => onRowClick?.(row)}
                   >
                     {selectable && (
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           aria-label="Select row"
                           checked={isSelected}
@@ -172,7 +172,7 @@ export function DataGrid<T>({
                       </td>
                     )}
                     {columns.map((col) => (
-                      <td key={col.key} className={cn("px-4 py-3 align-middle", col.className)}>
+                      <td key={col.key} className={cn("px-4 py-3.5 align-middle", col.className)}>
                         {col.cell(row)}
                       </td>
                     ))}

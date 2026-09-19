@@ -9,10 +9,12 @@ import { LogoutButton } from "@/components/logout-button";
 export default async function OnboardingLayout({ children }: { children: ReactNode }) {
   const me = await requireMe();
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-canvas">
       <header className="flex items-center justify-between border-b bg-background px-6 py-3">
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-6 w-6 rounded-md bg-primary" aria-hidden />
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+            O
+          </span>
           <span className="text-sm font-semibold tracking-tight">Ocean Commerce</span>
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">

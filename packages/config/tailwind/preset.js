@@ -15,6 +15,10 @@ export const oceanPreset = {
     },
     extend: {
       colors: {
+        canvas: {
+          DEFAULT: "hsl(var(--canvas) / <alpha-value>)",
+          foreground: "hsl(var(--canvas-foreground) / <alpha-value>)",
+        },
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         muted: {
@@ -61,6 +65,10 @@ export const oceanPreset = {
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        popover: "var(--shadow-popover)",
       },
     },
   },

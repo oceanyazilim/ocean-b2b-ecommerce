@@ -42,7 +42,7 @@ export function Dialog({
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        "w-full max-w-lg rounded-lg border bg-card p-0 text-card-foreground shadow-lg backdrop:bg-black/40",
+        "w-full max-w-lg rounded-xl border bg-card p-0 text-card-foreground shadow-popover backdrop:bg-black/40",
         "open:animate-in",
         className,
       )}
