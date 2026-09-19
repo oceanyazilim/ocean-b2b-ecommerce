@@ -20,6 +20,7 @@ export default async function SettingsLayout({
             { label: "General", href: `${base}/general` },
             { label: "Team", href: `${base}/team` },
             { label: "Billing", href: `${base}/billing` },
+            { label: "Developer", href: `${base}/developer` },
             { label: "Shipping", href: `${base}/shipping` },
             { label: "Taxes", href: `${base}/taxes` },
             { label: "Payment methods", href: `${base}/payment-methods` },

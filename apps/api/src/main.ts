@@ -41,10 +41,11 @@ export function configureApp(app: NestExpressApplication, options: AppOptions): 
       dotfiles: "deny",
     });
   }
-  // Storefront routes are versioned under their own /storefront/v1 prefix (see
-  // docs/architecture/09-api-conventions.md) and must not be nested under /admin/v1 too.
+  // Storefront routes are versioned under their own /storefront/v1 prefix, and the Phase 15
+  // Developer API under its own dated /api/2026-01 prefix (see
+  // docs/architecture/09-api-conventions.md) — neither must be nested under /admin/v1 too.
   app.setGlobalPrefix(ADMIN_API_PREFIX, {
-    exclude: ["health", "health/ready", "storefront/(.*)"],
+    exclude: ["health", "health/ready", "storefront/(.*)", "api/2026-01/(.*)"],
   });
   app.enableShutdownHooks();
 }

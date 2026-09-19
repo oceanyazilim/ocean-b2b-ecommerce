@@ -302,6 +302,9 @@ model Store {
   discounts             Discount[]
   notifications         Notification[]
   featureFlagTargets    FeatureFlagTarget[]
+  developerApps         DeveloperApp[]
+  apiKeys               ApiKey[]
+  webhooks              Webhook[]
 
   @@index([organizationId])
   @@map("stores")
@@ -740,8 +743,14 @@ model DomainEvent {
 
   store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
+  // Its own marker, not reused from publishedAt: the Phase 13 NotificationsRelayService already
+  // claims publishedAt for every row regardless of type, so a second consumer (WebhookDispatchService,
+  // Phase 15) needs its own cursor rather than racing/overloading that one column.
+  webhookRelayedAt DateTime? @map("webhook_relayed_at") @db.Timestamptz(6)
+
   @@index([publishedAt, occurredAt])
   @@index([storeId, type, occurredAt(sort: Desc)])
+  @@index([webhookRelayedAt, occurredAt])
   @@map("domain_events")
 }
 
@@ -2851,4 +2860,140 @@ model FeatureFlagTarget {
   @@index([flagId, organizationId])
   @@index([flagId, storeId])
   @@map("feature_flag_targets")
+}
+
+// ---------------------------------------------------------------------------
+// Developers (Phase 15) — API keys, custom apps (client_credentials only; there's no
+// third-party app marketplace or consent-screen flow in this codebase, so "apps" here means
+// a merchant's own integrations, same as Shopify custom apps), webhooks.
+// ---------------------------------------------------------------------------
+
+enum DeveloperAppStatus {
+  active
+  revoked
+}
+
+// A merchant-created integration: owns its own API keys/webhooks, and authenticates itself
+// with the OAuth 2.0 client_credentials grant (POST /api/2026-01/oauth/token) — no
+// authorization-code/consent flow, since the "developer" and the "authorizer" are the same
+// store owner here.
+model DeveloperApp {
+  id               String             @id @default(uuid()) @db.Uuid
+  storeId          String             @map("store_id") @db.Uuid
+  organizationId   String             @map("organization_id") @db.Uuid
+  name             String
+  clientId         String             @unique @map("client_id")
+  clientSecretHash String             @map("client_secret_hash")
+  scopes           String[]
+  status           DeveloperAppStatus @default(active)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store            Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  apiKeys          ApiKey[]
+  webhooks         Webhook[]
+  blockDefinitions AppBlockDefinition[]
+
+  @@index([storeId])
+  @@map("developer_apps")
+}
+
+enum ApiKeyKind {
+  static
+  oauth_token
+}
+
+// One table for both merchant-issued static keys (kind=static, appId null) and short-lived
+// tokens minted by the client_credentials grant (kind=oauth_token, appId set) — both are
+// "a bearer credential scoped to a store with some permissions", verified the same way by
+// ApiKeyGuard. The secret itself is never stored, only its hash (same pattern as
+// UserToken/hashToken) — a caller who loses it must issue a new one.
+model ApiKey {
+  id             String     @id @default(uuid()) @db.Uuid
+  storeId        String     @map("store_id") @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  appId          String?    @map("app_id") @db.Uuid
+  name           String
+  keyHash        String     @unique @map("key_hash")
+  scopes         String[]
+  kind           ApiKeyKind @default(static)
+  expiresAt      DateTime?  @map("expires_at") @db.Timestamptz(6)
+  lastUsedAt     DateTime?  @map("last_used_at") @db.Timestamptz(6)
+  revokedAt      DateTime?  @map("revoked_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  store Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  app   DeveloperApp? @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("api_keys")
+}
+
+enum WebhookStatus {
+  active
+  disabled
+}
+
+// The secret is encrypted (not hashed) because delivery needs the plaintext back to compute
+// each payload's HMAC-SHA256 signature — see EncryptionService, reused from Phase 7/12's
+// credential-at-rest pattern rather than inventing a new one.
+model Webhook {
+  id             String        @id @default(uuid()) @db.Uuid
+  storeId        String        @map("store_id") @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  appId          String?       @map("app_id") @db.Uuid
+  topic          String
+  url            String
+  secretEnc      String        @map("secret_enc")
+  status         WebhookStatus @default(active)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store       Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  app         DeveloperApp?     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([storeId, topic])
+  @@map("webhooks")
+}
+
+enum WebhookDeliveryStatus {
+  pending
+  delivered
+  failed
+}
+
+model WebhookDelivery {
+  id           String                @id @default(uuid()) @db.Uuid
+  webhookId    String                @map("webhook_id") @db.Uuid
+  eventId      String                @map("event_id") @db.Uuid
+  attempt      Int                   @default(1)
+  status       WebhookDeliveryStatus @default(pending)
+  responseCode Int?                  @map("response_code")
+  nextRetryAt  DateTime?             @map("next_retry_at") @db.Timestamptz(6)
+  deliveredAt  DateTime?             @map("delivered_at") @db.Timestamptz(6)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@map("webhook_deliveries")
+}
+
+// An app-registered block TYPE (like a Shopify "app block"): stored and listable so a
+// merchant can see what an installed app offers, but not yet merged into the live theme
+// manifest's block picker in the editor — that integration touches ThemesService's
+// already-large manifest resolution and deserves its own pass rather than a bolt-on here.
+model AppBlockDefinition {
+  id             String   @id @default(uuid()) @db.Uuid
+  appId          String   @map("app_id") @db.Uuid
+  type           String
+  label          String
+  settingsSchema Json     @map("settings_schema")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  app DeveloperApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, type])
+  @@map("app_block_definitions")
 }
