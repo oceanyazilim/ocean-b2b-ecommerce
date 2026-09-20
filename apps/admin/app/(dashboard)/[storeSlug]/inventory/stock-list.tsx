@@ -108,8 +108,8 @@ export function StockList({
 
   const columns: DataGridColumn<InventoryItemSummary>[] = [
     {
-      key: "item",
-      header: "Item",
+      key: "product",
+      header: "Product",
       cell: (i) => (
         <div className="flex items-center gap-3">
           {i.variant?.image ? (
@@ -122,14 +122,33 @@ export function StockList({
           ) : (
             <div className="h-9 w-9 rounded border bg-muted" aria-hidden />
           )}
-          <div className="min-w-0">
-            <div className="truncate font-medium">{itemLabel(i)}</div>
-            <div className="text-xs text-muted-foreground">
-              {i.sku ? `SKU ${i.sku}` : i.upc ? `UPC ${i.upc}` : "No code"}
-            </div>
-          </div>
+          <div className="min-w-0 truncate font-medium">{i.variant?.productTitle ?? itemLabel(i)}</div>
         </div>
       ),
+    },
+    {
+      key: "variant",
+      header: "Variant",
+      cell: (i) => (
+        <span className="text-muted-foreground">
+          {i.variant && i.variant.title !== "Default Title" ? i.variant.title : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "sku",
+      header: "SKU",
+      cell: (i) => (
+        <span className="text-muted-foreground">
+          {i.sku ?? (i.upc ? `UPC ${i.upc}` : "—")}
+        </span>
+      ),
+    },
+    {
+      key: "committed",
+      header: "Committed",
+      className: "text-right",
+      cell: (i) => <span className="tabular-nums text-muted-foreground">{i.committed}</span>,
     },
     {
       key: "available",
@@ -138,22 +157,27 @@ export function StockList({
       cell: (i) => <span className="font-semibold tabular-nums">{i.available}</span>,
     },
     {
+      key: "incoming",
+      header: (
+        <span title="Not tracked — this system has no purchase-order module yet">Incoming</span>
+      ),
+      className: "text-right",
+      // No purchase-order system exists anywhere in this codebase, so there is no real quantity
+      // to show here. Rendered as an explicit "not tracked" dash rather than a fabricated 0/blank.
+      cell: () => (
+        <span
+          className="text-muted-foreground/60"
+          title="Not tracked — this system has no purchase-order module yet"
+        >
+          —
+        </span>
+      ),
+    },
+    {
       key: "onHand",
       header: "On hand",
       className: "text-right",
       cell: (i) => <span className="tabular-nums">{i.onHand}</span>,
-    },
-    {
-      key: "reserved",
-      header: "Reserved",
-      className: "text-right",
-      cell: (i) => <span className="tabular-nums text-muted-foreground">{i.reserved}</span>,
-    },
-    {
-      key: "damaged",
-      header: "Damaged",
-      className: "text-right",
-      cell: (i) => <span className="tabular-nums text-muted-foreground">{i.damaged}</span>,
     },
     {
       key: "status",
@@ -229,12 +253,12 @@ export function StockList({
           aria-label="Search inventory"
         />
         <Select
-          aria-label="Filter by location"
+          aria-label="Filter by warehouse or location"
           value={locationId}
           onChange={(e) => setLocationId(e.target.value)}
           className="w-full max-w-xs"
         >
-          <option value="">All locations</option>
+          <option value="">All warehouses / locations</option>
           {locations.map((l) => (
             <option key={l.id} value={l.id}>
               {l.name}
@@ -243,6 +267,10 @@ export function StockList({
           ))}
         </Select>
       </div>
+      <p className="text-xs text-muted-foreground">
+        &ldquo;Incoming&rdquo; is not shown as a number: this system has no purchase-order module,
+        so there is no real incoming-stock quantity to report yet.
+      </p>
 
       {error && <Alert variant="error">{error}</Alert>}
 

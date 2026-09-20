@@ -109,134 +109,182 @@ export function AnalyticsDashboard({ storeId }: { storeId: string; currency: str
       ) : (
         overview && (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Revenue</CardDescription>
-                  <CardTitle className="text-2xl tabular-nums">{formatMoney(overview.revenue)}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs text-muted-foreground">
-                  {overview.orderCount} orders, cancelled excluded
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Average order value</CardDescription>
-                  <CardTitle className="text-2xl tabular-nums">{formatMoney(overview.averageOrderValue)}</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Orders by status</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  {overview.ordersByStatus.map((s) => (
-                    <span key={s.status}>
-                      {s.status}: <span className="font-medium text-foreground">{s.count}</span>
-                    </span>
-                  ))}
-                  {overview.ordersByStatus.length === 0 && <span>No orders in range.</span>}
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Revenue by day</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {overview.revenueByDay.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No revenue in this range.</p>
-                ) : (
-                  <div className="flex h-32 items-end gap-1">
-                    {overview.revenueByDay.map((d) => (
-                      <div
-                        key={d.date}
-                        className="group relative flex-1 rounded-t bg-primary/70 transition-colors hover:bg-primary"
-                        style={{ height: `${Math.max(2, (d.revenue.amount / maxDay) * 100)}%` }}
-                        title={`${d.date}: ${formatMoney(d.revenue)} (${d.orders} orders)`}
-                      />
+            <section className="flex flex-col gap-3">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">Sales overview</h2>
+                <p className="text-sm text-muted-foreground">
+                  Revenue, order volume and average order value for the selected range.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Revenue</CardDescription>
+                    <CardTitle className="text-2xl tabular-nums">
+                      {formatMoney(overview.revenue)}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-xs text-muted-foreground">
+                    {overview.orderCount} orders, cancelled excluded
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Average order value</CardDescription>
+                    <CardTitle className="text-2xl tabular-nums">
+                      {formatMoney(overview.averageOrderValue)}
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Orders by status</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {overview.ordersByStatus.map((s) => (
+                      <span key={s.status}>
+                        {s.status}: <span className="font-medium text-foreground">{s.count}</span>
+                      </span>
                     ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    {overview.ordersByStatus.length === 0 && <span>No orders in range.</span>}
+                  </CardContent>
+                </Card>
+              </div>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Top products</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <DataGrid
-                  columns={[
-                    { key: "title", header: "Product", cell: (r: TopProductRow) => r.title },
-                    { key: "sku", header: "SKU", cell: (r: TopProductRow) => r.sku ?? "—" },
-                    {
-                      key: "qty",
-                      header: "Units sold",
-                      cell: (r: TopProductRow) => r.quantitySold,
-                    },
-                    {
-                      key: "revenue",
-                      header: "Revenue",
-                      cell: (r: TopProductRow) => formatMoney(r.revenue),
-                    },
-                  ]}
-                  rows={topProducts}
-                  rowKey={(r) => r.productId ?? r.title}
-                  empty={{ title: "No product sales in this range" }}
-                />
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Top customers</CardTitle>
+                  <CardTitle className="text-base">Revenue by day</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <DataGrid
-                    columns={[
-                      { key: "name", header: "Customer", cell: (r: TopCustomerRow) => r.name },
-                      { key: "orders", header: "Orders", cell: (r: TopCustomerRow) => r.orderCount },
-                      {
-                        key: "spent",
-                        header: "Total spent",
-                        cell: (r: TopCustomerRow) => formatMoney(r.totalSpent),
-                      },
-                    ]}
-                    rows={topCustomers}
-                    rowKey={(r) => r.customerId}
-                    empty={{ title: "No customer orders in this range" }}
-                  />
+                <CardContent>
+                  {overview.revenueByDay.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No revenue in this range.</p>
+                  ) : (
+                    <div className="flex h-32 items-end gap-1">
+                      {overview.revenueByDay.map((d) => (
+                        <div
+                          key={d.date}
+                          className="group relative flex-1 rounded-t bg-primary/70 transition-colors hover:bg-primary"
+                          style={{ height: `${Math.max(2, (d.revenue.amount / maxDay) * 100)}%` }}
+                          title={`${d.date}: ${formatMoney(d.revenue)} (${d.orders} orders)`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+            </section>
 
+            <section className="flex flex-col gap-3">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">Product performance</h2>
+                <p className="text-sm text-muted-foreground">
+                  Best-selling products by units and revenue in the selected range.
+                </p>
+              </div>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-base">Top companies (B2B)</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => void exportCsv()} loading={exporting}>
-                    Export CSV
-                  </Button>
-                </CardHeader>
                 <CardContent className="p-0">
                   <DataGrid
                     columns={[
-                      { key: "name", header: "Company", cell: (r: TopCompanyRow) => r.name },
-                      { key: "orders", header: "Orders", cell: (r: TopCompanyRow) => r.orderCount },
+                      { key: "title", header: "Product", cell: (r: TopProductRow) => r.title },
+                      { key: "sku", header: "SKU", cell: (r: TopProductRow) => r.sku ?? "—" },
                       {
-                        key: "spent",
-                        header: "Total spent",
-                        cell: (r: TopCompanyRow) => formatMoney(r.totalSpent),
+                        key: "qty",
+                        header: "Units sold",
+                        cell: (r: TopProductRow) => r.quantitySold,
+                      },
+                      {
+                        key: "revenue",
+                        header: "Revenue",
+                        cell: (r: TopProductRow) => formatMoney(r.revenue),
                       },
                     ]}
-                    rows={topCompanies}
-                    rowKey={(r) => r.companyId}
-                    empty={{ title: "No company orders in this range" }}
+                    rows={topProducts}
+                    rowKey={(r) => r.productId ?? r.title}
+                    empty={{ title: "No product sales in this range" }}
                   />
                 </CardContent>
               </Card>
+            </section>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <section className="flex flex-col gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">Customer performance</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Direct (D2C) customers ranked by spend in the selected range.
+                  </p>
+                </div>
+                <Card>
+                  <CardContent className="p-0">
+                    <DataGrid
+                      columns={[
+                        { key: "name", header: "Customer", cell: (r: TopCustomerRow) => r.name },
+                        {
+                          key: "orders",
+                          header: "Orders",
+                          cell: (r: TopCustomerRow) => r.orderCount,
+                        },
+                        {
+                          key: "spent",
+                          header: "Total spent",
+                          cell: (r: TopCustomerRow) => formatMoney(r.totalSpent),
+                        },
+                      ]}
+                      rows={topCustomers}
+                      rowKey={(r) => r.customerId}
+                      empty={{ title: "No customer orders in this range" }}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              <section className="flex flex-col gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">B2B performance</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Companies ranked by order volume and spend in the selected range.
+                  </p>
+                </div>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-end pb-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void exportCsv()}
+                      loading={exporting}
+                    >
+                      Export CSV
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <DataGrid
+                      columns={[
+                        { key: "name", header: "Company", cell: (r: TopCompanyRow) => r.name },
+                        {
+                          key: "orders",
+                          header: "Orders",
+                          cell: (r: TopCompanyRow) => r.orderCount,
+                        },
+                        {
+                          key: "spent",
+                          header: "Total spent",
+                          cell: (r: TopCompanyRow) => formatMoney(r.totalSpent),
+                        },
+                      ]}
+                      rows={topCompanies}
+                      rowKey={(r) => r.companyId}
+                      empty={{ title: "No company orders in this range" }}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Marketing attribution, geographic sales, channel performance and inventory
+              performance reports are not yet available — this system does not track ad spend,
+              customer geography, sales channels, or inventory turnover.
+            </p>
           </>
         )
       )}

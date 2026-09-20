@@ -7,7 +7,7 @@ import {
   type LocationSummary,
   type Paginated,
 } from "@ocean/types";
-import { Alert, Badge, DataGrid, Input, Select, type DataGridColumn } from "@ocean/ui";
+import { Alert, Badge, cn, DataGrid, Input, Select, type DataGridColumn } from "@ocean/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
@@ -99,12 +99,22 @@ export function MovementsLedger({ storeId }: { storeId: string }) {
       key: "qty",
       header: "Qty",
       className: "text-right",
-      cell: (m) => (
-        <span className="font-semibold tabular-nums">
-          {m.fromLocation && !m.toLocation ? "−" : m.toLocation && !m.fromLocation ? "+" : ""}
-          {m.quantity}
-        </span>
-      ),
+      cell: (m) => {
+        const out = m.fromLocation && !m.toLocation;
+        const inbound = m.toLocation && !m.fromLocation;
+        return (
+          <span
+            className={cn(
+              "font-semibold tabular-nums",
+              out && "text-destructive",
+              inbound && "text-emerald-600 dark:text-emerald-400",
+            )}
+          >
+            {out ? "−" : inbound ? "+" : ""}
+            {m.quantity}
+          </span>
+        );
+      },
     },
     {
       key: "reference",
