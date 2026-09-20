@@ -20,6 +20,7 @@ import { isUniqueViolation, uniqueViolationTarget } from "../../common/prisma-er
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { CountryProfilesService } from "../countries/countries.service";
 import { EventsService } from "../events/events.service";
 import {
   companyDetailInclude,
@@ -45,7 +46,30 @@ export class CompaniesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly events: EventsService,
+    private readonly countries: CountryProfilesService,
   ) {}
+
+  // The company detail page's tax-number field needs the right local label (VKN for Turkey,
+  // VAT ID for Germany, EIN for the US, ...) instead of a hardcoded "Tax ID" (spec section 27),
+  // resolved from CountryProfile.taxIdFormats for the company's tax country + id-type code.
+  private async resolveTaxIdLabel(
+    taxCountryCode: string | null,
+    taxIdType: string | null,
+  ): Promise<string | null> {
+    if (!taxCountryCode) return null;
+    const profile = await this.countries.getCountryProfile(taxCountryCode);
+    if (!profile) return null;
+    const formats = profile.taxIdFormats;
+    const match = taxIdType ? formats.find((f) => f.code === taxIdType) : undefined;
+    return (match ?? formats[0])?.label ?? null;
+  }
+
+  private async withTaxIdLabel(detail: CompanyDetail): Promise<CompanyDetail> {
+    return {
+      ...detail,
+      taxIdLabel: await this.resolveTaxIdLabel(detail.taxCountryCode, detail.taxIdType),
+    };
+  }
 
   scope(ctx: TenantContext): Prisma.CompanyWhereInput {
     return { storeId: ctx.storeId as string, organizationId: ctx.organizationId, deletedAt: null };
@@ -161,7 +185,7 @@ export class CompaniesService {
     const allLocationUsers = await this.prisma.companyUser.count({
       where: { companyId: id, status: "active", allLocations: true, customer: { deletedAt: null } },
     });
-    return toCompanyDetail(row, allLocationUsers);
+    return this.withTaxIdLabel(toCompanyDetail(row, allLocationUsers));
   }
 
   // Cheap existence check other services use before touching a company's children.
@@ -195,6 +219,10 @@ export class CompaniesService {
             displayName: input.displayName,
             taxNumber: input.taxNumber ?? null,
             taxOffice: input.taxOffice ?? null,
+            taxCountryCode: input.taxCountryCode ?? null,
+            taxIdType: input.taxIdType ?? null,
+            taxValidationStatus: input.taxValidationStatus,
+            taxTreatment: input.taxTreatment ?? null,
             industry: input.industry ?? null,
             currency,
             status: input.status,
@@ -273,6 +301,11 @@ export class CompaniesService {
         if (input.displayName !== undefined) data.displayName = input.displayName;
         if (input.taxNumber !== undefined) data.taxNumber = input.taxNumber;
         if (input.taxOffice !== undefined) data.taxOffice = input.taxOffice;
+        if (input.taxCountryCode !== undefined) data.taxCountryCode = input.taxCountryCode;
+        if (input.taxIdType !== undefined) data.taxIdType = input.taxIdType;
+        if (input.taxValidationStatus !== undefined)
+          data.taxValidationStatus = input.taxValidationStatus;
+        if (input.taxTreatment !== undefined) data.taxTreatment = input.taxTreatment;
         if (input.industry !== undefined) data.industry = input.industry;
         if (input.currency !== undefined) data.currency = input.currency;
         if (input.status !== undefined) data.status = input.status;

@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { can, cookieHeader } from "@/lib/session";
 import { loadStorePage } from "@/lib/store-page";
 
-import { TaxesManager } from "./taxes-manager";
+import { TaxesShell } from "./taxes-shell";
 
 export const metadata = { title: "Taxes · Ocean Admin" };
 
@@ -18,7 +18,7 @@ export default async function TaxesPage({ params }: { params: Promise<{ storeSlu
     { cookie: await cookieHeader() },
   );
   return (
-    <TaxesManager
+    <TaxesShell
       storeId={store.id}
       pricesIncludeTax={settings.data.pricesIncludeTax}
       canWrite={can(store, "taxes.write")}

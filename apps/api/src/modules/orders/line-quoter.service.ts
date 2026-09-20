@@ -66,6 +66,7 @@ const variantInclude = {
       title: true,
       status: true,
       deletedAt: true,
+      taxClassId: true,
       media: {
         orderBy: { position: "asc" as const },
         take: 1,
@@ -289,6 +290,7 @@ export class LineQuoterService {
           lineTotal: l.lineTotal.amount,
           requiresShipping: v.requiresShipping,
           taxable: v.taxable,
+          taxClassId: v.product.taxClassId,
           weightGrams: toGrams(v.weight, v.weightUnit) * l.quantity,
         };
       }),

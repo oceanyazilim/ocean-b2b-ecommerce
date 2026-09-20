@@ -29,11 +29,28 @@ const websiteSchema = z
   .nullable()
   .optional();
 
+// B2B tax information (spec sections 26-27). Not an enum on the wire so a country without a
+// CountryProfile yet can still be recorded; the admin UI resolves the dynamic tax-id label
+// (VKN/EIN/VAT ID/...) from CountryProfile.taxIdFormats when one exists for the code.
+export const TAX_ID_VALIDATION_STATUSES = ["unverified", "verified", "invalid"] as const;
+export const taxIdValidationStatusSchema = z.enum(TAX_ID_VALIDATION_STATUSES);
+export type TaxIdValidationStatus = z.infer<typeof taxIdValidationStatusSchema>;
+
 const companyFields = z.object({
   legalName: z.string().trim().min(1, "Legal name is required").max(200),
   displayName: z.string().trim().min(1).max(200),
   taxNumber: optionalText(40),
   taxOffice: optionalText(120),
+  taxCountryCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/, "Use a two-letter country code")
+    .nullable()
+    .optional(),
+  taxIdType: optionalText(40),
+  taxValidationStatus: taxIdValidationStatusSchema,
+  taxTreatment: optionalText(120),
   industry: optionalText(80),
   currency: currencyCodeSchema,
   status: companyStatusSchema,
@@ -77,6 +94,7 @@ export const createCompanySchema = companyFields
     currency: currencyCodeSchema.optional(),
     status: companyStatusSchema.default("active"),
     tags: tagsSchema.default([]),
+    taxValidationStatus: taxIdValidationStatusSchema.default("unverified"),
     // Optional first location so a company is orderable straight away.
     location: createCompanyLocationSchema.omit({ isDefault: true }).optional(),
   })
@@ -160,6 +178,15 @@ export interface CompanyDetail extends CompanySummary {
   email: string | null;
   note: string | null;
   locations: CompanyLocationSummary[];
+  // B2B tax information (spec sections 26-27).
+  taxCountryCode: string | null;
+  taxIdType: string | null;
+  taxValidationStatus: TaxIdValidationStatus;
+  taxTreatment: string | null;
+  // Resolved server-side from CountryProfile.taxIdFormats for `taxCountryCode` + `taxIdType` —
+  // e.g. "Vergi Kimlik Numarası (VKN)" for Turkey, "VAT ID" for Germany, "EIN" for the US. Null
+  // when the company has no tax country set, or that country has no matching format.
+  taxIdLabel: string | null;
 }
 
 export interface CompanyStats {

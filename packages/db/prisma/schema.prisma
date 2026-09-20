@@ -45,12 +45,12 @@ model User {
   mfa                  UserMfa?
   loginEvents          LoginEvent[]
   inventoryMovements   InventoryMovement[]
-  transfersRequested   TransferRequest[]    @relation("TransferRequestedBy")
-  transfersApproved    TransferRequest[]    @relation("TransferApprovedBy")
-  managedCompanies     Company[]            @relation("CompanyAccountManager")
-  reviewedApplications CompanyApplication[] @relation("ApplicationReviewer")
-  placedOrders         Order[]              @relation("OrderPlacedBy")
-  draftOrders          DraftOrder[]         @relation("DraftOrderCreatedBy")
+  transfersRequested   TransferRequest[]      @relation("TransferRequestedBy")
+  transfersApproved    TransferRequest[]      @relation("TransferApprovedBy")
+  managedCompanies     Company[]              @relation("CompanyAccountManager")
+  reviewedApplications CompanyApplication[]   @relation("ApplicationReviewer")
+  placedOrders         Order[]                @relation("OrderPlacedBy")
+  draftOrders          DraftOrder[]           @relation("DraftOrderCreatedBy")
   pagesCreated         Page[]
   blogsCreated         Blog[]
   articlesCreated      Article[]
@@ -230,6 +230,8 @@ model Organization {
   fulfillments          Fulfillment[]
   returns               Return[]
   taxRules              TaxRule[]
+  taxRegistrations      TaxRegistration[]
+  taxClasses            TaxClass[]
   markets               Market[]
   pages                 Page[]
   blogs                 Blog[]
@@ -351,6 +353,8 @@ model Store {
   fulfillments          Fulfillment[]
   returns               Return[]
   taxRules              TaxRule[]
+  taxRegistrations      TaxRegistration[]
+  taxClasses            TaxClass[]
   markets               Market[]
   pages                 Page[]
   blogs                 Blog[]
@@ -499,9 +503,17 @@ model Product {
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  // Tax classes (L3 localization, spec section 24): which tax category this product belongs to
+  // (Standard goods, Digital services, Food, Books, Clothing, Medical products, Tax exempt).
+  // Nullable/additive — a product with no class set behaves exactly as before (matched only by
+  // country/province-level TaxRules that also have no taxClassId), so existing flat-rate stores
+  // are unaffected until they opt in.
+  taxClassId String? @map("tax_class_id") @db.Uuid
+
   store        Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category     Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  taxClass     TaxClass?           @relation(fields: [taxClassId], references: [id], onDelete: SetNull)
   options      ProductOption[]
   variants     ProductVariant[]
   media        ProductMedia[]
@@ -513,6 +525,7 @@ model Product {
   @@index([storeId, createdAt(sort: Desc)])
   @@index([storeId, vendor])
   @@index([storeId, productType])
+  @@index([storeId, taxClassId])
   @@map("products")
 }
 
@@ -1104,28 +1117,46 @@ enum CompanyStatus {
   archived
 }
 
+enum TaxIdValidationStatus {
+  unverified
+  verified
+  invalid
+}
+
 model Company {
-  id               String        @id @default(uuid()) @db.Uuid
-  storeId          String        @map("store_id") @db.Uuid
-  organizationId   String        @map("organization_id") @db.Uuid
-  legalName        String        @map("legal_name")
-  displayName      String        @map("display_name")
-  taxNumber        String?       @map("tax_number")
-  taxOffice        String?       @map("tax_office")
-  industry         String?
-  currency         String        @db.Char(3)
-  status           CompanyStatus @default(active)
-  accountManagerId String?       @map("account_manager_id") @db.Uuid
-  externalId       String?       @map("external_id")
-  website          String?
-  phone            String?
-  email            String?
-  note             String?
-  tags             String[]      @default([])
-  version          Int           @default(1)
-  deletedAt        DateTime?     @map("deleted_at") @db.Timestamptz(6)
-  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String                @id @default(uuid()) @db.Uuid
+  storeId             String                @map("store_id") @db.Uuid
+  organizationId      String                @map("organization_id") @db.Uuid
+  legalName           String                @map("legal_name")
+  displayName         String                @map("display_name")
+  taxNumber           String?               @map("tax_number")
+  taxOffice           String?               @map("tax_office")
+  // B2B tax information (L3 localization, spec sections 26-27). All nullable/additive so
+  // existing companies are unaffected. `taxNumber` above is reused as the actual ID value
+  // (e.g. "DE123456789" or a Turkish VKN) — its on-screen label is derived dynamically from
+  // `taxCountryCode` via CountryProfile.taxIdFormats, never hardcoded as "Tax ID".
+  taxCountryCode      String?               @map("tax_country_code") @db.VarChar(2) // ISO 3166-1 alpha-2, matches CountryProfile.countryCode
+  taxIdType           String?               @map("tax_id_type") // code from that country's CountryProfile.taxIdFormats[], e.g. "VKN", "EIN"
+  // Merchant-set metadata only — not a live VIES/tax-authority lookup (spec section 50, out of
+  // scope here). An admin marks this after checking the number themselves.
+  taxValidationStatus TaxIdValidationStatus @default(unverified) @map("tax_validation_status")
+  // Free-form note, e.g. "reverse_charge" for intra-EU B2B. Actual tax determination stays with
+  // the real tax/compliance engine (TaxRule) per spec section 26 — this is descriptive only.
+  taxTreatment        String?               @map("tax_treatment")
+  industry            String?
+  currency            String                @db.Char(3)
+  status              CompanyStatus         @default(active)
+  accountManagerId    String?               @map("account_manager_id") @db.Uuid
+  externalId          String?               @map("external_id")
+  website             String?
+  phone               String?
+  email               String?
+  note                String?
+  tags                String[]              @default([])
+  version             Int                   @default(1)
+  deletedAt           DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   store                Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2176,8 +2207,11 @@ model ReturnItem {
   @@map("return_items")
 }
 
-// Tax rules: the most specific active rule for the shipping address wins (province beats
-// country). Rates in basis points; store.prices_include_tax decides inclusive vs added.
+// Tax rules: the most specific active rule for the shipping address AND the line's tax class
+// wins — a class-specific rule beats a generic (taxClassId = null) one at the same geography,
+// and province beats country. Rates in basis points; store.prices_include_tax decides inclusive
+// vs added. `taxClassId` is additive (L3 localization, spec section 24): existing rules with no
+// class keep matching every line exactly as before.
 model TaxRule {
   id             String   @id @default(uuid()) @db.Uuid
   storeId        String   @map("store_id") @db.Uuid
@@ -2185,6 +2219,7 @@ model TaxRule {
   name           String
   countryCode    String   @map("country_code") @db.Char(2)
   provinceCode   String?  @map("province_code")
+  taxClassId     String?  @map("tax_class_id") @db.Uuid
   rateBps        Int      @map("rate_bps")
   isActive       Boolean  @default(true) @map("is_active")
   position       Int      @default(0)
@@ -2193,9 +2228,85 @@ model TaxRule {
 
   store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taxClass     TaxClass?    @relation(fields: [taxClassId], references: [id], onDelete: SetNull)
 
   @@index([storeId, countryCode, provinceCode])
+  @@index([storeId, taxClassId])
   @@map("tax_rules")
+}
+
+// ---------------------------------------------------------------------------
+// Global Localization: Country & Tax Compliance (L3)
+//
+// Builds on top of the real Phase 7 tax rate engine (TaxRule) and the L1 Country Engine
+// (CountryProfile) without replacing either. Spec sections 20-27:
+//   - TaxRegistration: "Taxes -> Registrations" (section 21) — which countries/regions the
+//     merchant is tax-registered in. The UI reads CountryProfile.taxTerminology for the label
+//     shown per country (never hardcodes "VAT" — section 22) and CountryProfile.taxSystemType
+//     for the registration type ("vat", "sales_tax", "gst", ...).
+//   - TaxClass: "tax categories" products can be assigned to (section 24) — Standard, Digital
+//     services, Food, Books, Clothing, Medical products, Tax exempt — that the real TaxRule
+//     engine can optionally key off of via TaxRule.taxClassId / Product.taxClassId.
+// Both are tenant-scoped (storeId/organizationId), same pattern as TaxRule/Market.
+// ---------------------------------------------------------------------------
+
+enum TaxRegistrationStatus {
+  active
+  not_registered
+  pending
+}
+
+model TaxRegistration {
+  id                 String                @id @default(uuid()) @db.Uuid
+  storeId            String                @map("store_id") @db.Uuid
+  organizationId     String                @map("organization_id") @db.Uuid
+  // ISO 3166-1 alpha-2, matches CountryProfile.countryCode.
+  countryCode        String                @map("country_code") @db.VarChar(2)
+  // Optional sub-country region (spec section 23), e.g. a US state code — lets one country
+  // carry several registrations ("United States / Sales tax / 3 registrations").
+  regionCode         String?               @map("region_code")
+  // Free text, not an enum, mirrors CountryProfile.taxSystemType ("vat", "sales_tax", "gst",
+  // "none") plus a merchant-entered label for display when a country has no CountryProfile yet.
+  registrationType   String                @map("registration_type")
+  registrationNumber String?               @map("registration_number")
+  status             TaxRegistrationStatus @default(not_registered)
+  notes              String?
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, countryCode])
+  @@map("tax_registrations")
+}
+
+model TaxClass {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  // Stable machine key, e.g. "standard", "digital_services", "food", "books", "clothing",
+  // "medical", "exempt". Seeded per store; merchants may add more.
+  code           String
+  name           String
+  description    String?
+  // The class every product without an explicit assignment behaves as (spec: "default them to
+  // Standard"). Exactly one per store in practice; not DB-enforced to keep the migration simple.
+  isDefault      Boolean  @default(false) @map("is_default")
+  // Seeded defaults the merchant can rename but that a future UI may protect from deletion.
+  isSystem       Boolean  @default(false) @map("is_system")
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     Product[]
+  taxRules     TaxRule[]
+
+  @@unique([storeId, code])
+  @@index([storeId])
+  @@map("tax_classes")
 }
 
 // ---------------------------------------------------------------------------
@@ -2341,7 +2452,7 @@ model MenuItem {
   // page) rather than typed as a raw URL, `linkType` + `resourceId` record the original target
   // so the admin builder can re-select it on edit; `url` always holds the resolved href used by
   // the storefront regardless of how the link was picked.
-  linkType String? @map("link_type") // "url" | "product" | "collection" | "page"
+  linkType   String? @map("link_type") // "url" | "product" | "collection" | "page"
   resourceId String? @map("resource_id") @db.Uuid
 
   // Mega menu (top-level items only): when enabled, this item's children are rendered as
@@ -3095,9 +3206,9 @@ model Webhook {
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store       Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  app         DeveloperApp?     @relation(fields: [appId], references: [id], onDelete: Cascade)
-  deliveries  WebhookDelivery[]
+  store      Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  app        DeveloperApp?     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
 
   @@index([storeId, topic])
   @@map("webhooks")
@@ -3209,16 +3320,16 @@ model SsoConnection {
 // store owner/admin impersonating a member of their OWN store (Zendesk/Intercom-style account
 // troubleshooting), not cross-tenant platform support.
 model ImpersonationSession {
-  id                String    @id @default(uuid()) @db.Uuid
-  storeId           String    @map("store_id") @db.Uuid
-  organizationId    String    @map("organization_id") @db.Uuid
-  impersonatorUserId String   @map("impersonator_user_id") @db.Uuid
-  targetUserId      String    @map("target_user_id") @db.Uuid
-  reason            String
-  sessionId         String    @map("session_id")
-  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
-  endedAt           DateTime? @map("ended_at") @db.Timestamptz(6)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String    @id @default(uuid()) @db.Uuid
+  storeId            String    @map("store_id") @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  impersonatorUserId String    @map("impersonator_user_id") @db.Uuid
+  targetUserId       String    @map("target_user_id") @db.Uuid
+  reason             String
+  sessionId          String    @map("session_id")
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz(6)
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   store        Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
   impersonator User  @relation("ImpersonatorUser", fields: [impersonatorUserId], references: [id], onDelete: Cascade)
@@ -3267,11 +3378,11 @@ model CountryProfile {
 
   // Free text, not an enum, so a new jurisdiction's tax system (e.g. "gst") never needs a
   // migration — e.g. "vat", "sales_tax", "gst", "none".
-  taxSystemType String @map("tax_system_type")
+  taxSystemType  String @map("tax_system_type")
   // TaxTerminology — { localName: "KDV", localFullName: "Katma Değer Vergisi", englishName: "VAT" }.
-  taxTerminology Json @map("tax_terminology") @db.JsonB
+  taxTerminology Json   @map("tax_terminology") @db.JsonB
   // TaxIdFormat[] — e.g. [{ code: "VKN", label: "Vergi Kimlik Numarası", regex, ... }].
-  taxIdFormats Json @map("tax_id_formats") @db.JsonB
+  taxIdFormats   Json   @map("tax_id_formats") @db.JsonB
 
   // String identifiers only (e.g. "credit_card", "bank_transfer") — real payment method
   // implementations are out of scope for this engine.

@@ -51,6 +51,10 @@ const productFields = z.object({
   vendor: optionalText(120),
   productType: optionalText(120),
   categoryId: idSchema.nullable().optional(),
+  // Tax class (spec section 24) this product belongs to (Standard goods, Digital services,
+  // Food, Books, Clothing, Medical products, Tax exempt, ...). Null = "Standard" — the real
+  // Phase 7 tax rate engine matches it exactly as it did before this existed.
+  taxClassId: idSchema.nullable().optional(),
   status: productStatusSchema,
   tags: tagsSchema,
   seoTitle: optionalText(70),
@@ -172,6 +176,8 @@ export interface ProductSummary {
 export interface ProductDetail extends ProductSummary {
   descriptionHtml: string;
   categoryId: string | null;
+  taxClassId: string | null;
+  taxClassName: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   templateSuffix: string | null;

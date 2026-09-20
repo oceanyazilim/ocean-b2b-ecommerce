@@ -1,4 +1,4 @@
-import type { CategoryNode, MetafieldDefinitionSummary } from "@ocean/types";
+import type { CategoryNode, MetafieldDefinitionSummary, TaxClassSummary } from "@ocean/types";
 import { Alert } from "@ocean/ui";
 
 import { api } from "@/lib/api";
@@ -20,12 +20,16 @@ export default async function NewProductPage({
     return <Alert variant="warning">Your role cannot create products.</Alert>;
 
   const cookie = await cookieHeader();
-  const [categories, definitions] = await Promise.all([
+  const canReadTaxes = can(store, "taxes.read");
+  const [categories, definitions, taxClasses] = await Promise.all([
     api<{ data: CategoryNode[] }>(`/stores/${store.id}/categories`, { cookie }),
     api<{ data: MetafieldDefinitionSummary[] }>(
       `/stores/${store.id}/metafield-definitions?ownerType=product`,
       { cookie },
     ),
+    canReadTaxes
+      ? api<{ data: TaxClassSummary[] }>(`/stores/${store.id}/tax/classes`, { cookie })
+      : Promise.resolve({ data: [] as TaxClassSummary[] }),
   ]);
 
   return (
@@ -35,6 +39,7 @@ export default async function NewProductPage({
       currency={store.defaultCurrency}
       categories={categories.data}
       definitions={definitions.data}
+      taxClasses={taxClasses.data}
       product={null}
       metafields={[]}
       canDelete={false}

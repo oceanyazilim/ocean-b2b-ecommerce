@@ -113,6 +113,7 @@ export class ProductsService {
     const created = await this.prisma.$transaction(async (tx) => {
       const handle = await this.resolveHandle(ctx, input.title, input.handle, null, tx);
       await this.assertCategory(ctx, input.categoryId ?? null, tx);
+      await this.assertTaxClass(ctx, input.taxClassId ?? null, tx);
       await this.assertSkusFree(ctx, input.variants, null, tx);
       const plan = this.plan(input.options, input.variants, []);
 
@@ -126,6 +127,7 @@ export class ProductsService {
           vendor: input.vendor ?? null,
           productType: input.productType ?? null,
           categoryId: input.categoryId ?? null,
+          taxClassId: input.taxClassId ?? null,
           status: input.status,
           publishedAt: input.status === "active" ? new Date() : null,
           tags: normalizeTags(input.tags),
@@ -195,6 +197,10 @@ export class ProductsService {
       if (input.categoryId !== undefined) {
         await this.assertCategory(ctx, input.categoryId, tx);
         data.categoryId = input.categoryId;
+      }
+      if (input.taxClassId !== undefined) {
+        await this.assertTaxClass(ctx, input.taxClassId, tx);
+        data.taxClassId = input.taxClassId;
       }
       if (input.status !== undefined && input.status !== current.status) {
         this.assertTransition(current.status, input.status);
@@ -512,6 +518,23 @@ export class ProductsService {
     if (!(await this.repo.categoryInTenant(ctx, categoryId, tx))) {
       throw new ValidationError("Category not found in this store.", [
         { path: "categoryId", message: "Unknown category" },
+      ]);
+    }
+  }
+
+  private async assertTaxClass(
+    ctx: TenantContext,
+    taxClassId: string | null,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (!taxClassId) return;
+    const row = await tx.taxClass.findFirst({
+      where: { id: taxClassId, storeId: ctx.storeId as string },
+      select: { id: true },
+    });
+    if (!row) {
+      throw new ValidationError("Tax class not found in this store.", [
+        { path: "taxClassId", message: "Unknown tax class" },
       ]);
     }
   }

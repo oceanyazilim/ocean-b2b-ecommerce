@@ -11,6 +11,10 @@ export interface CalculatorLine {
   requiresShipping: boolean;
   taxable: boolean;
   weightGrams: number;
+  // Tax class (spec section 24) the product belongs to, so the tax calculator can pick a
+  // class-specific TaxRule over a generic one at the same geography. Null = "Standard" /
+  // no class set — matches only rules that also have no taxClassId (today's behavior).
+  taxClassId: string | null;
 }
 
 export interface CalculatorContext {

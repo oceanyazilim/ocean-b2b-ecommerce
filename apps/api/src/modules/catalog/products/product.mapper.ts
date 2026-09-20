@@ -27,6 +27,7 @@ export const productDetailInclude = {
     include: { optionValues: { include: { optionValue: { include: { option: true } } } } },
   },
   media: { orderBy: { position: "asc" as const }, include: { media: true } },
+  taxClass: { select: { name: true } },
 } satisfies Prisma.ProductInclude;
 
 type ProductSummaryRow = Prisma.ProductGetPayload<{ include: typeof productSummaryInclude }>;
@@ -101,6 +102,8 @@ export function toProductDetail(
     updatedAt: row.updatedAt.toISOString(),
     descriptionHtml: row.descriptionHtml,
     categoryId: row.categoryId,
+    taxClassId: row.taxClassId,
+    taxClassName: row.taxClass?.name ?? null,
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
     templateSuffix: row.templateSuffix,

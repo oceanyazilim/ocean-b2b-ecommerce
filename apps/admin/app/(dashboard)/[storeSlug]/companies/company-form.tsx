@@ -2,12 +2,16 @@
 
 import {
   COMPANY_STATUSES,
+  TAX_ID_VALIDATION_STATUSES,
   type AccountManagerCandidate,
   type CompanyDetail,
   type CompanyStatus,
+  type CountryProfileSummary,
   type CreditAccountSummary,
   type MetafieldDefinitionSummary,
   type MetafieldValue,
+  type TaxIdFormat,
+  type TaxIdValidationStatus,
 } from "@ocean/types";
 import {
   Alert,
@@ -26,7 +30,7 @@ import {
 } from "@ocean/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   AddressFields,
@@ -88,6 +92,14 @@ export function CompanyForm({
   const [displayName, setDisplayName] = useState(company?.displayName ?? "");
   const [taxNumber, setTaxNumber] = useState(company?.taxNumber ?? "");
   const [taxOffice, setTaxOffice] = useState(company?.taxOffice ?? "");
+  const [taxCountryCode, setTaxCountryCode] = useState(company?.taxCountryCode ?? "");
+  const [taxIdType, setTaxIdType] = useState(company?.taxIdType ?? "");
+  const [taxValidationStatus, setTaxValidationStatus] = useState<TaxIdValidationStatus>(
+    company?.taxValidationStatus ?? "unverified",
+  );
+  const [taxTreatment, setTaxTreatment] = useState(company?.taxTreatment ?? "");
+  const [countries, setCountries] = useState<CountryProfileSummary[]>([]);
+  const [taxIdFormats, setTaxIdFormats] = useState<TaxIdFormat[]>([]);
   const [industry, setIndustry] = useState(company?.industry ?? "");
   const [currency, setCurrency] = useState(company?.currency ?? storeCurrency);
   const [status, setStatus] = useState<CompanyStatus>(company?.status ?? "active");
@@ -106,12 +118,47 @@ export function CompanyForm({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Global Country Engine (L1): the list of countries with a real CountryProfile, used to pick
+  // the company's tax country and, from that, the right dynamic tax-id label (spec section 27) —
+  // never a single hardcoded "Tax ID" field.
+  useEffect(() => {
+    void api<{ data: CountryProfileSummary[] }>("/countries")
+      .then((res) => setCountries(res.data))
+      .catch(() => setCountries([]));
+  }, []);
+
+  useEffect(() => {
+    if (!taxCountryCode) {
+      setTaxIdFormats([]);
+      return;
+    }
+    let cancelled = false;
+    void api<{ data: { taxIdFormats: TaxIdFormat[] } }>(`/countries/${taxCountryCode}`)
+      .then((res) => {
+        if (!cancelled) setTaxIdFormats(res.data.taxIdFormats);
+      })
+      .catch(() => {
+        if (!cancelled) setTaxIdFormats([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [taxCountryCode]);
+
+  const activeTaxIdFormat =
+    taxIdFormats.find((f) => f.code === taxIdType) ?? taxIdFormats[0] ?? null;
+  const taxNumberLabel = activeTaxIdFormat?.label ?? "Tax number";
+
   const orNull = (v: string) => (v.trim() ? v.trim() : null);
   const payload = () => ({
     legalName,
     displayName: displayName.trim() || legalName,
     taxNumber: orNull(taxNumber),
     taxOffice: orNull(taxOffice),
+    taxCountryCode: taxCountryCode || null,
+    taxIdType: orNull(taxIdType),
+    taxValidationStatus,
+    taxTreatment: orNull(taxTreatment),
     industry: orNull(industry),
     currency: currency.trim().toUpperCase(),
     status,
@@ -260,25 +307,6 @@ export function CompanyForm({
                   disabled={readOnly}
                 />
               </FormField>
-              <FormField id="co-tax" label="Tax number" error={fieldErrors.taxNumber}>
-                <Input
-                  id="co-tax"
-                  value={taxNumber}
-                  onChange={(e) => setTaxNumber(e.target.value)}
-                  maxLength={40}
-                  disabled={readOnly}
-                  invalid={!!fieldErrors.taxNumber}
-                />
-              </FormField>
-              <FormField id="co-office" label="Tax office" error={fieldErrors.taxOffice}>
-                <Input
-                  id="co-office"
-                  value={taxOffice}
-                  onChange={(e) => setTaxOffice(e.target.value)}
-                  maxLength={120}
-                  disabled={readOnly}
-                />
-              </FormField>
               <FormField id="co-industry" label="Industry" error={fieldErrors.industry}>
                 <Input
                   id="co-industry"
@@ -331,6 +359,100 @@ export function CompanyForm({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   maxLength={40}
+                  disabled={readOnly}
+                />
+              </FormField>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Tax information</CardTitle>
+              <CardDescription>
+                Country-specific B2B tax details (spec sections 26-27). The tax-id field&apos;s
+                label — VKN, VAT ID, EIN, ... — is driven by the selected country&apos;s real
+                CountryProfile, never a generic &quot;Tax ID&quot;.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField id="co-tax-country" label="Country">
+                <Select
+                  id="co-tax-country"
+                  value={taxCountryCode}
+                  onChange={(e) => {
+                    setTaxCountryCode(e.target.value);
+                    setTaxIdType("");
+                  }}
+                  disabled={readOnly}
+                >
+                  <option value="">Not set</option>
+                  {countries.map((c) => (
+                    <option key={c.countryCode} value={c.countryCode}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              {taxIdFormats.length > 0 && (
+                <FormField id="co-tax-id-type" label="Tax ID type">
+                  <Select
+                    id="co-tax-id-type"
+                    value={taxIdType}
+                    onChange={(e) => setTaxIdType(e.target.value)}
+                    disabled={readOnly}
+                  >
+                    {taxIdFormats.map((f) => (
+                      <option key={f.code} value={f.code}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+              )}
+              <FormField id="co-tax" label={taxNumberLabel} error={fieldErrors.taxNumber}>
+                <Input
+                  id="co-tax"
+                  value={taxNumber}
+                  onChange={(e) => setTaxNumber(e.target.value)}
+                  maxLength={40}
+                  disabled={readOnly}
+                  invalid={!!fieldErrors.taxNumber}
+                  placeholder={activeTaxIdFormat?.example}
+                />
+              </FormField>
+              <FormField id="co-office" label="Tax office" error={fieldErrors.taxOffice}>
+                <Input
+                  id="co-office"
+                  value={taxOffice}
+                  onChange={(e) => setTaxOffice(e.target.value)}
+                  maxLength={120}
+                  disabled={readOnly}
+                />
+              </FormField>
+              <FormField id="co-tax-status" label="Validation status">
+                <Select
+                  id="co-tax-status"
+                  value={taxValidationStatus}
+                  onChange={(e) => setTaxValidationStatus(e.target.value as TaxIdValidationStatus)}
+                  disabled={readOnly}
+                >
+                  {TAX_ID_VALIDATION_STATUSES.map((s) => (
+                    <option key={s} value={s} className="capitalize">
+                      {s}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              <FormField
+                id="co-tax-treatment"
+                label="Tax treatment"
+                hint='Free-text note, e.g. "Reverse charge" for intra-EU B2B.'
+              >
+                <Input
+                  id="co-tax-treatment"
+                  value={taxTreatment}
+                  onChange={(e) => setTaxTreatment(e.target.value)}
+                  maxLength={120}
                   disabled={readOnly}
                 />
               </FormField>

@@ -1,9 +1,17 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from "@nestjs/common";
 import {
+  taxClassInputSchema,
+  taxRegistrationInputSchema,
   taxRuleInputSchema,
+  updateTaxClassSchema,
+  updateTaxRegistrationSchema,
   updateTaxRuleSchema,
   updateTaxSettingsSchema,
+  type TaxClassInput,
+  type TaxRegistrationInput,
   type TaxRuleInput,
+  type UpdateTaxClassInput,
+  type UpdateTaxRegistrationInput,
   type UpdateTaxRuleInput,
   type UpdateTaxSettingsInput,
 } from "@ocean/types";
@@ -71,5 +79,85 @@ export class TaxController {
     @ReqMeta() meta: RequestMeta,
   ) {
     return this.tax.updateSettings(tenant, body.pricesIncludeTax, meta);
+  }
+
+  // ---- Registrations (Settings -> Taxes & Duties -> Registrations, spec section 21) --------
+
+  @Get("registrations")
+  @RequireStore("taxes.read")
+  listRegistrations(@CurrentTenant() tenant: TenantContext) {
+    return this.tax.listRegistrations(tenant);
+  }
+
+  @Post("registrations")
+  @RequireStore("taxes.write")
+  createRegistration(
+    @CurrentTenant() tenant: TenantContext,
+    @Body(new ZodValidationPipe(taxRegistrationInputSchema)) body: TaxRegistrationInput,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.tax.createRegistration(tenant, body, meta);
+  }
+
+  @Patch("registrations/:registrationId")
+  @RequireStore("taxes.write")
+  updateRegistration(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("registrationId") id: string,
+    @Body(new ZodValidationPipe(updateTaxRegistrationSchema)) body: UpdateTaxRegistrationInput,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.tax.updateRegistration(tenant, id, body, meta);
+  }
+
+  @Delete("registrations/:registrationId")
+  @RequireStore("taxes.write")
+  @HttpCode(204)
+  async removeRegistration(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("registrationId") id: string,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    await this.tax.removeRegistration(tenant, id, meta);
+  }
+
+  // ---- Tax classes (spec section 24) --------------------------------------------------------
+
+  @Get("classes")
+  @RequireStore("taxes.read")
+  listClasses(@CurrentTenant() tenant: TenantContext) {
+    return this.tax.listTaxClasses(tenant);
+  }
+
+  @Post("classes")
+  @RequireStore("taxes.write")
+  createClass(
+    @CurrentTenant() tenant: TenantContext,
+    @Body(new ZodValidationPipe(taxClassInputSchema)) body: TaxClassInput,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.tax.createTaxClass(tenant, body, meta);
+  }
+
+  @Patch("classes/:classId")
+  @RequireStore("taxes.write")
+  updateClass(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("classId") id: string,
+    @Body(new ZodValidationPipe(updateTaxClassSchema)) body: UpdateTaxClassInput,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.tax.updateTaxClass(tenant, id, body, meta);
+  }
+
+  @Delete("classes/:classId")
+  @RequireStore("taxes.write")
+  @HttpCode(204)
+  async removeClass(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("classId") id: string,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    await this.tax.removeTaxClass(tenant, id, meta);
   }
 }

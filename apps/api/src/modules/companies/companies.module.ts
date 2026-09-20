@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { MetafieldsModule } from "../catalog/metafields/metafields.module";
+import { CountriesModule } from "../countries/countries.module";
 import { CustomersModule } from "../customers/customers.module";
 import { CompaniesController } from "./companies.controller";
 import { CompaniesService } from "./companies.service";
@@ -12,7 +13,7 @@ import { CompanyUsersController } from "./company-users.controller";
 import { CompanyUsersService } from "./company-users.service";
 
 @Module({
-  imports: [MetafieldsModule, CustomersModule],
+  imports: [MetafieldsModule, CustomersModule, CountriesModule],
   controllers: [
     CompaniesController,
     CompanyLocationsController,

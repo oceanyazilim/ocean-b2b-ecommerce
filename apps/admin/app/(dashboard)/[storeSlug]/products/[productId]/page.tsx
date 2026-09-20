@@ -3,6 +3,7 @@ import type {
   MetafieldDefinitionSummary,
   MetafieldValue,
   ProductDetail,
+  TaxClassSummary,
 } from "@ocean/types";
 import { Alert } from "@ocean/ui";
 import { notFound } from "next/navigation";
@@ -35,7 +36,8 @@ export default async function EditProductPage({
     if (isApiError(err, "not_found")) notFound();
     throw err;
   }
-  const [categories, definitions, metafields] = await Promise.all([
+  const canReadTaxes = can(store, "taxes.read");
+  const [categories, definitions, metafields, taxClasses] = await Promise.all([
     api<{ data: CategoryNode[] }>(`/stores/${store.id}/categories`, { cookie }),
     api<{ data: MetafieldDefinitionSummary[] }>(
       `/stores/${store.id}/metafield-definitions?ownerType=product`,
@@ -44,6 +46,9 @@ export default async function EditProductPage({
     api<{ data: MetafieldValue[] }>(`/stores/${store.id}/products/${productId}/metafields`, {
       cookie,
     }),
+    canReadTaxes
+      ? api<{ data: TaxClassSummary[] }>(`/stores/${store.id}/tax/classes`, { cookie })
+      : Promise.resolve({ data: [] as TaxClassSummary[] }),
   ]);
 
   return (
@@ -53,6 +58,7 @@ export default async function EditProductPage({
       currency={store.defaultCurrency}
       categories={categories.data}
       definitions={definitions.data}
+      taxClasses={taxClasses.data}
       product={product}
       metafields={metafields.data}
       canDelete={can(store, "products.delete")}

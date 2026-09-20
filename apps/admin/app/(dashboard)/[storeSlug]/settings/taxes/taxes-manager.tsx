@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaxRuleSummary } from "@ocean/types";
+import type { TaxClassSummary, TaxRuleSummary } from "@ocean/types";
 import {
   Alert,
   Button,
@@ -15,6 +15,7 @@ import {
   Dialog,
   FormField,
   Input,
+  Select,
   type DataGridColumn,
 } from "@ocean/ui";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -34,6 +35,7 @@ export function TaxesManager({
   canWrite: boolean;
 }) {
   const [rows, setRows] = useState<TaxRuleSummary[]>([]);
+  const [taxClasses, setTaxClasses] = useState<TaxClassSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
@@ -46,8 +48,12 @@ export function TaxesManager({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await api<{ data: TaxRuleSummary[] }>(`/stores/${storeId}/tax/rules`);
-      setRows(res.data);
+      const [rules, classes] = await Promise.all([
+        api<{ data: TaxRuleSummary[] }>(`/stores/${storeId}/tax/rules`),
+        api<{ data: TaxClassSummary[] }>(`/stores/${storeId}/tax/classes`),
+      ]);
+      setRows(rules.data);
+      setTaxClasses(classes.data);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -79,6 +85,11 @@ export function TaxesManager({
       key: "region",
       header: "Region",
       cell: (r) => (r.provinceCode ? `${r.provinceCode}, ${r.countryCode}` : r.countryCode),
+    },
+    {
+      key: "taxClass",
+      header: "Tax class",
+      cell: (r) => r.taxClassName ?? <span className="text-muted-foreground">Every class</span>,
     },
     {
       key: "rate",
@@ -157,6 +168,7 @@ export function TaxesManager({
       <RuleDialog
         storeId={storeId}
         editing={editing}
+        taxClasses={taxClasses}
         onClose={() => setEditing(null)}
         onSaved={() => void load()}
       />
@@ -179,11 +191,13 @@ export function TaxesManager({
 function RuleDialog({
   storeId,
   editing,
+  taxClasses,
   onClose,
   onSaved,
 }: {
   storeId: string;
   editing: Editing;
+  taxClasses: TaxClassSummary[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -192,6 +206,7 @@ function RuleDialog({
   const [name, setName] = useState("");
   const [countryCode, setCountryCode] = useState("");
   const [provinceCode, setProvinceCode] = useState("");
+  const [taxClassId, setTaxClassId] = useState("");
   const [ratePercent, setRatePercent] = useState("");
   const [isActive, setIsActive] = useState(true);
   const current = editing?.kind === "edit" ? editing.rule : null;
@@ -201,6 +216,7 @@ function RuleDialog({
     setName(current?.name ?? "");
     setCountryCode(current?.countryCode ?? "");
     setProvinceCode(current?.provinceCode ?? "");
+    setTaxClassId(current?.taxClassId ?? "");
     setRatePercent(current ? String(current.ratePercent) : "");
     setIsActive(current?.isActive ?? true);
   }, [current, editing, reset]);
@@ -212,6 +228,7 @@ function RuleDialog({
       name,
       countryCode: countryCode.trim().toUpperCase(),
       provinceCode: provinceCode.trim() ? provinceCode.trim().toUpperCase() : null,
+      taxClassId: taxClassId || null,
       rateBps,
       isActive,
     };
@@ -274,6 +291,20 @@ function RuleDialog({
             />
           </FormField>
         </div>
+        <FormField
+          id="tax-class"
+          label="Tax class (optional)"
+          hint="Leave unset to apply to every tax class at this geography."
+        >
+          <Select id="tax-class" value={taxClassId} onChange={(e) => setTaxClassId(e.target.value)}>
+            <option value="">Every class</option>
+            {taxClasses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
         <FormField id="tax-rate" label="Rate (%)" error={submit.fieldErrors.rateBps}>
           <Input
             id="tax-rate"

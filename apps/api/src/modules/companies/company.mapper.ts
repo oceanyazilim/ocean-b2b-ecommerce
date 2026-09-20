@@ -9,6 +9,7 @@ import type {
   CompanyUserStatus,
   CompanyUserSummary,
   CustomerStatus,
+  TaxIdValidationStatus,
 } from "@ocean/types";
 
 import { customerDisplayName } from "../customers/customer.mapper";
@@ -142,6 +143,13 @@ export function toCompanyDetail(row: CompanyDetailRow, allLocationUsers: number)
     email: row.email,
     note: row.note,
     locations: row.locations.map((l) => toCompanyLocationSummary(l, allLocationUsers)),
+    taxCountryCode: row.taxCountryCode,
+    taxIdType: row.taxIdType,
+    taxValidationStatus: row.taxValidationStatus as TaxIdValidationStatus,
+    taxTreatment: row.taxTreatment,
+    // Resolved by CompaniesService.withTaxIdLabel (needs an async CountryProfile lookup, which
+    // a pure mapper can't do) — placeholder here so this stays type-complete on its own.
+    taxIdLabel: null,
   };
 }
 
