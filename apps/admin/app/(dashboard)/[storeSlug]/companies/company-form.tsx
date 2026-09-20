@@ -5,6 +5,7 @@ import {
   type AccountManagerCandidate,
   type CompanyDetail,
   type CompanyStatus,
+  type CreditAccountSummary,
   type MetafieldDefinitionSummary,
   type MetafieldValue,
 } from "@ocean/types";
@@ -34,9 +35,18 @@ import {
   isAddressBlank,
   type AddressDraft,
 } from "@/components/address-fields";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import { MetafieldsCard, metafieldDrafts, saveMetafields } from "@/components/metafields-card";
 import { api, ApiClientError } from "@/lib/api";
+import { formatMoney } from "@/lib/money";
 import { useSubmit } from "@/lib/use-submit";
+
+interface OrderStats {
+  count: number;
+  lifetimeValue: { amount: number; currency: string };
+  lastOrderAt: string | null;
+  hasMore: boolean;
+}
 
 const FORM_ID = "company-form";
 
@@ -49,6 +59,10 @@ export function CompanyForm({
   definitions,
   metafields,
   readOnly = false,
+  companyCredit = null,
+  locationCredit = [],
+  canViewCredit = false,
+  orderStats = null,
 }: {
   storeId: string;
   storeSlug: string;
@@ -58,6 +72,15 @@ export function CompanyForm({
   definitions: MetafieldDefinitionSummary[];
   metafields: MetafieldValue[];
   readOnly?: boolean;
+  // Real Credit module (Phase 12) data: the credit account attached directly to this company, plus
+  // any attached to one of its locations. Both undefined/empty when the account manager can't read
+  // credit or no account exists — never a fabricated limit.
+  companyCredit?: CreditAccountSummary | null;
+  locationCredit?: CreditAccountSummary[];
+  canViewCredit?: boolean;
+  // Real aggregate over this company's own orders (see the overview page for how it's computed).
+  // Null when the viewer can't read orders.
+  orderStats?: OrderStats | null;
 }) {
   const router = useRouter();
   const { pending, error, fieldErrors, run } = useSubmit();
@@ -357,6 +380,82 @@ export function CompanyForm({
         </div>
 
         <div className="flex flex-col gap-6">
+          {company && (canViewCredit || orderStats) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Snapshot</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 text-sm">
+                {orderStats && (
+                  <>
+                    <div>
+                      <div className="text-muted-foreground">Orders</div>
+                      <div className="text-lg font-semibold tabular-nums">
+                        {orderStats.hasMore ? `${orderStats.count}+` : orderStats.count}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Lifetime value</div>
+                      <div className="text-lg font-semibold tabular-nums">
+                        {orderStats.hasMore ? "at least " : ""}
+                        {formatMoney(orderStats.lifetimeValue)}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {canViewCredit && (
+                  <>
+                    <div>
+                      <div className="text-muted-foreground">Credit limit</div>
+                      <div className="text-lg font-semibold tabular-nums">
+                        {companyCredit ? formatMoney(companyCredit.limit) : "No credit account"}
+                      </div>
+                    </div>
+                    {companyCredit && (
+                      <div>
+                        <div className="text-muted-foreground">Outstanding balance</div>
+                        <div className="text-lg font-semibold tabular-nums">
+                          {formatMoney(companyCredit.used)}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div className="col-span-2 text-xs text-muted-foreground">
+                  {orderStats?.lastOrderAt
+                    ? `Last order ${new Date(orderStats.lastOrderAt).toLocaleDateString()}`
+                    : orderStats
+                      ? "No orders yet."
+                      : null}
+                </div>
+                {canViewCredit && locationCredit.length > 0 && (
+                  <div className="col-span-2 flex flex-col gap-1 border-t pt-2 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Per-location credit</span>
+                    {locationCredit.map((a) => {
+                      const location = company.locations.find((l) => l.id === a.companyLocationId);
+                      return (
+                        <div key={a.id} className="flex items-center justify-between gap-2">
+                          <span>{location?.name ?? "Unknown location"}</span>
+                          <span className="tabular-nums">
+                            {formatMoney(a.used)} / {formatMoney(a.limit)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {canViewCredit && (
+                  <Link
+                    href={`/${storeSlug}/quotes/credit`}
+                    className="col-span-2 text-xs text-muted-foreground hover:underline"
+                  >
+                    Manage credit accounts →
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Account</CardTitle>
@@ -413,26 +512,21 @@ export function CompanyForm({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Tags &amp; notes</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <FormField id="co-tags" label="Tags" error={fieldErrors.tags}>
-                <TagInput id="co-tags" value={tags} onChange={setTags} disabled={readOnly} />
-              </FormField>
-              <FormField id="co-note" label="Internal note" error={fieldErrors.note}>
-                <Textarea
-                  id="co-note"
-                  rows={4}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  maxLength={2000}
-                  disabled={readOnly}
-                />
-              </FormField>
-            </CardContent>
-          </Card>
+          <CollapsibleCard title="Tags & notes" contentClassName="flex flex-col gap-3">
+            <FormField id="co-tags" label="Tags" error={fieldErrors.tags}>
+              <TagInput id="co-tags" value={tags} onChange={setTags} disabled={readOnly} />
+            </FormField>
+            <FormField id="co-note" label="Internal note" error={fieldErrors.note}>
+              <Textarea
+                id="co-note"
+                rows={4}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={2000}
+                disabled={readOnly}
+              />
+            </FormField>
+          </CollapsibleCard>
         </div>
       </form>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { COMPANY_ROLE_PERMISSIONS, type CompanyPermission } from "@ocean/permissions";
 import {
   COMPANY_ROLES,
   type CompanyDetail,
@@ -11,6 +12,11 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Checkbox,
   ConfirmDialog,
   DataGrid,
@@ -27,6 +33,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/lib/api";
 import { useSubmit } from "@/lib/use-submit";
 
+// Friendly labels for the spec's "Owner, Buyer, Approver, Accountant, Viewer" role vocabulary,
+// mapped onto this codebase's real CompanyRole enum (company_admin/buyer/approver/finance/viewer)
+// — the only roles the permission engine actually understands. "Company admin" is the Owner
+// equivalent; "Finance" is the Accountant equivalent.
 const ROLE_LABEL: Record<CompanyRole, string> = {
   company_admin: "Company admin",
   buyer: "Buyer",
@@ -36,12 +46,58 @@ const ROLE_LABEL: Record<CompanyRole, string> = {
 };
 
 const ROLE_HINT: Record<CompanyRole, string> = {
-  company_admin: "Manages the company, its team, orders and quotes",
+  company_admin: "Manages the company, its team, orders and quotes (the Owner role)",
   buyer: "Creates orders and quote requests",
   approver: "Approves orders that need sign-off",
-  finance: "Sees invoices and statements",
+  finance: "Sees invoices and statements (the Accountant role)",
   viewer: "Read-only",
 };
+
+// Every string here is a real CompanyPermission from @ocean/permissions — the same table
+// COMPANY_ROLE_PERMISSIONS is checked against server-side. No fabricated "view pricing" or
+// "manage payment terms" permission is listed because the engine doesn't have one: catalog/price
+// visibility rides along with company.read (any company member sees the prices that apply to
+// them), so it isn't its own toggle.
+const PERMISSION_LABEL: Record<CompanyPermission, string> = {
+  "company.read": "View company profile, locations & catalog pricing",
+  "company.write": "Edit company profile",
+  "company.members.manage": "Manage users",
+  "company.orders.create": "Place orders",
+  "company.orders.approve": "Approve orders",
+  "company.quotes.create": "Create quote requests",
+  "company.invoices.read": "View invoices",
+};
+
+function RolesAndPermissions() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Roles &amp; permissions</CardTitle>
+        <CardDescription>
+          What each role can actually do, straight from the permission engine that enforces it on
+          every request.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col divide-y">
+        {COMPANY_ROLES.map((role) => (
+          <div key={role} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="font-medium">{ROLE_LABEL[role]}</span>
+              <span className="text-sm text-muted-foreground">{ROLE_HINT[role]}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {COMPANY_ROLE_PERMISSIONS[role].map((permission) => (
+                <Badge key={permission} variant="secondary">
+                  {PERMISSION_LABEL[permission]}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
 
 type Editing = { kind: "new" } | { kind: "edit"; user: CompanyUserSummary } | null;
 
@@ -137,8 +193,8 @@ export function CompanyUsers({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          People who buy, approve or view on behalf of {company.displayName}. Storefront logins for
-          them arrive with the customer portal.
+          The people who can act on behalf of {company.displayName} — buy, approve, view invoices
+          or manage the team, depending on their role.
         </p>
         {canWrite && <Button onClick={() => setEditing({ kind: "new" })}>Add user</Button>}
       </div>
@@ -155,6 +211,7 @@ export function CompanyUsers({
           ) : undefined,
         }}
       />
+      <RolesAndPermissions />
       <UserDialog
         storeId={storeId}
         base={base}

@@ -165,8 +165,10 @@ export function CompanyLocations({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Branches and ship-to sites. Catalogs, price lists, payment terms and credit attach per
-          location in later phases.
+          Branches and ship-to sites. Each location can have its own shipping and billing address,
+          currency, tax number and exemption. Catalogs, price lists and credit accounts can already
+          be scoped to a specific location from the Pricing tab; payment terms don&apos;t have a
+          per-location setting yet.
         </p>
         {canWrite && <Button onClick={() => setEditing({ kind: "new" })}>Add location</Button>}
       </div>

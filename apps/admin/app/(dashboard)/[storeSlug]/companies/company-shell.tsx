@@ -50,8 +50,12 @@ export function CompanyShell({
         items={[
           { label: "Overview", href: base, exact: true },
           { label: "Locations", href: `${base}/locations`, count: company.locationCount },
-          { label: "Users", href: `${base}/users`, count: company.userCount },
+          { label: "Contacts", href: `${base}/users`, count: company.userCount },
+          { label: "Orders", href: `${base}/orders` },
+          { label: "Quotes", href: `${base}/quotes` },
+          { label: "Invoices", href: `${base}/invoices` },
           { label: "Pricing", href: `${base}/pricing` },
+          { label: "Activity", href: `${base}/activity` },
         ]}
       />
       {children}
