@@ -68,4 +68,28 @@ export class AnalyticsController {
   ) {
     return this.analytics.countryReport(tenant, query);
   }
+
+  // Dashboard "Revenue Breakdown" component (Overview/Finance modes).
+  @Get("revenue-breakdown")
+  revenueBreakdown(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(analyticsRangeQuerySchema)) query: AnalyticsRangeQuery,
+  ) {
+    return this.analytics.revenueBreakdown(tenant, query);
+  }
+
+  // Dashboard "Operations" mode action queues.
+  @Get("operations-summary")
+  operationsSummary(@CurrentTenant() tenant: TenantContext) {
+    return this.analytics.operationsSummary(tenant);
+  }
+
+  // Dashboard "B2B" mode summary.
+  @Get("b2b-overview")
+  b2bOverview(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(analyticsRangeQuerySchema)) query: AnalyticsRangeQuery,
+  ) {
+    return this.analytics.b2bOverview(tenant, query);
+  }
 }

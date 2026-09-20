@@ -18,11 +18,21 @@ import { useEffect, useMemo, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
+import { AnalyticsModeView } from "./analytics-mode-view";
+import { B2BView } from "./b2b-view";
+import { FinanceView } from "./finance-view";
+import { OperationsView } from "./operations-view";
+import { RevenueBreakdownCard } from "./revenue-breakdown-card";
 import { TaxWarningsBanner } from "./tax-warnings-banner";
 
 type RangeKey = "today" | "7d" | "30d" | "90d" | "custom";
 type ComparisonBasis = "previous_period" | "previous_year";
 type ChartMetric = "gross" | "net" | "orders" | "aov" | "refunds";
+// Spec: "Create five dashboard views: Overview, Operations, Analytics, B2B, Finance." Same shell
+// (header, date range, market filter), each mode focused on one operational domain. Dashboard
+// customization (drag/resize/hide/add widgets, saved per admin) is a deliberate scope cut for this
+// pass — seed layout, this pass extends it with modes rather than adding a widget-layout system.
+type DashboardMode = "overview" | "operations" | "analytics" | "b2b" | "finance";
 
 interface Permissions {
   orders: boolean;
@@ -232,6 +242,7 @@ export function DashboardView({
   userName: string;
   permissions: Permissions;
 }) {
+  const [mode, setMode] = useState<DashboardMode>("overview");
   const [rangeKey, setRangeKey] = useState<RangeKey>("30d");
   const [customFrom, setCustomFrom] = useState(toDateInput(new Date(Date.now() - 29 * 86400000)));
   const [customTo, setCustomTo] = useState(toDateInput(new Date()));
@@ -495,6 +506,19 @@ export function DashboardView({
         </div>
       </div>
 
+      <Tabs
+        aria-label={t("modes.ariaLabel")}
+        value={mode}
+        onChange={(v) => setMode(v as DashboardMode)}
+        items={[
+          { value: "overview", label: t("modes.overview") },
+          { value: "operations", label: t("modes.operations") },
+          { value: "analytics", label: t("modes.analytics") },
+          { value: "b2b", label: t("modes.b2b") },
+          { value: "finance", label: t("modes.finance") },
+        ]}
+      />
+
       {permissions.taxes && <TaxWarningsBanner storeId={storeId} storeSlug={storeSlug} />}
 
       {!permissions.analytics && !permissions.orders && (
@@ -502,7 +526,24 @@ export function DashboardView({
       )}
       {analyticsError && <Alert variant="error">{analyticsError}</Alert>}
 
-      {permissions.analytics && (
+      {mode === "operations" && (
+        <OperationsView
+          storeId={storeId}
+          storeSlug={storeSlug}
+          permissions={permissions}
+          orderStats={orderStats}
+          inventoryStats={inventoryStats}
+          companyStats={companyStats}
+          quoteStats={quoteStats}
+          statsLoading={attentionLoading}
+        />
+      )}
+
+      {mode !== "operations" && !permissions.analytics && permissions.orders && (
+        <Alert variant="info">{t("noAccess")}</Alert>
+      )}
+
+      {mode !== "operations" && permissions.analytics && (
         <>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Select
@@ -518,17 +559,29 @@ export function DashboardView({
                 </option>
               ))}
             </Select>
-            <Select
-              value={basis}
-              onChange={(e) => setBasis(e.target.value as ComparisonBasis)}
-              className="w-44"
-              aria-label={t("comparison.ariaLabel")}
-            >
-              <option value="previous_period">{t("comparison.previousPeriod")}</option>
-              <option value="previous_year">{t("comparison.previousYear")}</option>
-            </Select>
+            {mode === "overview" && (
+              <Select
+                value={basis}
+                onChange={(e) => setBasis(e.target.value as ComparisonBasis)}
+                className="w-44"
+                aria-label={t("comparison.ariaLabel")}
+              >
+                <option value="previous_period">{t("comparison.previousPeriod")}</option>
+                <option value="previous_year">{t("comparison.previousYear")}</option>
+              </Select>
+            )}
           </div>
 
+          {mode === "analytics" && (
+            <AnalyticsModeView storeId={storeId} storeSlug={storeSlug} from={from} to={to} market={market} />
+          )}
+          {mode === "b2b" && (
+            <B2BView storeId={storeId} storeSlug={storeSlug} from={from} to={to} market={market} />
+          )}
+          {mode === "finance" && <FinanceView storeId={storeId} from={from} to={to} market={market} />}
+
+          {mode === "overview" && (
+          <>
           {analyticsLoading ? (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -667,9 +720,14 @@ export function DashboardView({
               )}
             </CardContent>
           </Card>
+
+          <RevenueBreakdownCard storeId={storeId} from={from} to={to} market={market} />
+          </>
+          )}
         </>
       )}
 
+      {mode === "overview" && (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -743,6 +801,7 @@ export function DashboardView({
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }

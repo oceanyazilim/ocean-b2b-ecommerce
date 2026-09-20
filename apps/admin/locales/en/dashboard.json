@@ -18,6 +18,14 @@
     "to": "to"
   },
   "noAccess": "Your role doesn't have access to any dashboard data.",
+  "modes": {
+    "ariaLabel": "Dashboard mode",
+    "overview": "Overview",
+    "operations": "Operations",
+    "analytics": "Analytics",
+    "b2b": "B2B",
+    "finance": "Finance"
+  },
   "marketFilter": {
     "ariaLabel": "Market filter",
     "allMarkets": "All markets"
@@ -77,6 +85,82 @@
     "quoteAccepted": "Quote accepted",
     "companyApplicationSubmitted": "New wholesale application",
     "returnRequested": "Return requested"
+  },
+  "revenueBreakdown": {
+    "title": "Revenue breakdown",
+    "grossSales": "Gross sales",
+    "discounts": "Discounts",
+    "refunds": "Refunds",
+    "shippingRevenue": "Shipping revenue",
+    "netRevenue": "Net revenue",
+    "taxNote": "Tax collected ({amount}) is shown for reference and is not counted as revenue.",
+    "cogs": "Cost of goods sold",
+    "grossProfit": "Estimated gross profit",
+    "profitUnavailable": "Not available — no product cost data on file for items sold in this range",
+    "profitPartialNote": "Estimated from {withCost} of {total} sold line items that have cost data on file — treat as a partial estimate.",
+    "loading": "Loading…",
+    "empty": "No orders in this range."
+  },
+  "operationsMode": {
+    "title": "Action queue",
+    "subtitle": "Everything that needs a decision right now, across orders, inventory, B2B and finance.",
+    "toFulfill": "Orders to fulfill",
+    "awaitingPayment": "Orders awaiting payment",
+    "lowStock": "Low stock products",
+    "pendingApplications": "Pending B2B applications",
+    "openQuotes": "Open quotes",
+    "returns": "Returns requiring action",
+    "failedPayments": "Failed payments",
+    "failedPaymentsHint": "Last 30 days",
+    "overdueInvoices": "Overdue invoices",
+    "review": "Review →",
+    "allClear": "All clear",
+    "noItems": "None right now.",
+    "order": "Order",
+    "reason": "Reason",
+    "company": "Company",
+    "due": "Due"
+  },
+  "b2bMode": {
+    "title": "B2B performance",
+    "revenue": "B2B revenue",
+    "orders": "B2B orders",
+    "activeCompanies": "Active companies",
+    "aov": "Average B2B order value",
+    "openQuotes": "Open quotes",
+    "outstandingInvoices": "Outstanding invoices",
+    "availableCredit": "Available credit",
+    "usedCredit": "Used credit",
+    "noCredit": "No credit accounts on file yet",
+    "topCompanies": "Top companies",
+    "company": "Company",
+    "market": "Market",
+    "unknownMarket": "Unknown",
+    "revenueCol": "Revenue",
+    "ordersCol": "Orders",
+    "outstandingBalance": "Outstanding balance",
+    "empty": "No B2B orders in this range."
+  },
+  "financeMode": {
+    "title": "Finance",
+    "payments": "Payment provider fees",
+    "paymentsUnavailable": "Not available — no payment provider integration is connected in this codebase, so there is no real fee data to show.",
+    "payouts": "Payouts",
+    "payoutsUnavailable": "Not available — no payout tracking exists. This store has no live payment-service-provider integration beyond the manual payment adapter, so there is no real payout timeline or upcoming payout data to show.",
+    "gapNote": "Deliberately not shown: fabricating these numbers would be worse than omitting them."
+  },
+  "analyticsMode": {
+    "title": "Analytics",
+    "topProducts": "Top products",
+    "topCustomers": "Top customers",
+    "viewFull": "Open full analytics →",
+    "empty": "No data in this range.",
+    "product": "Product",
+    "sold": "Sold",
+    "revenue": "Revenue",
+    "customer": "Customer",
+    "orders": "Orders",
+    "totalSpent": "Total spent"
   },
   "onboarding": {
     "title": "Setup guide",

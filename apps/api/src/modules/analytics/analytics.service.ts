@@ -3,13 +3,16 @@ import { Prisma } from "@ocean/db";
 import type {
   AnalyticsOverview,
   AnalyticsRangeQuery,
+  B2BOverview,
   CountryAnalyticsReport,
   CountrySalesRow,
   CurrencyRevenueRow,
   MarketFilterOption,
   MarketSalesRow,
+  OperationsSummary,
   OrderStatusBreakdown,
   RefundPoint,
+  RevenueBreakdown,
   RevenuePoint,
   TopCompanyRow,
   TopCustomerRow,
@@ -414,31 +417,293 @@ export class AnalyticsService {
     }));
   }
 
-  // The B2B report: spend grouped by company rather than by individual buyer.
+  // The B2B report: spend grouped by company rather than by individual buyer. Also surfaces each
+  // company's real market (the most common shipping/billing country across its orders in range —
+  // Postgres's mode() ordered-set aggregate) and its current outstanding invoice balance (spec's
+  // Dashboard B2B mode "Top companies" table: Company, Market, Revenue, Orders, Outstanding
+  // Balance).
   async topCompanies(ctx: TenantContext, query: AnalyticsRangeQuery): Promise<TopCompanyRow[]> {
     const storeId = ctx.storeId as string;
+    const organizationId = ctx.organizationId;
     const { from, to } = this.range(query);
     const currency = await this.currency(storeId);
     const rows = await this.prisma.$queryRaw<
-      { company_id: string; name: string; order_count: bigint; total_spent: bigint }[]
+      {
+        company_id: string;
+        name: string;
+        order_count: bigint;
+        total_spent: bigint;
+        market: string | null;
+      }[]
     >(Prisma.sql`
       SELECT o.company_id, max(co.display_name) AS name,
-             count(*)::bigint AS order_count, sum(o.total)::bigint AS total_spent
+             count(*)::bigint AS order_count, sum(o.total)::bigint AS total_spent,
+             mode() WITHIN GROUP (
+               ORDER BY COALESCE(o.shipping_address->>'countryCode', o.billing_address->>'countryCode')
+             ) AS market
       FROM orders o
       JOIN companies co ON co.id = o.company_id
-      WHERE o.store_id = ${storeId}::uuid AND o.organization_id = ${ctx.organizationId}::uuid
+      WHERE o.store_id = ${storeId}::uuid AND o.organization_id = ${organizationId}::uuid
         AND o.company_id IS NOT NULL AND o.status <> 'cancelled'
         AND o.created_at >= ${from} AND o.created_at <= ${to}
       GROUP BY o.company_id
       ORDER BY total_spent DESC
       LIMIT ${query.limit}
     `);
-    return rows.map((r) => ({
-      companyId: r.company_id,
-      name: r.name,
-      orderCount: Number(r.order_count),
-      totalSpent: toMoney(r.total_spent, currency),
-    }));
+    if (rows.length === 0) return [];
+
+    const companyIds = rows.map((r) => r.company_id);
+    const [balances, marketCodes] = await Promise.all([
+      this.prisma.$queryRaw<{ company_id: string; outstanding: bigint | null }[]>(Prisma.sql`
+        SELECT company_id, sum(amount - paid_amount)::bigint AS outstanding
+        FROM invoices
+        WHERE store_id = ${storeId}::uuid AND organization_id = ${organizationId}::uuid
+          AND status NOT IN ('paid', 'cancelled') AND company_id = ANY(${companyIds}::uuid[])
+        GROUP BY company_id
+      `),
+      this.countries.getCountryProfiles(
+        rows.map((r) => r.market?.toUpperCase()).filter((c): c is string => !!c),
+      ),
+    ]);
+    const balanceByCompany = new Map(balances.map((b) => [b.company_id, Number(b.outstanding ?? 0)]));
+    const profileByCode = new Map(marketCodes.map((p) => [p.countryCode, p]));
+
+    return rows.map((r) => {
+      const code = r.market?.toUpperCase() ?? null;
+      return {
+        companyId: r.company_id,
+        name: r.name,
+        orderCount: Number(r.order_count),
+        totalSpent: toMoney(r.total_spent, currency),
+        market: code ? { countryCode: code, countryName: profileByCode.get(code)?.name ?? code } : null,
+        outstandingBalance: toMoney(balanceByCompany.get(r.company_id) ?? 0, currency),
+      };
+    });
+  }
+
+  // Dashboard "Revenue Breakdown": a real, stepped financial summary computed from Order/
+  // OrderItem/Refund/ProductVariant — see RevenueBreakdown's doc comment for exactly what each
+  // figure is and why taxes never enter netRevenue.
+  async revenueBreakdown(ctx: TenantContext, query: AnalyticsRangeQuery): Promise<RevenueBreakdown> {
+    const storeId = ctx.storeId as string;
+    const organizationId = ctx.organizationId;
+    const { from, to } = this.range(query);
+    const currency = await this.currency(storeId);
+    const marketSql = marketFilterSql(query.market);
+
+    const [totalsRows, refundRows, cogsRows] = await Promise.all([
+      this.prisma.$queryRaw<
+        { gross: bigint | null; discounts: bigint | null; shipping: bigint | null; tax: bigint | null }[]
+      >(Prisma.sql`
+        SELECT sum(o.subtotal)::bigint AS gross, sum(o.discount_total)::bigint AS discounts,
+               sum(o.shipping_total)::bigint AS shipping, sum(o.tax_total)::bigint AS tax
+        FROM orders o
+        WHERE o.store_id = ${storeId}::uuid AND o.organization_id = ${organizationId}::uuid
+          AND o.status <> 'cancelled' AND o.created_at >= ${from} AND o.created_at <= ${to}
+          AND ${marketSql}
+      `),
+      this.prisma.$queryRaw<{ refunds: bigint | null }[]>(Prisma.sql`
+        SELECT sum(r.amount)::bigint AS refunds
+        FROM refunds r
+        JOIN orders o ON o.id = r.order_id
+        WHERE r.store_id = ${storeId}::uuid AND r.organization_id = ${organizationId}::uuid
+          AND r.status = 'succeeded' AND r.created_at >= ${from} AND r.created_at <= ${to}
+          AND ${marketSql}
+      `),
+      this.prisma.$queryRaw<{ cogs: bigint | null; with_cost: bigint; missing_cost: bigint }[]>(Prisma.sql`
+        SELECT sum(oi.quantity * pv.cost)::bigint AS cogs,
+               count(*) FILTER (WHERE pv.cost IS NOT NULL)::bigint AS with_cost,
+               count(*) FILTER (WHERE pv.cost IS NULL)::bigint AS missing_cost
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        LEFT JOIN product_variants pv ON pv.id = oi.variant_id
+        WHERE o.store_id = ${storeId}::uuid AND o.organization_id = ${organizationId}::uuid
+          AND o.status <> 'cancelled' AND o.created_at >= ${from} AND o.created_at <= ${to}
+          AND ${marketSql}
+      `),
+    ]);
+
+    const totals = totalsRows[0];
+    const grossMinor = Number(totals?.gross ?? 0);
+    const discountsMinor = Number(totals?.discounts ?? 0);
+    const shippingMinor = Number(totals?.shipping ?? 0);
+    const taxMinor = Number(totals?.tax ?? 0);
+    const refundsMinor = Number(refundRows[0]?.refunds ?? 0);
+    const netMinor = grossMinor - discountsMinor - refundsMinor + shippingMinor;
+
+    const cogs = cogsRows[0];
+    const itemsWithCost = Number(cogs?.with_cost ?? 0);
+    const itemsMissingCost = Number(cogs?.missing_cost ?? 0);
+    const cogsMinor = Number(cogs?.cogs ?? 0);
+
+    return {
+      currency,
+      range: { from: from.toISOString(), to: to.toISOString() },
+      grossSales: toMoney(grossMinor, currency),
+      discounts: toMoney(discountsMinor, currency),
+      refunds: toMoney(refundsMinor, currency),
+      shippingRevenue: toMoney(shippingMinor, currency),
+      taxCollected: toMoney(taxMinor, currency),
+      netRevenue: toMoney(netMinor, currency),
+      costOfGoodsSold: toMoney(cogsMinor, currency),
+      itemsWithCost,
+      itemsMissingCost,
+      estimatedGrossProfit: itemsWithCost > 0 ? toMoney(netMinor - cogsMinor, currency) : null,
+    };
+  }
+
+  // Dashboard "Operations" mode: real, currently-open action queues with genuine per-row deep
+  // links (an order or company page — this codebase has no global returns/failed-payments list
+  // page to link a filtered view to, so each row links to where the action actually happens).
+  async operationsSummary(ctx: TenantContext): Promise<OperationsSummary> {
+    const storeId = ctx.storeId as string;
+    const organizationId = ctx.organizationId;
+    const recentSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const ITEM_LIMIT = 5;
+
+    const [returnRows, returnCount, paymentRows, paymentCount, invoiceRows, invoiceByCurrency, invoiceCount] =
+      await Promise.all([
+        this.prisma.return.findMany({
+          where: { storeId, organizationId, status: { in: ["requested", "approved"] } },
+          include: { order: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
+          take: ITEM_LIMIT,
+        }),
+        this.prisma.return.count({
+          where: { storeId, organizationId, status: { in: ["requested", "approved"] } },
+        }),
+        this.prisma.payment.findMany({
+          where: { storeId, organizationId, status: "failed", createdAt: { gte: recentSince } },
+          include: { order: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "desc" },
+          take: ITEM_LIMIT,
+        }),
+        this.prisma.payment.count({
+          where: { storeId, organizationId, status: "failed", createdAt: { gte: recentSince } },
+        }),
+        this.prisma.invoice.findMany({
+          where: { storeId, organizationId, status: "pending", dueAt: { lt: new Date() } },
+          include: { order: { select: { id: true, name: true, currency: true } }, company: { select: { displayName: true } } },
+          orderBy: { dueAt: "asc" },
+          take: ITEM_LIMIT,
+        }),
+        this.prisma.$queryRaw<{ currency: string; count: bigint; outstanding: bigint | null }[]>(Prisma.sql`
+          SELECT o.currency, count(*)::bigint AS count, sum(i.amount - i.paid_amount)::bigint AS outstanding
+          FROM invoices i
+          JOIN orders o ON o.id = i.order_id
+          WHERE i.store_id = ${storeId}::uuid AND i.organization_id = ${organizationId}::uuid
+            AND i.status = 'pending' AND i.due_at < now()
+          GROUP BY 1
+        `),
+        this.prisma.invoice.count({
+          where: { storeId, organizationId, status: "pending", dueAt: { lt: new Date() } },
+        }),
+      ]);
+
+    return {
+      returns: {
+        count: returnCount,
+        items: returnRows.map((r) => ({
+          id: r.id,
+          orderId: r.orderId,
+          orderName: r.order.name,
+          status: r.status,
+          reason: r.reason,
+          createdAt: r.createdAt.toISOString(),
+        })),
+      },
+      failedPayments: {
+        count: paymentCount,
+        items: paymentRows.map((p) => ({
+          id: p.id,
+          orderId: p.orderId,
+          orderName: p.order.name,
+          amount: toMoney(p.amount, p.currency),
+          provider: p.provider,
+          failureReason: p.failureReason,
+          createdAt: p.createdAt.toISOString(),
+        })),
+      },
+      overdueInvoices: {
+        count: invoiceCount,
+        totalOutstandingByCurrency: invoiceByCurrency.map((r) => ({
+          currency: r.currency,
+          amount: toMoney(r.outstanding ?? 0n, r.currency),
+        })),
+        items: invoiceRows.map((i) => ({
+          id: i.id,
+          orderId: i.orderId,
+          companyId: i.companyId,
+          companyName: i.company.displayName,
+          number: i.number,
+          balance: toMoney(i.amount - i.paidAmount, i.order.currency),
+          dueAt: i.dueAt.toISOString(),
+        })),
+      },
+    };
+  }
+
+  // Dashboard "B2B" mode: assembles real figures already computed elsewhere in this codebase
+  // (this module's own B2B revenue query, Companies/Quotes stats, the Invoices and Credit
+  // modules) into one summary call.
+  async b2bOverview(ctx: TenantContext, query: AnalyticsRangeQuery): Promise<B2BOverview> {
+    const storeId = ctx.storeId as string;
+    const organizationId = ctx.organizationId;
+    const { from, to } = this.range(query);
+    const currency = await this.currency(storeId);
+    const marketSql = marketFilterSql(query.market);
+
+    const [revenueRows, activeCompanies, openQuotes, invoiceByCurrency, creditByCurrency] = await Promise.all([
+      this.prisma.$queryRaw<{ orders: bigint; revenue: bigint | null }[]>(Prisma.sql`
+        SELECT count(*)::bigint AS orders, sum(o.total)::bigint AS revenue
+        FROM orders o
+        WHERE o.store_id = ${storeId}::uuid AND o.organization_id = ${organizationId}::uuid
+          AND o.company_id IS NOT NULL AND o.status <> 'cancelled'
+          AND o.created_at >= ${from} AND o.created_at <= ${to} AND ${marketSql}
+      `),
+      this.prisma.company.count({ where: { storeId, organizationId, status: "active" } }),
+      this.prisma.quote.count({ where: { storeId, organizationId, status: "sent" } }),
+      this.prisma.$queryRaw<{ currency: string; outstanding: bigint | null }[]>(Prisma.sql`
+        SELECT o.currency, sum(i.amount - i.paid_amount)::bigint AS outstanding
+        FROM invoices i
+        JOIN orders o ON o.id = i.order_id
+        WHERE i.store_id = ${storeId}::uuid AND i.organization_id = ${organizationId}::uuid
+          AND i.status NOT IN ('paid', 'cancelled')
+        GROUP BY 1
+      `),
+      this.prisma.creditAccount.groupBy({
+        by: ["currency"],
+        where: { OR: [{ company: { storeId } }, { companyLocation: { storeId } }] },
+        _sum: { limit: true, used: true },
+      }),
+    ]);
+
+    const revenue = revenueRows[0];
+    const orderCount = revenue ? Number(revenue.orders) : 0;
+    const revenueMinor = revenue ? Number(revenue.revenue ?? 0) : 0;
+
+    return {
+      range: { from: from.toISOString(), to: to.toISOString() },
+      revenue: toMoney(revenueMinor, currency),
+      orderCount,
+      averageOrderValue: toMoney(orderCount > 0 ? Math.round(revenueMinor / orderCount) : 0, currency),
+      activeCompanies,
+      openQuotes,
+      outstandingInvoicesByCurrency: invoiceByCurrency.map((r) => ({
+        currency: r.currency,
+        amount: toMoney(r.outstanding ?? 0n, r.currency),
+      })),
+      creditByCurrency: creditByCurrency.map((c) => {
+        const limit = Number(c._sum.limit ?? 0);
+        const used = Number(c._sum.used ?? 0);
+        return {
+          currency: c.currency,
+          limit: toMoney(limit, c.currency),
+          used: toMoney(used, c.currency),
+          available: toMoney(Math.max(0, limit - used), c.currency),
+        };
+      }),
+    };
   }
 
   async topCompaniesCsv(ctx: TenantContext, query: AnalyticsRangeQuery): Promise<string> {

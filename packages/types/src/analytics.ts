@@ -131,4 +131,110 @@ export interface TopCompanyRow {
   name: string;
   orderCount: number;
   totalSpent: Money;
+  // Spec's Dashboard B2B mode "Top companies" table (Company, Market, Revenue, Orders,
+  // Outstanding Balance): market is the most common real shipping/billing country across this
+  // company's orders in range (null when no orders had an address on file), and outstandingBalance
+  // is the real sum of (Invoice.amount - Invoice.paidAmount) for that company's non-paid,
+  // non-cancelled invoices — not scoped to the report's date range, since a balance is a
+  // point-in-time fact, not a period total.
+  market: { countryCode: string; countryName: string } | null;
+  outstandingBalance: Money;
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard "Revenue Breakdown" (separate from the simple revenue chart): a real, stepped
+// financial summary. Taxes are shown for reference only and are never folded into netRevenue —
+// "Do not treat taxes as revenue." Payment provider fees are omitted entirely: this codebase has
+// no live PSP integration and no real fee data to report (see Finance dashboard mode).
+// ---------------------------------------------------------------------------
+export interface RevenueBreakdown {
+  currency: string;
+  range: { from: string; to: string };
+  // Sum of Order.subtotal (item revenue before order-level discounts, shipping and tax) for
+  // non-cancelled orders in range.
+  grossSales: Money;
+  // Sum of Order.discountTotal.
+  discounts: Money;
+  // Sum of settled (status = succeeded) Refund.amount in range.
+  refunds: Money;
+  // Sum of Order.shippingTotal — real shipping revenue collected from buyers.
+  shippingRevenue: Money;
+  // Sum of Order.taxTotal — shown for reference only, excluded from netRevenue below.
+  taxCollected: Money;
+  // grossSales - discounts - refunds + shippingRevenue. Deliberately excludes taxCollected.
+  netRevenue: Money;
+  // Real COGS: sum(OrderItem.quantity * ProductVariant.cost) for items whose variant still has a
+  // cost set. Only ever an estimate against current cost, not a historical snapshot (Order/
+  // OrderItem don't snapshot cost at sale time) — see itemsMissingCost for coverage.
+  costOfGoodsSold: Money;
+  itemsWithCost: number;
+  itemsMissingCost: number;
+  // netRevenue - costOfGoodsSold. Null (not zero, not faked) when not a single sold item in range
+  // has a variant cost on file — there is then no real basis for a profit estimate at all.
+  estimatedGrossProfit: Money | null;
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard "Operations" mode: real, currently-open action items, each with a genuine deep link.
+// Not date-ranged (these are current-state queues, like the existing needs-attention stats), with
+// one exception (failedPayments) which is capped to a recent window so a payment that failed once
+// long ago and was never retried doesn't sit in the action queue forever.
+// ---------------------------------------------------------------------------
+export interface OperationsReturnItem {
+  id: string;
+  orderId: string;
+  orderName: string;
+  status: string;
+  reason: string;
+  createdAt: string;
+}
+
+export interface OperationsFailedPaymentItem {
+  id: string;
+  orderId: string;
+  orderName: string;
+  amount: Money;
+  provider: string;
+  failureReason: string | null;
+  createdAt: string;
+}
+
+export interface OperationsOverdueInvoiceItem {
+  id: string;
+  orderId: string;
+  companyId: string;
+  companyName: string;
+  number: string;
+  balance: Money;
+  dueAt: string;
+}
+
+export interface OperationsSummary {
+  returns: { count: number; items: OperationsReturnItem[] };
+  failedPayments: { count: number; items: OperationsFailedPaymentItem[] };
+  overdueInvoices: {
+    count: number;
+    totalOutstandingByCurrency: { currency: string; amount: Money }[];
+    items: OperationsOverdueInvoiceItem[];
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard "B2B" mode: real figures already computed elsewhere in this codebase (Phase 13's B2B
+// report, the Credit module, the Invoices/Finance module), assembled into one summary so the mode
+// doesn't need N separate round trips.
+// ---------------------------------------------------------------------------
+export interface B2BOverview {
+  range: { from: string; to: string };
+  revenue: Money;
+  orderCount: number;
+  averageOrderValue: Money;
+  activeCompanies: number;
+  openQuotes: number;
+  // Sum of (Invoice.amount - Invoice.paidAmount) across all non-paid, non-cancelled invoices,
+  // grouped by currency — not scoped to the report's date range (a balance is point-in-time).
+  outstandingInvoicesByCurrency: { currency: string; amount: Money }[];
+  // Real per-currency roll-up of every CreditAccount this store's companies/locations have.
+  // Empty array (not faked) when the store has no credit accounts at all.
+  creditByCurrency: { currency: string; limit: Money; used: Money; available: Money }[];
 }

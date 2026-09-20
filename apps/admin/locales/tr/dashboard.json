@@ -18,6 +18,14 @@
     "to": "ile"
   },
   "noAccess": "Rolünüzün herhangi bir panel verisine erişimi yok.",
+  "modes": {
+    "ariaLabel": "Panel modu",
+    "overview": "Genel Bakış",
+    "operations": "Operasyon",
+    "analytics": "Analitik",
+    "b2b": "B2B",
+    "finance": "Finans"
+  },
   "marketFilter": {
     "ariaLabel": "Pazar filtresi",
     "allMarkets": "Tüm pazarlar"
@@ -77,6 +85,82 @@
     "quoteAccepted": "Teklif kabul edildi",
     "companyApplicationSubmitted": "Yeni toptan satış başvurusu",
     "returnRequested": "İade talebi"
+  },
+  "revenueBreakdown": {
+    "title": "Gelir dökümü",
+    "grossSales": "Brüt satış",
+    "discounts": "İndirimler",
+    "refunds": "İadeler",
+    "shippingRevenue": "Kargo geliri",
+    "netRevenue": "Net gelir",
+    "taxNote": "Tahsil edilen vergi ({amount}) yalnızca bilgi amaçlı gösterilir ve gelire dahil edilmez.",
+    "cogs": "Satılan malın maliyeti",
+    "grossProfit": "Tahmini brüt kâr",
+    "profitUnavailable": "Kullanılamıyor — bu aralıkta satılan ürünler için maliyet verisi yok",
+    "profitPartialNote": "Satılan {total} kalemden yalnızca maliyet verisi olan {withCost} kalemden tahmin edildi — kısmi bir tahmin olarak değerlendirin.",
+    "loading": "Yükleniyor…",
+    "empty": "Bu aralıkta sipariş yok."
+  },
+  "operationsMode": {
+    "title": "İşlem kuyruğu",
+    "subtitle": "Siparişler, envanter, B2B ve finans genelinde şu anda karar bekleyen her şey.",
+    "toFulfill": "Karşılanacak siparişler",
+    "awaitingPayment": "Ödeme bekleyen siparişler",
+    "lowStock": "Stoğu az olan ürünler",
+    "pendingApplications": "Bekleyen B2B başvuruları",
+    "openQuotes": "Açık teklifler",
+    "returns": "İşlem bekleyen iadeler",
+    "failedPayments": "Başarısız ödemeler",
+    "failedPaymentsHint": "Son 30 gün",
+    "overdueInvoices": "Vadesi geçmiş faturalar",
+    "review": "İncele →",
+    "allClear": "Her şey yolunda",
+    "noItems": "Şu anda hiçbiri yok.",
+    "order": "Sipariş",
+    "reason": "Neden",
+    "company": "Şirket",
+    "due": "Vade"
+  },
+  "b2bMode": {
+    "title": "B2B performansı",
+    "revenue": "B2B geliri",
+    "orders": "B2B siparişleri",
+    "activeCompanies": "Aktif şirketler",
+    "aov": "Ortalama B2B sipariş değeri",
+    "openQuotes": "Açık teklifler",
+    "outstandingInvoices": "Ödenmemiş faturalar",
+    "availableCredit": "Kullanılabilir kredi",
+    "usedCredit": "Kullanılan kredi",
+    "noCredit": "Henüz kayıtlı kredi hesabı yok",
+    "topCompanies": "En iyi şirketler",
+    "company": "Şirket",
+    "market": "Pazar",
+    "unknownMarket": "Bilinmiyor",
+    "revenueCol": "Gelir",
+    "ordersCol": "Siparişler",
+    "outstandingBalance": "Ödenmemiş bakiye",
+    "empty": "Bu aralıkta B2B siparişi yok."
+  },
+  "financeMode": {
+    "title": "Finans",
+    "payments": "Ödeme sağlayıcı ücretleri",
+    "paymentsUnavailable": "Kullanılamıyor — bu kod tabanında bağlı bir ödeme sağlayıcı entegrasyonu yok, bu yüzden gösterilecek gerçek ücret verisi bulunmuyor.",
+    "payouts": "Ödemeler (payout)",
+    "payoutsUnavailable": "Kullanılamıyor — payout takibi mevcut değil. Bu mağazanın manuel ödeme bağdaştırıcısı dışında canlı bir ödeme hizmet sağlayıcısı entegrasyonu yok, bu yüzden gösterilecek gerçek bir payout zaman çizelgesi veya yaklaşan payout verisi bulunmuyor.",
+    "gapNote": "Bilinçli olarak gösterilmiyor: bu sayıları uydurmak, hiç göstermemekten daha kötü olurdu."
+  },
+  "analyticsMode": {
+    "title": "Analitik",
+    "topProducts": "En çok satan ürünler",
+    "topCustomers": "En iyi müşteriler",
+    "viewFull": "Tüm analitiği aç →",
+    "empty": "Bu aralıkta veri yok.",
+    "product": "Ürün",
+    "sold": "Satılan",
+    "revenue": "Gelir",
+    "customer": "Müşteri",
+    "orders": "Siparişler",
+    "totalSpent": "Toplam harcama"
   },
   "onboarding": {
     "title": "Kurulum kılavuzu",
