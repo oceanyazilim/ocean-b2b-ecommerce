@@ -34,6 +34,32 @@ export const addressFieldDefinitionSchema = z.object({
 export type AddressFieldDefinition = z.infer<typeof addressFieldDefinitionSchema>;
 export const addressSchemaFieldsSchema = z.array(addressFieldDefinitionSchema);
 
+// Shared required/maxLength/select-option validation for one AddressFieldDefinition. Both the
+// admin's business-address form (apps/admin/components/address-schema-form.tsx) and the
+// storefront's checkout address form (apps/storefront/lib/address-schema.ts) render the exact
+// same AddressFieldDefinition shape and need the exact same rule set, so it lives here once
+// rather than being reimplemented per app. Message text is left to the caller (via `messages`)
+// since each app localizes/phrases errors differently — only the validation rule itself is
+// shared.
+export interface AddressFieldValidationMessages {
+  required: (label: string) => string;
+  invalid: (label: string, field: AddressFieldDefinition) => string;
+}
+
+export function validateAddressField(
+  field: AddressFieldDefinition,
+  rawValue: string | undefined,
+  messages: AddressFieldValidationMessages,
+): string | null {
+  const value = (rawValue ?? "").trim();
+  if (field.required && !value) return messages.required(field.label);
+  if (value && field.maxLength && value.length > field.maxLength) return messages.invalid(field.label, field);
+  if (value && field.type === "select" && field.options && !field.options.some((o) => o.value === value)) {
+    return messages.invalid(field.label, field);
+  }
+  return null;
+}
+
 // ---- postal code rules ---------------------------------------------------------------------
 
 export const postalCodeRulesSchema = z.object({

@@ -1,6 +1,10 @@
 "use client";
 
-import type { AddressFieldDefinition } from "@ocean/types";
+import {
+  validateAddressField as validateAddressFieldShared,
+  type AddressFieldDefinition,
+  type AddressFieldValidationMessages,
+} from "@ocean/types";
 import { FormField, Input, Select } from "@ocean/ui";
 
 // Generic, country-agnostic renderer for a CountryProfile's addressSchema (spec section 19: "Do
@@ -10,16 +14,20 @@ import { FormField, Input, Select } from "@ocean/ui";
 
 export type AddressFormValues = Record<string, string>;
 
+// Required/maxLength/select-option validation is shared with the storefront's checkout address
+// form via @ocean/types (see packages/types/src/countries.ts) — this wrapper only supplies
+// admin's own message text and keeps the existing 2-arg call signature every caller here uses.
+const MESSAGES: AddressFieldValidationMessages = {
+  required: (label) => `${label} is required`,
+  invalid: (label, field) =>
+    field.maxLength ? `${label} must be ${field.maxLength} characters or fewer` : `${label} is not valid`,
+};
+
 export function validateAddressField(
   field: AddressFieldDefinition,
   rawValue: string | undefined,
 ): string | null {
-  const value = (rawValue ?? "").trim();
-  if (field.required && !value) return `${field.label} is required`;
-  if (value && field.maxLength && value.length > field.maxLength) {
-    return `${field.label} must be ${field.maxLength} characters or fewer`;
-  }
-  return null;
+  return validateAddressFieldShared(field, rawValue, MESSAGES);
 }
 
 export function AddressSchemaForm({

@@ -6,8 +6,11 @@ import type { Address, AddressFieldDefinition } from "@ocean/types";
 //
 // This is the storefront-side counterpart of apps/admin/components/address-schema-form.tsx —
 // same data-driven principle (the field list, labels, types and required-ness come entirely from
-// the fetched CountryProfile.addressSchema, never a second hardcoded field list here), ported
-// rather than literally shared because the storefront app doesn't depend on @ocean/ui.
+// the fetched CountryProfile.addressSchema, never a second hardcoded field list here). The field
+// *renderer* is still ported rather than literally shared (the storefront app doesn't depend on
+// @ocean/ui), but the required/maxLength/select-option validation rule itself is identical in
+// both apps, so that piece is now the single shared `validateAddressField` from @ocean/types —
+// see the comment above its definition in packages/types/src/countries.ts.
 //
 // One wrinkle admin's business-address flow doesn't have to deal with: checkout's Order still
 // needs the platform's fixed `Address` shape (address1/city/province/zip/countryCode/...) for
@@ -21,19 +24,7 @@ import type { Address, AddressFieldDefinition } from "@ocean/types";
 
 export type AddressFormValues = Record<string, string>;
 
-export function validateAddressField(
-  field: AddressFieldDefinition,
-  rawValue: string | undefined,
-  messages: { required: (label: string) => string; invalid: (label: string) => string },
-): string | null {
-  const value = (rawValue ?? "").trim();
-  if (field.required && !value) return messages.required(field.label);
-  if (value && field.maxLength && value.length > field.maxLength) return messages.invalid(field.label);
-  if (value && field.type === "select" && field.options && !field.options.some((o) => o.value === value)) {
-    return messages.invalid(field.label);
-  }
-  return null;
-}
+export { validateAddressField, type AddressFieldValidationMessages } from "@ocean/types";
 
 const CITY_KEYS = ["city", "town", "towncity", "locality"];
 const PROVINCE_KEYS = ["province", "state", "county", "region", "prefecture"];

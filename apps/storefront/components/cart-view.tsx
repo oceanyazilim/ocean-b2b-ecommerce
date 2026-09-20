@@ -8,32 +8,46 @@ import { useCart } from "@/components/cart-provider";
 import { CheckoutAddressForm } from "@/components/checkout-address-form";
 import { buildAddressFromAnswers, validateAddressField, type AddressFormValues } from "@/lib/address-schema";
 import { api, errorMessage } from "@/lib/client-api";
-import { checkoutDictionary } from "@/lib/checkout-i18n";
+import type { CheckoutDictionary } from "@/lib/checkout-i18n";
 import { formatMoney } from "@/lib/money";
+
+// `t.requiredFieldTemplate`/`t.invalidFieldTemplate` are plain `{field}`-placeholder strings, not
+// functions — see the comment on CheckoutDictionary in lib/checkout-i18n.ts for why (the
+// dictionary is built server-side and passed down as a prop, and RSC can't serialize functions
+// across that boundary). This interpolates one for a given field label.
+function formatFieldMessage(template: string, label: string): string {
+  return template.replace("{field}", label);
+}
 
 // Country-specific, localized checkout (spec sections 44/45). The shipping address fields below
 // are never a fixed list: they come straight from whichever CountryProfile the buyer picks (the
 // same catalog the L2 merchant-onboarding form reads), fetched fresh each time the country
 // changes — see fetchCountry(). The checkout chrome around it (labels, headings, errors) is
-// translated to whichever storefront language is currently active, switched from the header's
-// existing language switcher (L4) and passed down as `locale`.
+// resolved server-side (lib/checkout-i18n.ts, via the same system-label mechanism the rest of L4
+// uses) from whichever storefront language is currently active, and passed down as `dictionary`.
 export function CartView({
   paymentMethods,
   countries,
-  locale,
+  dictionary: t,
 }: {
   paymentMethods: PaymentMethodSummary[];
   countries: CountryProfileSummary[];
-  locale: string;
+  dictionary: CheckoutDictionary;
 }) {
   const { cart, loading, updateItem, removeItem, refresh } = useCart();
   const router = useRouter();
-  const t = checkoutDictionary(locale);
 
   const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState(countries[0]?.countryCode ?? "");
   const [country, setCountry] = useState<CountryProfileDetail | null>(null);
   const [countryLoading, setCountryLoading] = useState(false);
+  // Finding 1 fix: the country-detail fetch used to swallow any failure into `country = null`
+  // with no visible error, and checkout's field-validation loop only ran `if (country)` — so a
+  // transient fetch failure, or picking a country the store has no CountryProfile for, meant
+  // checkout silently submitted `shippingAddress: null` and completed as a real order with no
+  // shipping address. `countryError` now surfaces that failure and `onCheckout` below blocks
+  // submission entirely while it's set (or while `country` is otherwise null).
+  const [countryError, setCountryError] = useState<string | null>(null);
   const [addressValues, setAddressValues] = useState<AddressFormValues>({});
   const [phone, setPhone] = useState("");
   const [shippingRateId, setShippingRateId] = useState("");
@@ -43,21 +57,32 @@ export function CartView({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
-  const fetchCountry = useCallback(async (code: string) => {
-    if (!code) {
-      setCountry(null);
-      return;
-    }
-    setCountryLoading(true);
-    try {
-      const res = await api<{ data: CountryProfileDetail }>(`/countries/${code}`);
-      setCountry(res.data);
-    } catch {
-      setCountry(null);
-    } finally {
-      setCountryLoading(false);
-    }
-  }, []);
+  const fetchCountry = useCallback(
+    async (code: string) => {
+      if (!code) {
+        setCountry(null);
+        setCountryError(null);
+        return;
+      }
+      setCountryLoading(true);
+      setCountryError(null);
+      try {
+        const res = await api<{ data: CountryProfileDetail }>(`/countries/${code}`);
+        if (!res.data) {
+          setCountry(null);
+          setCountryError(t.countryUnavailable);
+        } else {
+          setCountry(res.data);
+        }
+      } catch {
+        setCountry(null);
+        setCountryError(t.countryUnavailable);
+      } finally {
+        setCountryLoading(false);
+      }
+    },
+    [t.countryUnavailable],
+  );
 
   useEffect(() => {
     void fetchCountry(countryCode);
@@ -78,22 +103,30 @@ export function CartView({
     e.preventDefault();
     setError(null);
 
-    const messages = { required: t.requiredField, invalid: t.invalidField };
+    // Finding 1 fix: never fall through to submitting `shippingAddress: null`. Without a loaded
+    // CountryProfile there is no addressSchema to validate against or build an Address from, so
+    // checkout is blocked here with a clear, visible error instead of treating "no country" as
+    // "no validation needed".
+    if (!country) {
+      setError(countryError ?? t.countryUnavailable);
+      return;
+    }
+
+    const messages = {
+      required: (label: string) => formatFieldMessage(t.requiredFieldTemplate, label),
+      invalid: (label: string) => formatFieldMessage(t.invalidFieldTemplate, label),
+    };
     const errors: Record<string, string> = {};
-    if (country) {
-      for (const field of country.addressSchema) {
-        const message = validateAddressField(field, addressValues[field.key], messages);
-        if (message) errors[field.key] = message;
-      }
+    for (const field of country.addressSchema) {
+      const message = validateAddressField(field, addressValues[field.key], messages);
+      if (message) errors[field.key] = message;
     }
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setSubmitting(true);
     try {
-      const shippingAddress = country
-        ? buildAddressFromAnswers(country.addressSchema, addressValues, countryCode, { phone })
-        : null;
+      const shippingAddress = buildAddressFromAnswers(country.addressSchema, addressValues, countryCode, { phone });
       const res = await api<{ data: { orderId: string } }>("/cart/checkout", {
         body: {
           email,
@@ -200,6 +233,14 @@ export function CartView({
               ))}
             </select>
             {countryLoading && <p className="text-xs text-muted-foreground">…</p>}
+            {!countryLoading && countryError && (
+              <div className="flex items-center gap-2 text-xs text-destructive">
+                <p>{countryError}</p>
+                <button type="button" onClick={() => void fetchCountry(countryCode)} className="underline">
+                  {t.retry}
+                </button>
+              </div>
+            )}
             {country && (
               <CheckoutAddressForm
                 fields={country.addressSchema}

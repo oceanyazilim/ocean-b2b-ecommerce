@@ -1,19 +1,29 @@
+import "server-only";
+
+import { SYSTEM_LABEL_REGISTRY } from "@ocean/types";
+
+import { storefrontFetch } from "./api";
+
 // Localized checkout (spec section 45): "Checkout language should automatically follow storefront
 // language. Translate: Contact, Delivery, Payment, Billing, Order summary, Errors, Validation."
-// The storefront's active locale (lib/locale.ts, L4) already drives every product/content string;
-// this is the matching dictionary for the checkout UI's own chrome — the labels, section
-// headings and messages that aren't data from a CountryProfile or a product. Deliberately
-// separate from the per-country address FIELD labels (e.g. TR's "Mahalle"): those come from
-// CountryProfile.addressSchema and are already written in that country's own language (a Turkish
-// delivery form uses Turkish field names regardless of which language the buyer is browsing the
-// rest of the site in) — this dictionary only covers the surrounding checkout copy that should
-// follow the buyer's chosen storefront language.
 //
-// Coverage is honest, not universal: every CountryProfile a country can be added in any
-// language, so this dictionary can never promise full coverage the way the address-schema engine
-// does. It covers the storefront's two most real languages so far (English, Turkish) plus German
-// (DE is one of the four seeded CountryProfiles), and always falls back to English for anything
-// else — never a blank or a raw key.
+// This used to be a hand-written `Record<string, CheckoutDictionary>` covering only en/tr/de —
+// unlike the rest of the L4 localization system (StoreLanguage/Translation, GET
+// /storefront/v1/system-labels), which is fully data-driven off real store data with no
+// hardcoded language list. A merchant who added a 4th storefront language would have gotten
+// checkout silently falling back to English while every other page correctly translated. This
+// file now reuses that SAME system-label mechanism instead of a second, parallel one: the keys
+// below (all prefixed "checkout.") live in @ocean/types' SYSTEM_LABEL_REGISTRY — see
+// packages/types/src/localization.ts — get resolved server-side by the existing
+// GET /storefront/v1/system-labels?locale=... endpoint (translatable via the same admin
+// Translations screen merchants already use for nav/cart/account labels), and are assembled here
+// into the same CheckoutDictionary shape the checkout UI already consumes.
+//
+// Deliberately separate from the per-country address FIELD labels (e.g. TR's "Mahalle"): those
+// come from CountryProfile.addressSchema and are already written in that country's own language
+// (a Turkish delivery form uses Turkish field names regardless of which language the buyer is
+// browsing the rest of the site in) — this dictionary only covers the surrounding checkout copy
+// that should follow the buyer's chosen storefront language.
 
 export interface CheckoutDictionary {
   cartTitle: string;
@@ -42,109 +52,89 @@ export interface CheckoutDictionary {
   placeOrder: string;
   placingOrder: string;
   genericError: string;
-  requiredField: (label: string) => string;
-  invalidField: (label: string) => string;
+  retry: string;
+  // Finding 1 fix (correctness): shown instead of silently submitting `shippingAddress: null`
+  // when the country-detail fetch fails or the selected country has no configured CountryProfile.
+  countryUnavailable: string;
+  // Raw `{field}`-placeholder templates rather than functions: this whole object crosses the
+  // Server -> Client Component boundary as a prop (app/cart/page.tsx -> CartView), and React
+  // Server Components cannot serialize functions across that boundary. CartView interpolates
+  // these itself — see `formatFieldMessage` in components/cart-view.tsx.
+  requiredFieldTemplate: string;
+  invalidFieldTemplate: string;
 }
 
-const en: CheckoutDictionary = {
-  cartTitle: "Cart",
-  loadingCart: "Loading your cart…",
-  emptyCart: "Your cart is empty.",
-  remove: "Remove",
-  refreshCart: "Refresh cart",
-  subtotal: "Subtotal",
-  shipping: "Shipping",
-  tax: "Tax",
-  total: "Total",
-  contactHeading: "Contact",
-  email: "Email",
-  phone: "Phone",
-  deliveryHeading: "Delivery",
-  country: "Country",
-  selectCountry: "Select a country...",
-  shippingRate: "Shipping rate",
-  chooseShippingRate: "Choose a shipping rate",
-  billingHeading: "Billing",
-  billingSameAsDelivery: "Billing address same as delivery address",
-  paymentHeading: "Payment",
-  paymentMethod: "Payment method",
-  choosePaymentMethod: "Choose a payment method",
-  orderSummaryHeading: "Order summary",
-  placeOrder: "Place order",
-  placingOrder: "Placing order…",
-  genericError: "Something unexpected happened. Please try again.",
-  requiredField: (label) => `${label} is required`,
-  invalidField: (label) => `${label} is not valid`,
+// Maps each CheckoutDictionary field to its SYSTEM_LABEL_REGISTRY key. Kept as a single source of
+// truth so a key can never be added to one without the other going stale.
+const LABEL_KEYS: Record<Exclude<keyof CheckoutDictionary, "requiredFieldTemplate" | "invalidFieldTemplate">, string> = {
+  cartTitle: "checkout.cart_title",
+  loadingCart: "checkout.loading_cart",
+  emptyCart: "checkout.empty_cart",
+  remove: "checkout.remove",
+  refreshCart: "checkout.refresh_cart",
+  subtotal: "checkout.subtotal",
+  shipping: "checkout.shipping",
+  tax: "checkout.tax",
+  total: "checkout.total",
+  contactHeading: "checkout.contact_heading",
+  email: "checkout.email",
+  phone: "checkout.phone",
+  deliveryHeading: "checkout.delivery_heading",
+  country: "checkout.country",
+  selectCountry: "checkout.select_country",
+  shippingRate: "checkout.shipping_rate",
+  chooseShippingRate: "checkout.choose_shipping_rate",
+  billingHeading: "checkout.billing_heading",
+  billingSameAsDelivery: "checkout.billing_same_as_delivery",
+  paymentHeading: "checkout.payment_heading",
+  paymentMethod: "checkout.payment_method",
+  choosePaymentMethod: "checkout.choose_payment_method",
+  orderSummaryHeading: "checkout.order_summary_heading",
+  placeOrder: "checkout.place_order",
+  placingOrder: "checkout.placing_order",
+  genericError: "checkout.generic_error",
+  retry: "checkout.retry",
+  countryUnavailable: "checkout.error.country_unavailable",
 };
 
-const tr: CheckoutDictionary = {
-  cartTitle: "Sepet",
-  loadingCart: "Sepetiniz yükleniyor…",
-  emptyCart: "Sepetiniz boş.",
-  remove: "Kaldır",
-  refreshCart: "Sepeti yenile",
-  subtotal: "Ara toplam",
-  shipping: "Kargo",
-  tax: "Vergi",
-  total: "Toplam",
-  contactHeading: "İletişim",
-  email: "E-posta",
-  phone: "Telefon",
-  deliveryHeading: "Teslimat",
-  country: "Ülke",
-  selectCountry: "Ülke seçin...",
-  shippingRate: "Kargo seçeneği",
-  chooseShippingRate: "Bir kargo seçeneği seçin",
-  billingHeading: "Fatura",
-  billingSameAsDelivery: "Fatura adresi teslimat adresiyle aynı",
-  paymentHeading: "Ödeme",
-  paymentMethod: "Ödeme yöntemi",
-  choosePaymentMethod: "Bir ödeme yöntemi seçin",
-  orderSummaryHeading: "Sipariş özeti",
-  placeOrder: "Siparişi tamamla",
-  placingOrder: "Sipariş veriliyor…",
-  genericError: "Beklenmedik bir şey oldu. Lütfen tekrar deneyin.",
-  requiredField: (label) => `${label} zorunludur`,
-  invalidField: (label) => `${label} geçerli değil`,
-};
+const REQUIRED_FIELD_TEMPLATE_KEY = "checkout.error.required_field";
+const INVALID_FIELD_TEMPLATE_KEY = "checkout.error.invalid_field";
 
-const de: CheckoutDictionary = {
-  cartTitle: "Warenkorb",
-  loadingCart: "Ihr Warenkorb wird geladen…",
-  emptyCart: "Ihr Warenkorb ist leer.",
-  remove: "Entfernen",
-  refreshCart: "Warenkorb aktualisieren",
-  subtotal: "Zwischensumme",
-  shipping: "Versand",
-  tax: "Steuer",
-  total: "Gesamtsumme",
-  contactHeading: "Kontakt",
-  email: "E-Mail",
-  phone: "Telefon",
-  deliveryHeading: "Lieferung",
-  country: "Land",
-  selectCountry: "Land auswählen...",
-  shippingRate: "Versandart",
-  chooseShippingRate: "Versandart auswählen",
-  billingHeading: "Rechnung",
-  billingSameAsDelivery: "Rechnungsadresse entspricht der Lieferadresse",
-  paymentHeading: "Zahlung",
-  paymentMethod: "Zahlungsmethode",
-  choosePaymentMethod: "Zahlungsmethode auswählen",
-  orderSummaryHeading: "Bestellübersicht",
-  placeOrder: "Bestellung aufgeben",
-  placingOrder: "Bestellung wird aufgegeben…",
-  genericError: "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
-  requiredField: (label) => `${label} ist erforderlich`,
-  invalidField: (label) => `${label} ist ungültig`,
-};
+// Fetches this store's resolved system labels (published translations for `locale`, falling back
+// to the registry's English default per key) server-side. Same shape the admin Translations
+// screen already writes to — no checkout-specific backend endpoint needed. Network/API failures
+// fall back to an empty map so `buildCheckoutDictionary` below uses the English registry default
+// for every key rather than breaking the cart page.
+export async function fetchCheckoutLabels(locale: string): Promise<Record<string, string>> {
+  try {
+    const res = await storefrontFetch<{ data: Record<string, string> }>(
+      `/system-labels?locale=${encodeURIComponent(locale)}`,
+    );
+    return res.data ?? {};
+  } catch {
+    return {};
+  }
+}
 
-const DICTIONARIES: Record<string, CheckoutDictionary> = { en, tr, de };
+function resolve(labels: Record<string, string>, key: string): string {
+  return labels[key] ?? SYSTEM_LABEL_REGISTRY[key] ?? key;
+}
 
-// `locale` is a BCP-47 tag like "tr-TR" or "en-US" (see lib/locale.ts) — only the primary
-// language subtag selects the dictionary, falling back to English for any language this
-// checkout hasn't been translated into yet.
-export function checkoutDictionary(locale: string): CheckoutDictionary {
-  const primary = locale.split("-")[0]?.toLowerCase() ?? "en";
-  return DICTIONARIES[primary] ?? en;
+// Assembles the CheckoutDictionary the checkout UI renders from resolved system labels. Every
+// language a merchant adds via the admin Languages screen works here with zero code changes, the
+// same as the rest of the L4 system — there is no hardcoded per-language dictionary anymore.
+export function buildCheckoutDictionary(labels: Record<string, string>): CheckoutDictionary {
+  const dict = {} as CheckoutDictionary;
+  for (const [field, key] of Object.entries(LABEL_KEYS) as [keyof typeof LABEL_KEYS, string][]) {
+    (dict[field] as string) = resolve(labels, key);
+  }
+  dict.requiredFieldTemplate = resolve(labels, REQUIRED_FIELD_TEMPLATE_KEY);
+  dict.invalidFieldTemplate = resolve(labels, INVALID_FIELD_TEMPLATE_KEY);
+  return dict;
+}
+
+// Convenience for server components (app/cart/page.tsx): fetch + assemble in one call.
+export async function getCheckoutDictionary(locale: string): Promise<CheckoutDictionary> {
+  const labels = await fetchCheckoutLabels(locale);
+  return buildCheckoutDictionary(labels);
 }
