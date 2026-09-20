@@ -5,7 +5,7 @@ import { can, findStore, requireMe } from "@/lib/session";
 
 import { DeveloperManager } from "./developer-manager";
 
-export const metadata = { title: "Developer · Ocean Admin" };
+export const metadata = { title: "Apps · Ocean Admin" };
 
 export default async function DeveloperPage({
   params,

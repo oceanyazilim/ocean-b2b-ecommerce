@@ -1,13 +1,42 @@
 "use client";
 
 import type { ApiKeySummary, DeveloperAppSummary, WebhookSummary } from "@ocean/types";
-import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, ConfirmDialog, Dialog, FormField, Input, Skeleton, TagInput } from "@ocean/ui";
-import { useCallback, useEffect, useState } from "react";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  ConfirmDialog,
+  DataGrid,
+  Dialog,
+  FormField,
+  Input,
+  Skeleton,
+  TagInput,
+  type DataGridColumn,
+} from "@ocean/ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
 import { useSubmit } from "@/lib/use-submit";
 
 const SCOPE_HINT = "e.g. products.read, orders.read, customers.read, themes.edit";
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-1 py-4">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="text-xl font-semibold tabular-nums">{value}</span>
+      </CardContent>
+    </Card>
+  );
+}
 
 function CopySecret({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -157,144 +186,210 @@ export function DeveloperManager({ storeId }: { storeId: string }) {
     }
   }
 
+  const stats = useMemo(() => {
+    const activeApps = (apps ?? []).filter((a) => a.status === "active").length;
+    const activeKeys = (keys ?? []).filter((k) => !k.revokedAt).length;
+    const activeWebhooks = (webhooks ?? []).filter((w) => w.status === "active").length;
+    return {
+      apps: apps?.length ?? 0,
+      keys: keys?.length ?? 0,
+      webhooks: webhooks?.length ?? 0,
+      active: activeApps + activeKeys + activeWebhooks,
+    };
+  }, [apps, keys, webhooks]);
+
+  const appColumns: DataGridColumn<DeveloperAppSummary>[] = [
+    {
+      key: "name",
+      header: "App",
+      cell: (app) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{app.name}</span>
+          <code className="text-xs text-muted-foreground">{app.clientId}</code>
+        </div>
+      ),
+    },
+    {
+      key: "scopes",
+      header: "Scopes",
+      cell: (app) => <span className="text-muted-foreground">{app.scopes.join(", ") || "—"}</span>,
+    },
+    {
+      key: "createdAt",
+      header: "Created",
+      cell: (app) => <span className="text-muted-foreground">{formatDate(app.createdAt)}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (app) => <Badge variant={app.status === "active" ? "success" : "secondary"}>{app.status}</Badge>,
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "text-right",
+      cell: (app) =>
+        app.status === "active" ? (
+          <Button size="sm" variant="ghost" onClick={() => setRevoking({ kind: "app", id: app.id, name: app.name })}>
+            Revoke
+          </Button>
+        ) : null,
+    },
+  ];
+
+  const keyColumns: DataGridColumn<ApiKeySummary>[] = [
+    { key: "name", header: "Key", cell: (key) => <span className="font-medium">{key.name}</span> },
+    {
+      key: "scopes",
+      header: "Scopes",
+      cell: (key) => <span className="text-muted-foreground">{key.scopes.join(", ") || "—"}</span>,
+    },
+    {
+      key: "lastUsedAt",
+      header: "Last used",
+      cell: (key) => (
+        <span className="text-muted-foreground">{key.lastUsedAt ? formatDate(key.lastUsedAt) : "Never used"}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (key) => <Badge variant={key.revokedAt ? "secondary" : "success"}>{key.revokedAt ? "revoked" : "active"}</Badge>,
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "text-right",
+      cell: (key) =>
+        !key.revokedAt ? (
+          <Button size="sm" variant="ghost" onClick={() => setRevoking({ kind: "key", id: key.id, name: key.name })}>
+            Revoke
+          </Button>
+        ) : null,
+    },
+  ];
+
+  const webhookColumns: DataGridColumn<WebhookSummary>[] = [
+    { key: "topic", header: "Topic", cell: (hook) => <span className="font-medium">{hook.topic}</span> },
+    {
+      key: "url",
+      header: "URL",
+      cell: (hook) => <span className="block max-w-md truncate text-muted-foreground">{hook.url}</span>,
+    },
+    {
+      key: "createdAt",
+      header: "Created",
+      cell: (hook) => <span className="text-muted-foreground">{formatDate(hook.createdAt)}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (hook) => <Badge variant={hook.status === "active" ? "success" : "secondary"}>{hook.status}</Badge>,
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "text-right",
+      cell: (hook) => (
+        <Button size="sm" variant="ghost" onClick={() => setRevoking({ kind: "webhook", id: hook.id, name: hook.topic })}>
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
   if (!apps || !keys || !webhooks) return <Skeleton className="h-64 w-full" />;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Developer</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Apps</h1>
         <p className="text-sm text-muted-foreground">
-          Custom apps, API keys, and webhooks for your own integrations against the Developer
-          API (<code>/api/2026-01</code>).
+          Your store&apos;s own custom apps, API keys, and webhooks against the Developer API
+          (<code>/api/2026-01</code>).
         </p>
       </div>
 
+      <Alert variant="info">
+        This is your store&apos;s developer platform for building your own integrations — not a marketplace of
+        pre-built third-party apps to browse and install. Each app authenticates with OAuth client_credentials and
+        requests the scopes (permissions) it needs.
+      </Alert>
+
       {error && <Alert variant="error">{error}</Alert>}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Apps" value={String(stats.apps)} />
+        <StatCard label="API keys" value={String(stats.keys)} />
+        <StatCard label="Webhooks" value={String(stats.webhooks)} />
+        <StatCard label="Active credentials" value={String(stats.active)} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Apps</CardTitle>
-            <CardDescription>OAuth client_credentials apps — each owns its own keys.</CardDescription>
+            <h2 className="text-lg font-semibold tracking-tight">Your apps</h2>
+            <p className="text-sm text-muted-foreground">OAuth client_credentials apps — each owns its own keys.</p>
           </div>
           <Button size="sm" onClick={() => setCreatingApp(true)}>
             Create app
           </Button>
-        </CardHeader>
-        <CardContent>
-          {apps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No apps yet.</p>
-          ) : (
-            <ul className="flex flex-col gap-1 text-sm">
-              {apps.map((app) => (
-                <li key={app.id} className="flex items-center justify-between border-b py-2 last:border-0">
-                  <div>
-                    <p className="font-medium">{app.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {app.clientId} · {app.scopes.join(", ")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={app.status === "active" ? "success" : "secondary"}>{app.status}</Badge>
-                    {app.status === "active" && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setRevoking({ kind: "app", id: app.id, name: app.name })}
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        <DataGrid
+          columns={appColumns}
+          rows={apps}
+          rowKey={(app) => app.id}
+          empty={{
+            title: "No apps yet",
+            description: "Create your first custom app to get a client ID and secret.",
+            action: <Button onClick={() => setCreatingApp(true)}>Create app</Button>,
+          }}
+        />
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">API keys</CardTitle>
-            <CardDescription>Static Bearer tokens for scripts and CLIs.</CardDescription>
+            <h2 className="text-lg font-semibold tracking-tight">API keys</h2>
+            <p className="text-sm text-muted-foreground">Static Bearer tokens for scripts and CLIs.</p>
           </div>
           <Button size="sm" onClick={() => setCreatingKey(true)}>
             Create key
           </Button>
-        </CardHeader>
-        <CardContent>
-          {keys.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No API keys yet.</p>
-          ) : (
-            <ul className="flex flex-col gap-1 text-sm">
-              {keys.map((key) => (
-                <li key={key.id} className="flex items-center justify-between border-b py-2 last:border-0">
-                  <div>
-                    <p className="font-medium">{key.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {key.scopes.join(", ")}
-                      {key.lastUsedAt ? ` · last used ${new Date(key.lastUsedAt).toLocaleDateString()}` : " · never used"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={key.revokedAt ? "secondary" : "success"}>
-                      {key.revokedAt ? "revoked" : "active"}
-                    </Badge>
-                    {!key.revokedAt && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setRevoking({ kind: "key", id: key.id, name: key.name })}
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        <DataGrid
+          columns={keyColumns}
+          rows={keys}
+          rowKey={(key) => key.id}
+          empty={{
+            title: "No API keys yet",
+            description: "Create a static key for a script or CLI to call the Developer API.",
+            action: <Button onClick={() => setCreatingKey(true)}>Create key</Button>,
+          }}
+        />
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Webhooks</CardTitle>
-            <CardDescription>HMAC-signed HTTP callbacks for store events.</CardDescription>
+            <h2 className="text-lg font-semibold tracking-tight">Webhooks</h2>
+            <p className="text-sm text-muted-foreground">HMAC-signed HTTP callbacks for store events.</p>
           </div>
           <Button size="sm" onClick={() => setCreatingWebhook(true)}>
             Add webhook
           </Button>
-        </CardHeader>
-        <CardContent>
-          {webhooks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No webhooks yet.</p>
-          ) : (
-            <ul className="flex flex-col gap-1 text-sm">
-              {webhooks.map((hook) => (
-                <li key={hook.id} className="flex items-center justify-between border-b py-2 last:border-0">
-                  <div>
-                    <p className="font-medium">{hook.topic}</p>
-                    <p className="max-w-md truncate text-xs text-muted-foreground">{hook.url}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={hook.status === "active" ? "success" : "secondary"}>{hook.status}</Badge>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setRevoking({ kind: "webhook", id: hook.id, name: hook.topic })}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        <DataGrid
+          columns={webhookColumns}
+          rows={webhooks}
+          rowKey={(hook) => hook.id}
+          empty={{
+            title: "No webhooks yet",
+            description: "Add a webhook to receive HMAC-signed callbacks for store events.",
+            action: <Button onClick={() => setCreatingWebhook(true)}>Add webhook</Button>,
+          }}
+        />
+      </div>
 
       <Dialog open={creatingApp} onClose={() => setCreatingApp(false)} title="Create app">
         <div className="flex flex-col gap-3">
