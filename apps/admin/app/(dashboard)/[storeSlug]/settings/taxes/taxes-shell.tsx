@@ -3,6 +3,7 @@
 import { Tabs } from "@ocean/ui";
 import { useState } from "react";
 
+import { TaxWarningsBanner } from "../../tax-warnings-banner";
 import { TaxClassesManager } from "./tax-classes-manager";
 import { TaxRegistrationsManager } from "./tax-registrations-manager";
 import { TaxesManager } from "./taxes-manager";
@@ -14,10 +15,12 @@ type Tab = "rules" | "registrations" | "classes";
 // it, without touching how rates are calculated at checkout.
 export function TaxesShell({
   storeId,
+  storeSlug,
   pricesIncludeTax,
   canWrite,
 }: {
   storeId: string;
+  storeSlug: string;
   pricesIncludeTax: boolean;
   canWrite: boolean;
 }) {
@@ -32,6 +35,7 @@ export function TaxesShell({
           real tax system — never a hardcoded &quot;VAT&quot;.
         </p>
       </div>
+      <TaxWarningsBanner storeId={storeId} storeSlug={storeSlug} />
       <Tabs
         aria-label="Tax settings sections"
         value={tab}

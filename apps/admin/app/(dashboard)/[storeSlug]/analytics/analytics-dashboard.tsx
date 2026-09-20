@@ -1,6 +1,15 @@
 "use client";
 
-import type { AnalyticsOverview, TopCompanyRow, TopCustomerRow, TopProductRow } from "@ocean/types";
+import type {
+  AnalyticsOverview,
+  CountryAnalyticsReport,
+  CountrySalesRow,
+  CurrencyRevenueRow,
+  MarketSalesRow,
+  TopCompanyRow,
+  TopCustomerRow,
+  TopProductRow,
+} from "@ocean/types";
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, Input, Label, Skeleton } from "@ocean/ui";
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,6 +33,7 @@ export function AnalyticsDashboard({ storeId }: { storeId: string; currency: str
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([]);
   const [topCustomers, setTopCustomers] = useState<TopCustomerRow[]>([]);
   const [topCompanies, setTopCompanies] = useState<TopCompanyRow[]>([]);
+  const [countryReport, setCountryReport] = useState<CountryAnalyticsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -33,16 +43,18 @@ export function AnalyticsDashboard({ storeId }: { storeId: string; currency: str
     setError(null);
     try {
       const qs = toRangeParams(from, to);
-      const [ov, products, customers, companies] = await Promise.all([
+      const [ov, products, customers, companies, country] = await Promise.all([
         api<{ data: AnalyticsOverview }>(`/stores/${storeId}/analytics/overview?${qs}`),
         api<{ data: TopProductRow[] }>(`/stores/${storeId}/analytics/top-products?${qs}`),
         api<{ data: TopCustomerRow[] }>(`/stores/${storeId}/analytics/top-customers?${qs}`),
         api<{ data: TopCompanyRow[] }>(`/stores/${storeId}/analytics/top-companies?${qs}`),
+        api<{ data: CountryAnalyticsReport }>(`/stores/${storeId}/analytics/country-report?${qs}`),
       ]);
       setOverview(ov.data);
       setTopProducts(products.data);
       setTopCustomers(customers.data);
       setTopCompanies(companies.data);
+      setCountryReport(country.data);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -206,6 +218,131 @@ export function AnalyticsDashboard({ storeId }: { storeId: string; currency: str
               </Card>
             </section>
 
+            {countryReport && (
+              <section className="flex flex-col gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">Country & currency</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Real sales by shipping/billing country and by active Market, revenue by order
+                    currency, tax collected, B2B revenue, refunds and average order value — all
+                    for the selected range. No map visualization: with a handful of real
+                    destination countries, a sortable table is more useful (and more honest) than
+                    a low-fidelity world map would be.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Tax collected</CardDescription>
+                      <CardTitle className="text-xl tabular-nums">
+                        {formatMoney(countryReport.taxCollected)}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>B2B revenue</CardDescription>
+                      <CardTitle className="text-xl tabular-nums">
+                        {formatMoney(countryReport.b2bRevenue)}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Refunds</CardDescription>
+                      <CardTitle className="text-xl tabular-nums">
+                        {formatMoney(countryReport.refunds)}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Average order value</CardDescription>
+                      <CardTitle className="text-xl tabular-nums">
+                        {formatMoney(countryReport.averageOrderValue)}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Sales by country</CardTitle>
+                      <CardDescription>By shipping (or billing) address country.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <DataGrid
+                        columns={[
+                          { key: "country", header: "Country", cell: (r: CountrySalesRow) => r.countryName },
+                          { key: "orders", header: "Orders", cell: (r: CountrySalesRow) => r.orderCount },
+                          {
+                            key: "revenue",
+                            header: "Revenue",
+                            cell: (r: CountrySalesRow) => formatMoney(r.revenue),
+                          },
+                          {
+                            key: "tax",
+                            header: "Tax collected",
+                            cell: (r: CountrySalesRow) => formatMoney(r.taxCollected),
+                          },
+                        ]}
+                        rows={countryReport.byCountry}
+                        rowKey={(r) => r.countryCode}
+                        empty={{ title: "No orders with a country in this range" }}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Sales by market</CardTitle>
+                      <CardDescription>Each active Market, plus unassigned orders.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <DataGrid
+                        columns={[
+                          { key: "market", header: "Market", cell: (r: MarketSalesRow) => r.marketName },
+                          { key: "orders", header: "Orders", cell: (r: MarketSalesRow) => r.orderCount },
+                          {
+                            key: "revenue",
+                            header: "Revenue",
+                            cell: (r: MarketSalesRow) => formatMoney(r.revenue),
+                          },
+                        ]}
+                        rows={countryReport.byMarket}
+                        rowKey={(r) => r.marketId ?? "unassigned"}
+                        empty={{ title: "No active markets or orders in this range" }}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Revenue by currency</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <DataGrid
+                      columns={[
+                        { key: "currency", header: "Currency", cell: (r: CurrencyRevenueRow) => r.currency },
+                        { key: "orders", header: "Orders", cell: (r: CurrencyRevenueRow) => r.orderCount },
+                        {
+                          key: "revenue",
+                          header: "Revenue",
+                          cell: (r: CurrencyRevenueRow) => formatMoney(r.revenue),
+                        },
+                      ]}
+                      rows={countryReport.byCurrency}
+                      rowKey={(r) => r.currency}
+                      empty={{ title: "No orders in this range" }}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+            )}
+
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <section className="flex flex-col gap-3">
                 <div>
@@ -281,9 +418,9 @@ export function AnalyticsDashboard({ storeId }: { storeId: string; currency: str
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Marketing attribution, geographic sales, channel performance and inventory
-              performance reports are not yet available — this system does not track ad spend,
-              customer geography, sales channels, or inventory turnover.
+              Marketing attribution, channel performance and inventory performance reports are
+              not yet available — this system does not track ad spend, sales channels, or
+              inventory turnover.
             </p>
           </>
         )

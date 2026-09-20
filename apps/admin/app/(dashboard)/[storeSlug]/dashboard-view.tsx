@@ -4,6 +4,7 @@ import type {
   AnalyticsOverview,
   CompanyStats,
   InventoryStats,
+  MarketFilterOption,
   NotificationSummary,
   OrderStats,
   Paginated,
@@ -17,6 +18,8 @@ import { useEffect, useMemo, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
+import { TaxWarningsBanner } from "./tax-warnings-banner";
+
 type RangeKey = "today" | "7d" | "30d" | "90d" | "custom";
 type ComparisonBasis = "previous_period" | "previous_year";
 type ChartMetric = "gross" | "net" | "orders" | "aov" | "refunds";
@@ -27,6 +30,7 @@ interface Permissions {
   inventory: boolean;
   companies: boolean;
   quotes: boolean;
+  taxes: boolean;
 }
 
 function startOfDay(d: Date): Date {
@@ -236,6 +240,11 @@ export function DashboardView({
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [greetingKey, setGreetingKey] = useState<"morning" | "afternoon" | "evening" | "hello">("hello");
 
+  // Spec section 53: "All markets" plus every market this store actually has real orders or an
+  // active Market for — populated from the API, never hardcoded.
+  const [market, setMarket] = useState("all");
+  const [marketOptions, setMarketOptions] = useState<MarketFilterOption[]>([]);
+
   const t = useTranslations("dashboard");
   const tActivity = useTranslations("dashboard.activity");
   const tNotificationTypes = useTranslations("dashboard.notificationTypes");
@@ -264,6 +273,21 @@ export function DashboardView({
   const cmp = useMemo(() => comparisonRange(basis, from, to), [basis, from, to]);
 
   useEffect(() => {
+    if (!permissions.analytics) return;
+    let cancelled = false;
+    api<{ data: MarketFilterOption[] }>(`/stores/${storeId}/analytics/markets`)
+      .then((res) => {
+        if (!cancelled) setMarketOptions(res.data);
+      })
+      .catch(() => {
+        // Filter degrades to "All markets" only — not worth surfacing as a page error.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId, permissions.analytics]);
+
+  useEffect(() => {
     if (!permissions.analytics) {
       setAnalyticsLoading(false);
       return;
@@ -272,7 +296,8 @@ export function DashboardView({
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     const qs = (f: Date, t: Date) =>
-      `from=${encodeURIComponent(f.toISOString())}&to=${encodeURIComponent(t.toISOString())}`;
+      `from=${encodeURIComponent(f.toISOString())}&to=${encodeURIComponent(t.toISOString())}` +
+      (market !== "all" ? `&market=${encodeURIComponent(market)}` : "");
     Promise.all([
       api<{ data: AnalyticsOverview }>(`/stores/${storeId}/analytics/overview?${qs(from, to)}`),
       api<{ data: AnalyticsOverview }>(
@@ -293,7 +318,7 @@ export function DashboardView({
     return () => {
       cancelled = true;
     };
-  }, [storeId, permissions.analytics, from, to, cmp]);
+  }, [storeId, permissions.analytics, from, to, cmp, market]);
 
   useEffect(() => {
     let cancelled = false;
@@ -405,6 +430,12 @@ export function DashboardView({
   const aovPct = previousOverview
     ? pctChange(overview?.averageOrderValue.amount ?? 0, previousOverview.averageOrderValue.amount)
     : undefined;
+  const taxCollectedPct = previousOverview
+    ? pctChange(overview?.taxCollected.amount ?? 0, previousOverview.taxCollected.amount)
+    : undefined;
+  const customersPct = previousOverview
+    ? pctChange(overview?.customerCount ?? 0, previousOverview.customerCount)
+    : undefined;
   const returningPct =
     previousOverview &&
     isPresent(overview?.returningCustomerRate) &&
@@ -464,6 +495,8 @@ export function DashboardView({
         </div>
       </div>
 
+      {permissions.taxes && <TaxWarningsBanner storeId={storeId} storeSlug={storeSlug} />}
+
       {!permissions.analytics && !permissions.orders && (
         <Alert variant="info">{t("noAccess")}</Alert>
       )}
@@ -471,7 +504,20 @@ export function DashboardView({
 
       {permissions.analytics && (
         <>
-          <div className="flex items-center justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Select
+              value={market}
+              onChange={(e) => setMarket(e.target.value)}
+              className="w-48"
+              aria-label={t("marketFilter.ariaLabel")}
+            >
+              <option value="all">{t("marketFilter.allMarkets")}</option>
+              {marketOptions.map((m) => (
+                <option key={m.countryCode} value={m.countryCode}>
+                  {m.countryName}
+                </option>
+              ))}
+            </Select>
             <Select
               value={basis}
               onChange={(e) => setBasis(e.target.value as ComparisonBasis)}
@@ -484,13 +530,13 @@ export function DashboardView({
           </div>
 
           {analyticsLoading ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+              {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-28 w-full" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
               <MetricCard
                 label={t("metrics.totalSales")}
                 value={formatMoney(overview?.revenue ?? { amount: 0, currency })}
@@ -516,6 +562,18 @@ export function DashboardView({
                 pct={ordersPct}
                 comparisonLabel={comparisonLabel}
                 sparkline={ordersSparkline}
+              />
+              <MetricCard
+                label={t("metrics.taxCollected")}
+                value={formatMoney(overview?.taxCollected ?? { amount: 0, currency })}
+                pct={taxCollectedPct}
+                comparisonLabel={comparisonLabel}
+              />
+              <MetricCard
+                label={t("metrics.customers")}
+                value={String(overview?.customerCount ?? 0)}
+                pct={customersPct}
+                comparisonLabel={comparisonLabel}
               />
               <MetricCard
                 label={t("metrics.averageOrderValue")}

@@ -18,6 +18,10 @@
     "to": "to"
   },
   "noAccess": "Your role doesn't have access to any dashboard data.",
+  "marketFilter": {
+    "ariaLabel": "Market filter",
+    "allMarkets": "All markets"
+  },
   "comparison": {
     "ariaLabel": "Comparison basis",
     "previousPeriod": "vs previous period",
@@ -27,6 +31,8 @@
     "totalSales": "Total sales",
     "netSales": "Net sales",
     "orders": "Orders",
+    "taxCollected": "Tax collected",
+    "customers": "Customers",
     "averageOrderValue": "Average order value",
     "returningCustomerRate": "Returning customer rate",
     "conversionRate": "Conversion rate",

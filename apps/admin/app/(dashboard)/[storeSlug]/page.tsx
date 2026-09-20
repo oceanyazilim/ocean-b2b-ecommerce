@@ -30,6 +30,7 @@ export default async function StoreHomePage({
           inventory: can(store, "inventory.read"),
           companies: can(store, "companies.read"),
           quotes: can(store, "quotes.read"),
+          taxes: can(store, "taxes.read"),
         }}
       />
       <OnboardingChecklist

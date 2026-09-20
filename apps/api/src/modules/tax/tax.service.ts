@@ -1,8 +1,10 @@
-import { Injectable } from "@nestjs/common";
-import type { Prisma } from "@ocean/db";
+import { Inject, Injectable } from "@nestjs/common";
+import { Prisma } from "@ocean/db";
 import type {
   TaxClassInput,
   TaxClassSummary,
+  TaxMarketWarning,
+  TaxProviderInfo,
   TaxRegistrationCountryGroup,
   TaxRegistrationInput,
   TaxRegistrationSummary,
@@ -21,6 +23,7 @@ import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { CountryProfilesService } from "../countries/countries.service";
 import { EventsService } from "../events/events.service";
+import { TAX_PROVIDER, type TaxProvider } from "./tax-provider";
 
 type RuleRow = Prisma.TaxRuleGetPayload<{ include: { taxClass: { select: { name: true } } } }>;
 type RegistrationRow = Prisma.TaxRegistrationGetPayload<Record<string, never>>;
@@ -49,6 +52,7 @@ export class TaxService {
     private readonly audit: AuditService,
     private readonly events: EventsService,
     private readonly countries: CountryProfilesService,
+    @Inject(TAX_PROVIDER) private readonly taxProvider: TaxProvider,
   ) {}
 
   private scope(ctx: TenantContext): Prisma.TaxRuleWhereInput {
@@ -537,5 +541,78 @@ export class TaxService {
       },
       this.prisma,
     );
+  }
+
+  // -----------------------------------------------------------------------
+  // TaxProvider abstraction (spec section 50) & platform warnings (spec section 52)
+  // -----------------------------------------------------------------------
+
+  // Lets the admin UI honestly label rates as "Manually configured" (spec section 51) instead of
+  // assuming — the moment a second, real automatic provider is registered, this flips without any
+  // UI change.
+  getProviderInfo(): TaxProviderInfo {
+    return {
+      id: this.taxProvider.id,
+      name: this.taxProvider.name,
+      isAutomatic: this.taxProvider.isAutomatic,
+    };
+  }
+
+  // Spec section 52: "If the merchant enters a market without configured taxation... Do NOT
+  // silently assume zero tax." A market the merchant is "selling into" is real orders (any
+  // non-cancelled order whose shipping — or, absent that, billing — address resolves to that
+  // country) unioned with active Markets targeting that country. "Configured" means an active
+  // TaxRule or an active TaxRegistration exists for that country in this store — either is
+  // enough, since a registration without a rate is still a deliberate compliance decision (e.g.
+  // "registered, 0% category"), while a rule without a registration is still a real, working rate.
+  async getMarketWarnings(ctx: TenantContext): Promise<TaxMarketWarning[]> {
+    const storeId = ctx.storeId as string;
+    const organizationId = ctx.organizationId;
+
+    const [orderCountryRows, activeMarkets, activeRules, activeRegistrations] = await Promise.all([
+      this.prisma.$queryRaw<{ country_code: string | null }[]>(Prisma.sql`
+        SELECT DISTINCT COALESCE(shipping_address->>'countryCode', billing_address->>'countryCode') AS country_code
+        FROM orders
+        WHERE store_id = ${storeId}::uuid AND organization_id = ${organizationId}::uuid
+          AND status <> 'cancelled'
+          AND (shipping_address IS NOT NULL OR billing_address IS NOT NULL)
+      `),
+      this.prisma.market.findMany({
+        where: { storeId, organizationId, isActive: true },
+        select: { countryCode: true },
+      }),
+      this.prisma.taxRule.findMany({
+        where: { storeId, organizationId, isActive: true },
+        select: { countryCode: true },
+      }),
+      this.prisma.taxRegistration.findMany({
+        where: { storeId, organizationId, status: "active" },
+        select: { countryCode: true },
+      }),
+    ]);
+
+    const sellingCountries = new Map<string, "orders" | "market" | "both">();
+    for (const row of orderCountryRows) {
+      if (row.country_code) sellingCountries.set(row.country_code.toUpperCase(), "orders");
+    }
+    for (const market of activeMarkets) {
+      const code = market.countryCode.toUpperCase();
+      const existing = sellingCountries.get(code);
+      sellingCountries.set(code, existing === "orders" ? "both" : "market");
+    }
+
+    const configured = new Set<string>([
+      ...activeRules.map((r) => r.countryCode.toUpperCase()),
+      ...activeRegistrations.map((r) => r.countryCode.toUpperCase()),
+    ]);
+
+    const missing = [...sellingCountries.entries()].filter(([code]) => !configured.has(code));
+    const warnings = await Promise.all(
+      missing.map(async ([countryCode, source]) => {
+        const profile = await this.countries.getCountryProfile(countryCode);
+        return { countryCode, countryName: profile?.name ?? countryCode, source } satisfies TaxMarketWarning;
+      }),
+    );
+    return warnings.sort((a, b) => a.countryName.localeCompare(b.countryName));
   }
 }

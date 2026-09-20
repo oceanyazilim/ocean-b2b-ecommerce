@@ -160,4 +160,18 @@ export class TaxController {
   ) {
     await this.tax.removeTaxClass(tenant, id, meta);
   }
+
+  // ---- TaxProvider info (spec section 50/51) & platform warnings (spec section 52) ----------
+
+  @Get("provider")
+  @RequireStore("taxes.read")
+  getProvider() {
+    return this.tax.getProviderInfo();
+  }
+
+  @Get("warnings")
+  @RequireStore("taxes.read")
+  getWarnings(@CurrentTenant() tenant: TenantContext) {
+    return this.tax.getMarketWarnings(tenant);
+  }
 }

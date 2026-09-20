@@ -136,3 +136,28 @@ export interface TaxClassSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// L6: TaxProvider abstraction (spec section 50) and platform warnings (spec section 52)
+//
+// Today exactly one TaxProvider is wired up — ManualTaxProvider, wrapping the real TaxRule
+// engine above — but the admin UI reads this shape rather than assuming "manual" so a future
+// automatic provider (Avalara/TaxJar/...) can be added without a UI change. `isAutomatic: false`
+// is what lets the UI honestly label every rate as "Manually configured" per spec section 51,
+// since no automatic provider is connected yet.
+// ---------------------------------------------------------------------------
+
+export interface TaxProviderInfo {
+  id: string;
+  name: string;
+  isAutomatic: boolean;
+}
+
+// One country the merchant is selling into (real orders and/or an active Market) with no
+// TaxRule or active TaxRegistration configured for it yet — spec section 52's "Tax setup
+// required" warning. `source` says how we know they're selling there.
+export interface TaxMarketWarning {
+  countryCode: string;
+  countryName: string;
+  source: "orders" | "market" | "both";
+}

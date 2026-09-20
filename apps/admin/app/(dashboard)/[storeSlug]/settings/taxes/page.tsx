@@ -20,6 +20,7 @@ export default async function TaxesPage({ params }: { params: Promise<{ storeSlu
   return (
     <TaxesShell
       storeId={store.id}
+      storeSlug={store.slug}
       pricesIncludeTax={settings.data.pricesIncludeTax}
       canWrite={can(store, "taxes.write")}
     />

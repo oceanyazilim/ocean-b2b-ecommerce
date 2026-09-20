@@ -18,6 +18,10 @@
     "to": "ile"
   },
   "noAccess": "Rolünüzün herhangi bir panel verisine erişimi yok.",
+  "marketFilter": {
+    "ariaLabel": "Pazar filtresi",
+    "allMarkets": "Tüm pazarlar"
+  },
   "comparison": {
     "ariaLabel": "Karşılaştırma temeli",
     "previousPeriod": "önceki döneme göre",
@@ -27,6 +31,8 @@
     "totalSales": "Toplam satış",
     "netSales": "Net satış",
     "orders": "Siparişler",
+    "taxCollected": "Tahsil edilen vergi",
+    "customers": "Müşteriler",
     "averageOrderValue": "Ortalama sipariş değeri",
     "returningCustomerRate": "Tekrar eden müşteri oranı",
     "conversionRate": "Dönüşüm oranı",

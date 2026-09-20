@@ -53,4 +53,19 @@ export class AnalyticsController {
   ) {
     return this.analytics.topCompaniesCsv(tenant, query);
   }
+
+  // Spec section 53: real options for the dashboard's market filter.
+  @Get("markets")
+  marketOptions(@CurrentTenant() tenant: TenantContext) {
+    return this.analytics.listMarketOptions(tenant);
+  }
+
+  // Spec section 54: country/market/currency breakdown, tax collected, B2B revenue, refunds, AOV.
+  @Get("country-report")
+  countryReport(
+    @CurrentTenant() tenant: TenantContext,
+    @Query(new ZodValidationPipe(analyticsRangeQuerySchema)) query: AnalyticsRangeQuery,
+  ) {
+    return this.analytics.countryReport(tenant, query);
+  }
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import type { TaxClassSummary, TaxRuleSummary } from "@ocean/types";
+import type { TaxClassSummary, TaxProviderInfo, TaxRuleSummary } from "@ocean/types";
 import {
   Alert,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -36,6 +37,7 @@ export function TaxesManager({
 }) {
   const [rows, setRows] = useState<TaxRuleSummary[]>([]);
   const [taxClasses, setTaxClasses] = useState<TaxClassSummary[]>([]);
+  const [provider, setProvider] = useState<TaxProviderInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
@@ -48,12 +50,14 @@ export function TaxesManager({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [rules, classes] = await Promise.all([
+      const [rules, classes, providerInfo] = await Promise.all([
         api<{ data: TaxRuleSummary[] }>(`/stores/${storeId}/tax/rules`),
         api<{ data: TaxClassSummary[] }>(`/stores/${storeId}/tax/classes`),
+        api<{ data: TaxProviderInfo }>(`/stores/${storeId}/tax/provider`),
       ]);
       setRows(rules.data);
       setTaxClasses(classes.data);
+      setProvider(providerInfo.data);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -96,6 +100,19 @@ export function TaxesManager({
       header: "Rate",
       className: "text-right",
       cell: (r) => <span className="tabular-nums">{r.ratePercent}%</span>,
+    },
+    {
+      // Spec section 51: "clearly distinguish: Automatically calculated vs Manually
+      // configured." Every rate today comes from ManualTaxProvider (see the banner above the
+      // grid) — this reflects the connected provider rather than assuming, so the label flips
+      // automatically once a real automatic provider is ever connected.
+      key: "source",
+      header: "Source",
+      cell: () => (
+        <Badge variant={provider?.isAutomatic ? "info" : "secondary"}>
+          {provider?.isAutomatic ? "Automatic" : "Manual"}
+        </Badge>
+      ),
     },
     {
       key: "status",
@@ -143,6 +160,14 @@ export function TaxesManager({
           </label>
         </CardContent>
       </Card>
+
+      {provider && !provider.isAutomatic && (
+        <Alert variant="info" title="Manually configured rates">
+          No automatic tax provider is connected for this store — every rate below is manually
+          configured ({provider.name}). Connecting a real external tax provider in the future
+          would calculate rates automatically instead, without changing this screen.
+        </Alert>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
