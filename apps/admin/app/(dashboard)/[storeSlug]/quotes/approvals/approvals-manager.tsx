@@ -41,6 +41,11 @@ export function ApprovalsManager({
 }) {
   return (
     <div className="flex flex-col gap-8">
+      <p className="text-sm text-muted-foreground">
+        When an order matches a rule below, it&apos;s placed as{" "}
+        <Badge variant="warning">pending approval</Badge> and waits here for someone with one of
+        the rule&apos;s approver roles to decide before the order proceeds.
+      </p>
       <PendingApprovals storeId={storeId} storeSlug={storeSlug} canWrite={canWrite} />
       <ApprovalRules storeId={storeId} canWrite={canWrite} />
     </div>

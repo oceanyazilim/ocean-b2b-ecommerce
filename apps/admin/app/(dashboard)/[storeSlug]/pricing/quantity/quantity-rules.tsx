@@ -25,6 +25,24 @@ import { useSubmit } from "@/lib/use-submit";
 
 type Editing = { kind: "new" } | { kind: "edit"; rule: QuantityRuleSummary } | null;
 
+// Spec example: "Minimum 10, Increment 5, Maximum 500" — this renders the actual valid order
+// quantities that combination produces (the same math carts/checkout enforce), so the effect of
+// min/max/increment together is legible at a glance instead of three separate numbers.
+function exampleQuantities(r: QuantityRuleSummary): string {
+  const min = r.minQuantity ?? 1;
+  const inc = r.increment && r.increment > 0 ? r.increment : 1;
+  const max = r.maxQuantity;
+  const shown: number[] = [];
+  let v = min;
+  while (shown.length < 4 && (max === null || v <= max)) {
+    shown.push(v);
+    v += inc;
+  }
+  if (shown.length === 0) return "—";
+  const more = max !== null && v <= max;
+  return shown.join(", ") + (more ? `, … ${max}` : "");
+}
+
 export function QuantityRules({
   storeId,
   rules,
@@ -69,6 +87,11 @@ export function QuantityRules({
       className: "text-right",
       cell: (r) => <span className="tabular-nums">{r.increment ?? "—"}</span>,
     },
+    {
+      key: "example",
+      header: "Valid quantities",
+      cell: (r) => <span className="tabular-nums text-muted-foreground">{exampleQuantities(r)}</span>,
+    },
     ...(canWrite
       ? [
           {
@@ -110,7 +133,7 @@ export function QuantityRules({
         rowKey={(r) => r.id}
         empty={{
           title: "No quantity rules yet",
-          description: "Example: minimum 12, in multiples of 6.",
+          description: "Example: minimum 10, increment 5, maximum 500.",
           action: canWrite ? (
             <Button onClick={() => setEditing({ kind: "new" })}>Add first rule</Button>
           ) : undefined,

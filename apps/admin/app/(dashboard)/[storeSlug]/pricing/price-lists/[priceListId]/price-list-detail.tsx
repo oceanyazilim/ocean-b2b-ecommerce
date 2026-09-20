@@ -38,6 +38,24 @@ import { useSubmit } from "@/lib/use-submit";
 
 import { formatBps, PRICE_LIST_STATUS_BADGE } from "../../price-lists-list";
 
+// Spec example: "Retail price €100, Wholesale adjustment -20%, Wholesale price €80". This is
+// exactly what `adjustmentBps` does (a percentage off/on the base price) — shown live off the
+// real field being edited, not a fabricated one. Explicit per-variant prices (below) are the
+// separate "fixed pricing" mechanism, which wins over this percentage for the variants it covers.
+function AdjustmentPreview({ currency, percent }: { currency: string; percent: number }) {
+  const sample = 10000; // 100.00 in minor units — an illustrative reference price, not real data
+  const adjusted = Math.max(0, Math.round(sample * (1 + percent / 100)));
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+      <span>Example</span>
+      <span className="tabular-nums text-foreground">
+        {formatMoney({ amount: sample, currency })} → {percent >= 0 ? "+" : ""}
+        {percent}% → {formatMoney({ amount: adjusted, currency })}
+      </span>
+    </div>
+  );
+}
+
 export function PriceListDetailView({
   storeId,
   storeSlug,
@@ -219,6 +237,10 @@ export function PriceListDetailView({
                     disabled={!canWrite}
                   />
                 </FormField>
+                <AdjustmentPreview
+                  currency={priceList.currency}
+                  percent={Number(percent.replace(",", ".")) || 0}
+                />
               </CardContent>
             </Card>
           </form>
@@ -269,6 +291,7 @@ function PriceListPrices({
   const [editing, setEditing] = useState<
     { kind: "new" } | { kind: "edit"; entry: PriceListPriceEntry } | null
   >(null);
+  const [bulkEditing, setBulkEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const base = `/stores/${storeId}/price-lists/${priceListId}/prices`;
 
@@ -404,14 +427,19 @@ function PriceListPrices({
           selected={selected}
           onSelectedChange={setSelected}
           bulkActions={
-            <Button
-              size="sm"
-              variant="destructive"
-              loading={busy}
-              onClick={() => void removeSelected()}
-            >
-              Remove prices
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => setBulkEditing(true)}>
+                Bulk edit prices
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                loading={busy}
+                onClick={() => void removeSelected()}
+              >
+                Remove prices
+              </Button>
+            </>
           }
           empty={{
             title: q ? "No prices match" : "No explicit prices",
@@ -436,7 +464,134 @@ function PriceListPrices({
           router.refresh();
         }}
       />
+      <BulkEditDialog
+        endpoint={base}
+        entries={rows.filter((r) => selected.has(r.variantId))}
+        open={bulkEditing}
+        onClose={() => setBulkEditing(false)}
+        onSaved={() => {
+          setSelected(new Set());
+          void load(null, false);
+          router.refresh();
+        }}
+      />
     </Card>
+  );
+}
+
+// Applies one percentage or fixed adjustment to every selected row's *current list price* in a
+// single PUT call — the same `prices: [...]` array the single-price dialog already sends (the
+// API already accepts up to 500 at once; this UI just lets a merchant use that for more than one
+// variant, which is the spec's "Allow bulk price editing").
+function BulkEditDialog({
+  endpoint,
+  entries,
+  open,
+  onClose,
+  onSaved,
+}: {
+  endpoint: string;
+  entries: PriceListPriceEntry[];
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const submit = useSubmit();
+  const { reset } = submit;
+  const [mode, setMode] = useState<"percent" | "fixed">("percent");
+  const [value, setValue] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      reset();
+      setMode("percent");
+      setValue("");
+    }
+  }, [open, reset]);
+
+  function preview(entry: PriceListPriceEntry): number {
+    const current = entry.price.amount;
+    const n = Number(value.replace(",", ".")) || 0;
+    if (mode === "percent") return Math.max(0, Math.round(current * (1 + n / 100)));
+    return Math.max(0, current + Math.round(n * 100));
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (entries.length === 0) return;
+    const res = await submit.run(() =>
+      api(endpoint, {
+        method: "PUT",
+        body: {
+          prices: entries.map((entry) => ({
+            variantId: entry.variantId,
+            price: preview(entry),
+            compareAtPrice: entry.compareAtPrice?.amount ?? null,
+          })),
+        },
+      }),
+    );
+    if (res !== undefined) {
+      onSaved();
+      onClose();
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={`Bulk edit ${entries.length} price${entries.length === 1 ? "" : "s"}`}
+      description="Adjusts each selected variant's current list price by the same amount."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={submit.pending}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="bulk-price-form"
+            loading={submit.pending}
+            disabled={entries.length === 0 || !value.trim()}
+          >
+            Apply to {entries.length}
+          </Button>
+        </>
+      }
+    >
+      <form id="bulk-price-form" onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-3">
+        {submit.error && <Alert variant="error">{submit.error}</Alert>}
+        <div className="grid grid-cols-2 gap-3">
+          <FormField id="bulk-mode" label="Adjust by">
+            <Select id="bulk-mode" value={mode} onChange={(e) => setMode(e.target.value as "percent" | "fixed")}>
+              <option value="percent">Percentage</option>
+              <option value="fixed">Fixed amount</option>
+            </Select>
+          </FormField>
+          <FormField
+            id="bulk-value"
+            label={mode === "percent" ? "Percent (e.g. -10)" : "Amount (e.g. -5.00)"}
+          >
+            <Input id="bulk-value" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+          </FormField>
+        </div>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Select rows in the table to bulk edit.</p>
+        ) : (
+          <div className="max-h-56 overflow-y-auto rounded-md border text-sm">
+            {entries.map((entry) => (
+              <div key={entry.variantId} className="flex items-center justify-between gap-2 border-b px-3 py-1.5 last:border-b-0">
+                <span className="min-w-0 truncate">{entry.productTitle}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {formatMoney(entry.price)}
+                  {value.trim() && <> → {formatMoney({ amount: preview(entry), currency: entry.price.currency })}</>}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </form>
+    </Dialog>
   );
 }
 

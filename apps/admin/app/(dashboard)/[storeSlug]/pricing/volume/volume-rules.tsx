@@ -33,16 +33,25 @@ interface TierDraft {
   value: string;
 }
 
+// Spec format: "1-9 units €100, 10-49 €92, 50-99 €85, 100+ €78". VolumePricingRule only stores
+// each tier's start (minQuantity); the upper bound of a range is implied by the next tier's
+// start minus one, and the last tier is open-ended ("100+") — computed here for display only.
+function tierRangeLabel(tiers: { minQuantity: number }[], index: number): string {
+  const next = tiers[index + 1];
+  return next ? `${tiers[index]!.minQuantity}–${next.minQuantity - 1}` : `${tiers[index]!.minQuantity}+`;
+}
+
 function describeTier(
   rule: VolumeRuleSummary,
   tier: { minQuantity: number; value: number },
+  index: number,
   currency: string,
 ) {
   const value =
     rule.tierType === "fixed_price"
       ? formatMoney({ amount: tier.value, currency })
       : `${(tier.value / 100).toFixed(tier.value % 100 === 0 ? 0 : 2)}% off`;
-  return `${tier.minQuantity}+ → ${value}`;
+  return `${tierRangeLabel(rule.tiers, index)} → ${value}`;
 }
 
 export function VolumeRules({
@@ -91,9 +100,9 @@ export function VolumeRules({
       header: "Tiers",
       cell: (r) => (
         <div className="flex flex-wrap gap-1">
-          {r.tiers.map((t) => (
+          {r.tiers.map((t, i) => (
             <Badge key={t.minQuantity} variant="outline">
-              {describeTier(r, t, currency)}
+              {describeTier(r, t, i, currency)}
             </Badge>
           ))}
         </div>
@@ -166,7 +175,7 @@ export function VolumeRules({
         rowKey={(r) => r.id}
         empty={{
           title: "No volume pricing yet",
-          description: "Add tiers such as 10+ units 5% off, 50+ units 15% off.",
+          description: "Add quantity breaks, e.g. 1–9 units full price, 10–49 8% off, 50+ 15% off.",
           action: canWrite ? (
             <Button onClick={() => setEditing({ kind: "new" })}>Add first rule</Button>
           ) : undefined,

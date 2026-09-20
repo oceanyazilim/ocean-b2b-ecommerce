@@ -189,7 +189,8 @@ export function ContractPrices({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Negotiated unit prices per company or location. They beat every list and tier.
+          Company pricing and location pricing: negotiated unit prices for one company (or one of
+          its locations). They beat every price list and volume tier.
         </p>
         {canWrite && (
           <Button onClick={() => setEditing({ kind: "new", companyId })}>New contract price</Button>

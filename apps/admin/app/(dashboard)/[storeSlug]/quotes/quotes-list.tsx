@@ -1,21 +1,16 @@
 "use client";
 
 import type { QuoteStatus, QuoteSummary } from "@ocean/types";
-import { Alert, Badge, Button, DataGrid, Select, type DataGridColumn } from "@ocean/ui";
+import { Alert, Button, DataGrid, Tabs, type DataGridColumn } from "@ocean/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
-const STATUS_VARIANT: Record<QuoteStatus, "default" | "secondary" | "success" | "warning" | "destructive"> = {
-  draft: "secondary",
-  sent: "default",
-  accepted: "success",
-  declined: "destructive",
-  expired: "warning",
-  converted: "success",
-};
+import { QuoteStatusBadge } from "./quote-badges";
+
+type View = "all" | QuoteStatus;
 
 export function QuotesList({
   storeId,
@@ -29,13 +24,13 @@ export function QuotesList({
   const [rows, setRows] = useState<QuoteSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<QuoteStatus | "">("");
+  const [view, setView] = useState<View>("all");
 
   const load = useCallback(async () => {
     setError(null);
     setLoading(true);
     try {
-      const qs = status ? `?status=${status}` : "";
+      const qs = view !== "all" ? `?status=${view}` : "";
       const res = await api<{ data: QuoteSummary[] }>(`/stores/${storeId}/quotes${qs}`);
       setRows(res.data);
     } catch (err) {
@@ -43,7 +38,7 @@ export function QuotesList({
     } finally {
       setLoading(false);
     }
-  }, [storeId, status]);
+  }, [storeId, view]);
 
   useEffect(() => {
     void load();
@@ -63,7 +58,7 @@ export function QuotesList({
     {
       key: "status",
       header: "Status",
-      cell: (q) => <Badge variant={STATUS_VARIANT[q.status]}>{q.status}</Badge>,
+      cell: (q) => <QuoteStatusBadge status={q.status} />,
     },
     { key: "total", header: "Total", className: "text-right", cell: (q) => formatMoney(q.total) },
     {
@@ -76,21 +71,29 @@ export function QuotesList({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select value={status} onChange={(e) => setStatus(e.target.value as QuoteStatus | "")} className="w-48">
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="sent">Sent</option>
-          <option value="accepted">Accepted</option>
-          <option value="declined">Declined</option>
-          <option value="expired">Expired</option>
-          <option value="converted">Converted</option>
-        </Select>
+        <p className="text-sm text-muted-foreground">
+          Negotiated B2B offers. An accepted quote converts to a real order.
+        </p>
         {canWrite && (
           <Link href={`/${storeSlug}/quotes/new`}>
             <Button>New quote</Button>
           </Link>
         )}
       </div>
+      <Tabs
+        aria-label="Filter by status"
+        value={view}
+        onChange={setView}
+        items={[
+          { value: "all", label: "All" },
+          { value: "draft", label: "Draft" },
+          { value: "sent", label: "Sent" },
+          { value: "accepted", label: "Accepted" },
+          { value: "declined", label: "Declined" },
+          { value: "expired", label: "Expired" },
+          { value: "converted", label: "Converted" },
+        ]}
+      />
       {error && <Alert variant="error">{error}</Alert>}
       <DataGrid
         columns={columns}

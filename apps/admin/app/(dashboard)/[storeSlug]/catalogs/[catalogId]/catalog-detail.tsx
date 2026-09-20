@@ -24,6 +24,7 @@ import {
   FormField,
   Input,
   Select,
+  Tabs,
   Textarea,
   type DataGridColumn,
 } from "@ocean/ui";
@@ -36,6 +37,8 @@ import { api, ApiClientError, errorMessage } from "@/lib/api";
 import { useSubmit } from "@/lib/use-submit";
 
 import { CATALOG_STATUS_BADGE } from "../catalogs-list";
+
+type DetailTab = "products" | "companies" | "pricing";
 
 export function CatalogDetailView({
   storeId,
@@ -57,6 +60,7 @@ export function CatalogDetailView({
   const [conflict, setConflict] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [tab, setTab] = useState<DetailTab>("products");
   const base = `/stores/${storeId}/catalogs/${catalog.id}`;
 
   async function onSave(e: FormEvent) {
@@ -126,12 +130,37 @@ export function CatalogDetailView({
       {saved && <Alert variant="success">Saved.</Alert>}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr] lg:items-start">
-        <CatalogProducts
-          storeId={storeId}
-          storeSlug={storeSlug}
-          catalogId={catalog.id}
-          canWrite={canWrite}
-        />
+        <div className="flex flex-col gap-4">
+          <Tabs
+            aria-label="Catalog sections"
+            value={tab}
+            onChange={setTab}
+            items={[
+              { value: "products", label: "Products", count: catalog.productCount },
+              { value: "companies", label: "Companies", count: catalog.assignmentCount },
+              { value: "pricing", label: "Pricing" },
+            ]}
+          />
+          {tab === "products" && (
+            <CatalogProducts
+              storeId={storeId}
+              storeSlug={storeSlug}
+              catalogId={catalog.id}
+              canWrite={canWrite}
+            />
+          )}
+          {tab === "companies" && (
+            <AssignmentsCard
+              storeId={storeId}
+              storeSlug={storeSlug}
+              endpoint={`${base}/assignments`}
+              assignments={catalog.assignments}
+              canWrite={canWrite}
+              description="Companies and locations limited to this catalog. A company with an active catalog sees only what's in it."
+            />
+          )}
+          {tab === "pricing" && <CatalogPricingInfo storeSlug={storeSlug} catalog={catalog} />}
+        </div>
         <div className="flex flex-col gap-6">
           <form id="catalog-form" onSubmit={(e) => void onSave(e)}>
             <Card>
@@ -178,14 +207,6 @@ export function CatalogDetailView({
               </CardContent>
             </Card>
           </form>
-          <AssignmentsCard
-            storeId={storeId}
-            storeSlug={storeSlug}
-            endpoint={`${base}/assignments`}
-            assignments={catalog.assignments}
-            canWrite={canWrite}
-            description="Companies and locations limited to this catalog."
-          />
         </div>
       </div>
 
@@ -200,6 +221,58 @@ export function CatalogDetailView({
         pending={submit.pending}
       />
     </div>
+  );
+}
+
+// Read-only orientation panel. A Catalog only restricts *which products* a company can see —
+// it has no currency or discount field of its own (unlike the spec's illustrative example,
+// which describes a catalog with a "Currency" and single "Pricing adjustment" percentage; in
+// this codebase that's what a PriceList is). Prices for this catalog's companies come from
+// whatever Price Lists / Contract Prices / Volume Pricing are separately assigned to them in
+// the Pricing module. There's also no "Markets" (multi-currency/region) concept yet — the
+// pricing.ts schema notes it "arrives with Markets (Phase 8)" — so that's called out rather
+// than shown as a fake tab.
+function CatalogPricingInfo({ storeSlug, catalog }: { storeSlug: string; catalog: CatalogDetail }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pricing</CardTitle>
+        <CardDescription>
+          A catalog only controls visibility, not price. Prices for the companies assigned above
+          come from whatever Price Lists, Contract Prices and Volume Pricing rules are assigned to
+          them separately.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-md border p-3">
+          <div className="font-medium">How a price is resolved for a buyer</div>
+          <ol className="list-decimal space-y-1 pl-4 text-muted-foreground">
+            <li>Contract price (negotiated for that company/location) — wins if set</li>
+            <li>Price list assigned to the company/location (fixed price, or a % adjustment)</li>
+            <li>Volume pricing tier for the quantity ordered</li>
+            <li>Base product price</li>
+          </ol>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/${storeSlug}/pricing`} className="text-sm text-primary hover:underline">
+            Manage price lists →
+          </Link>
+          <Link href={`/${storeSlug}/pricing/contracts`} className="text-sm text-primary hover:underline">
+            Manage contract prices →
+          </Link>
+          <Link href={`/${storeSlug}/pricing/volume`} className="text-sm text-primary hover:underline">
+            Manage volume pricing →
+          </Link>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Multi-currency &quot;Markets&quot; are not implemented in this store yet — catalogs and
+          price lists apply in the store&apos;s currency
+          {catalog.assignmentCount > 0
+            ? ` for all ${catalog.assignmentCount} assigned compan${catalog.assignmentCount === 1 ? "y" : "ies"}/locations.`
+            : "."}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
