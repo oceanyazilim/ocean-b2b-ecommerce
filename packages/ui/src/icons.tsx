@@ -9,21 +9,41 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
   FileText,
+  GripVertical,
+  History,
   Home,
+  Image as ImageLucide,
+  Layers,
   LayoutGrid,
   LogOut,
   Menu,
+  Monitor,
+  MoreHorizontal,
+  MousePointerClick,
   Package,
+  Palette,
   PanelLeft,
+  Pencil,
   Pin,
   Plus,
+  Save,
   Search,
   Settings as SettingsLucide,
   ShoppingBag,
   ShoppingCart,
+  Smartphone,
+  SquareStack,
   Store,
+  Tablet,
   Tag,
+  Trash2,
+  Type as TypeLucide,
+  UploadCloud,
   User,
   Users,
   X,
@@ -74,3 +94,26 @@ export const LogoutIcon = wrap(LogOut);
 export const PanelLeftIcon = wrap(PanelLeft);
 export const PinIcon = wrap(Pin);
 export const ClockIcon = wrap(Clock);
+
+// New in the Phase 5 (theme editor) redesign: drag handles, contextual ⋯ menus, viewport
+// toggle, and the design-tokens style theme-settings panel.
+export const MoreHorizontalIcon = wrap(MoreHorizontal);
+export const DragHandleIcon = wrap(GripVertical);
+export const EyeIcon = wrap(Eye);
+export const EyeOffIcon = wrap(EyeOff);
+export const DuplicateIcon = wrap(Copy);
+export const TrashIcon = wrap(Trash2);
+export const PencilIcon = wrap(Pencil);
+export const MonitorIcon = wrap(Monitor);
+export const TabletIcon = wrap(Tablet);
+export const MobileIcon = wrap(Smartphone);
+export const ExternalLinkIcon = wrap(ExternalLink);
+export const LayersIcon = wrap(Layers);
+export const PaletteIcon = wrap(Palette);
+export const SaveIcon = wrap(Save);
+export const UploadCloudIcon = wrap(UploadCloud);
+export const HistoryIcon = wrap(History);
+export const TypeIcon = wrap(TypeLucide);
+export const ImageIcon = wrap(ImageLucide);
+export const ClickIcon = wrap(MousePointerClick);
+export const BlockIcon = wrap(SquareStack);

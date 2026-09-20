@@ -18,7 +18,12 @@ export default async function StorefrontThemesPage({
   return (
     <StorefrontShell storeSlug={store.slug}>
       {can(store, "themes.read") ? (
-        <ThemesManager storeId={store.id} storeSlug={store.slug} canEdit={can(store, "themes.edit")} />
+        <ThemesManager
+          storeId={store.id}
+          storeSlug={store.slug}
+          canEdit={can(store, "themes.edit")}
+          canPublish={can(store, "themes.publish")}
+        />
       ) : (
         <Alert variant="warning">Your role cannot view themes.</Alert>
       )}
