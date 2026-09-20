@@ -102,10 +102,7 @@ export class InvoicingSettingsService {
     meta: RequestMeta,
   ): Promise<InvoiceSettingsSummary> {
     const storeId = ctx.storeId as string;
-    const [before, invoiceCount] = await Promise.all([
-      this.prisma.invoiceSettings.findUnique({ where: { storeId } }),
-      this.prisma.invoice.count({ where: { storeId } }),
-    ]);
+    const before = await this.prisma.invoiceSettings.findUnique({ where: { storeId } });
 
     const scalarPatch: Record<string, unknown> = {};
     if (input.invoicePrefix !== undefined) scalarPatch.invoicePrefix = input.invoicePrefix;
@@ -131,15 +128,20 @@ export class InvoicingSettingsService {
       // invoiced yet — otherwise this would renumber/collide with real invoices already issued
       // to a buyer. invoiceSequence is incremented *before* use (see FinanceService.create), so
       // seeding it to numberingStart - 1 makes the next invoice come out as numberingStart.
-      if (
-        input.numberingStart !== undefined &&
-        input.numberingStart !== null &&
-        invoiceCount === 0
-      ) {
-        await tx.store.update({
-          where: { id: storeId },
-          data: { invoiceSequence: input.numberingStart - 1 },
-        });
+      //
+      // The zero-invoices check is read here, inside the transaction via `tx`, rather than
+      // before the transaction starts: reading it earlier would leave a window between the
+      // check and this write where a concurrent invoice-creation request could issue the store's
+      // first real invoice, making this update collide with/renumber it. Reading through `tx`
+      // keeps the check and the write atomic.
+      if (input.numberingStart !== undefined && input.numberingStart !== null) {
+        const invoiceCount = await tx.invoice.count({ where: { storeId } });
+        if (invoiceCount === 0) {
+          await tx.store.update({
+            where: { id: storeId },
+            data: { invoiceSequence: input.numberingStart - 1 },
+          });
+        }
       }
 
       await this.audit.record(

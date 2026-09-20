@@ -52,6 +52,24 @@ export function InvoiceSettingsForm({
     setBankInfo((prev) => ({ ...prev, [key]: value || undefined }));
   }
 
+  // Resyncs every per-field input from a fresh server response, not just the `settings` summary
+  // object — otherwise the ~9 field inputs below keep showing pre-save client values while
+  // `settings.configured`/`settings.numberingCanApply` (the badge and the numbering-start
+  // disabled state) reflect the new response, and those two sources of truth can silently
+  // diverge (e.g. if the server normalizes a field on save).
+  function applySettings(data: InvoiceSettingsSummary) {
+    setSettings(data);
+    setInvoicePrefix(data.invoicePrefix);
+    setNumberingStart(data.numberingStart !== null ? String(data.numberingStart) : "");
+    setLegalName(data.legalName ?? "");
+    setTaxId(data.taxId ?? "");
+    setRegisteredAddress(data.registeredAddress ?? "");
+    setBankInfo(data.bankInfo ?? {});
+    setFooterNotice(data.footerNotice ?? "");
+    setCurrency(data.currency);
+    setLanguage(data.language);
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     const body: UpdateInvoiceSettingsInput = {
@@ -71,7 +89,7 @@ export function InvoiceSettingsForm({
         body,
       }),
     );
-    if (res) setSettings(res.data);
+    if (res) applySettings(res.data);
   }
 
   return (
