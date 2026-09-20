@@ -3216,3 +3216,67 @@ model ImpersonationSession {
   @@index([storeId, createdAt(sort: Desc)])
   @@map("impersonation_sessions")
 }
+
+// ---------------------------------------------------------------------------
+// Global Localization: Country Engine (L1 foundation)
+//
+// A centralized, versioned configuration profile per country. Every field the rest of the
+// localization system needs — address shape, postal code rules, tax terminology/ids, business
+// entity types, and the dynamic business-profile onboarding form (spec section 17) — lives here
+// as structured JSON on ONE row per ISO country. Deliberately no per-country tables and no
+// per-country code branches: adding or revising a country (spec section 49, e.g.
+// "TurkeyComplianceProfile, Version: 2026.09") is a data change (a new `version` + updated JSON),
+// never a migration or a redeploy. Platform-owned catalog, no tenant column — same pattern as
+// Theme/Plan.
+// ---------------------------------------------------------------------------
+
+model CountryProfile {
+  id          String  @id @default(uuid()) @db.Uuid
+  countryCode String  @unique @map("country_code") @db.VarChar(2) // ISO 3166-1 alpha-2
+  name        String // official country name
+  isActive    Boolean @default(true) @map("is_active")
+  // Free-text compliance version, e.g. "2026.09" — bump this (and updatedAt follows automatically)
+  // whenever a country's rules change, per spec section 49's versioned-compliance requirement.
+  version     String  @default("2026.01") @db.VarChar(20)
+
+  supportedCurrencies String[] @default([]) @map("supported_currencies") // ISO 4217 codes
+  supportedLanguages  String[] @default([]) @map("supported_languages") // BCP-47 locale codes
+
+  // AddressFieldDefinition[] (see @ocean/types countries.ts) — the field list, in order, this
+  // country's address form should render (spec section 19: US differs from TR differs from JP).
+  addressSchema Json @map("address_schema") @db.JsonB
+
+  // PostalCodeRules | null — { regex, example, description }; null for a country with no postal
+  // code system.
+  postalCodeRules Json? @map("postal_code_rules") @db.JsonB
+
+  stateProvinceRequired Boolean @default(false) @map("state_province_required")
+  // Local label for the field, e.g. "State" (US), "Province" (TR), "County" (GB), "Prefecture" (JP).
+  stateProvinceLabel    String? @map("state_province_label")
+
+  // Free text, not an enum, so a new jurisdiction's tax system (e.g. "gst") never needs a
+  // migration — e.g. "vat", "sales_tax", "gst", "none".
+  taxSystemType String @map("tax_system_type")
+  // TaxTerminology — { localName: "KDV", localFullName: "Katma Değer Vergisi", englishName: "VAT" }.
+  taxTerminology Json @map("tax_terminology") @db.JsonB
+  // TaxIdFormat[] — e.g. [{ code: "VKN", label: "Vergi Kimlik Numarası", regex, ... }].
+  taxIdFormats Json @map("tax_id_formats") @db.JsonB
+
+  // String identifiers only (e.g. "credit_card", "bank_transfer") — real payment method
+  // implementations are out of scope for this engine.
+  supportedPaymentMethods String[] @default([]) @map("supported_payment_methods")
+
+  // BusinessEntityType[] — e.g. [{ code: "limited_sirket", label: "Limited Şirket" }].
+  businessEntityTypes Json @map("business_entity_types") @db.JsonB
+
+  // BusinessProfileFieldDefinition[] (spec section 17) — the dynamic onboarding/business-profile
+  // form schema a future frontend phase renders directly from this data: key/label/description/
+  // required/inputType/validationRegex/placeholder/visibilityRules (entity-type dependency).
+  businessProfileSchema Json @map("business_profile_schema") @db.JsonB
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([isActive])
+  @@map("country_profiles")
+}
