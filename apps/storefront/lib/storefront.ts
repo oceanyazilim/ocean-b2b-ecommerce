@@ -18,6 +18,7 @@ import type {
 import { headers } from "next/headers";
 
 import { storefrontFetch } from "./api";
+import { getActiveLocale } from "./locale";
 
 export const THEME_PREVIEW_HEADER = "x-theme-preview-token";
 
@@ -44,6 +45,10 @@ export async function listProducts(
   if (params.q) qs.set("q", params.q);
   if (params.collectionHandle) qs.set("collectionHandle", params.collectionHandle);
   qs.set("limit", String(params.limit ?? 24));
+  // L4 Global Localization: only sent when the buyer is browsing in a non-default language —
+  // the API falls back to default-language content either way, this just saves it the lookup.
+  const { locale, isDefault } = await getActiveLocale();
+  if (!isDefault) qs.set("locale", locale);
   const res = await storefrontFetch<{ data: StorefrontProductSummary[] }>(`/products?${qs.toString()}`);
   return res.data;
 }
@@ -58,8 +63,10 @@ export async function searchProducts(q: string, limit = 24): Promise<StorefrontS
 
 export async function getProduct(idOrHandle: string): Promise<StorefrontProductDetail | null> {
   try {
+    const { locale, isDefault } = await getActiveLocale();
+    const qs = !isDefault ? `?locale=${encodeURIComponent(locale)}` : "";
     const res = await storefrontFetch<{ data: StorefrontProductDetail }>(
-      `/products/${encodeURIComponent(idOrHandle)}`,
+      `/products/${encodeURIComponent(idOrHandle)}${qs}`,
     );
     return res.data;
   } catch {

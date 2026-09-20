@@ -2,13 +2,18 @@ import { notFound } from "next/navigation";
 
 import { AddToCartForm } from "@/components/add-to-cart-form";
 import { RenderTemplate } from "@/components/renderer/render-template";
+import { getActiveLocale } from "@/lib/locale";
 import { formatMoney } from "@/lib/money";
 import { getProduct, getTheme } from "@/lib/storefront";
 
 export default async function ProductPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const [product, theme] = await Promise.all([getProduct(handle), getTheme()]);
+  const [product, theme, activeLocale] = await Promise.all([getProduct(handle), getTheme(), getActiveLocale()]);
   if (!product) notFound();
+  // L4 Global Localization: the API already falls back to default-language content when this
+  // product has no published translation for the active locale — this note just tells the buyer
+  // why they're seeing that fallback, instead of it looking untranslated by accident.
+  const showsFallback = !activeLocale.isDefault && !product.isTranslated;
 
   return (
     <div className="flex flex-col gap-12">
@@ -23,6 +28,11 @@ export default async function ProductPage({ params }: { params: Promise<{ handle
         </div>
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">{product.title}</h1>
+          {showsFallback && (
+            <p className="text-xs text-muted-foreground">
+              Not yet translated into {activeLocale.locale} — showing the default-language version.
+            </p>
+          )}
           {product.priceRange && (
             <p className="text-lg text-muted-foreground">
               {product.priceRange.min.amount === product.priceRange.max.amount

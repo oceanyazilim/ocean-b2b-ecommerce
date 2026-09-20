@@ -9,10 +9,12 @@ import {
   type ArticleSummary,
   type StorefrontArticleListQuery,
   type StorefrontCollectionListQuery,
+  type StorefrontLanguageSummary,
   type StorefrontProductListQuery,
   type StorefrontSearchQuery,
   type StorefrontVariantSearchQuery,
 } from "@ocean/types";
+import { isRtlLocale } from "@ocean/utils";
 
 import { Public } from "../../common/auth/public.decorator";
 import { NotFoundError } from "../../common/errors/domain-error";
@@ -21,6 +23,8 @@ import { StorefrontGuard } from "../../common/tenant/storefront.guard";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { ContentService } from "../content/content.service";
+import { StoreLanguagesService } from "../localization/store-languages.service";
+import { TranslationsService } from "../localization/translations.service";
 import { MarketsService } from "../markets/markets.service";
 import { PaymentMethodsService } from "../payments/payment-methods.service";
 import { ThemesService } from "../themes/themes.service";
@@ -36,6 +40,8 @@ export class StorefrontController {
     private readonly markets: MarketsService,
     private readonly themes: ThemesService,
     private readonly paymentMethods: PaymentMethodsService,
+    private readonly storeLanguages: StoreLanguagesService,
+    private readonly translations: TranslationsService,
   ) {}
 
   @Get("products")
@@ -65,8 +71,12 @@ export class StorefrontController {
   }
 
   @Get("products/:idOrHandle")
-  getProduct(@CurrentTenant() tenant: TenantContext, @Param("idOrHandle") id: string) {
-    return this.catalog.getProduct(tenant, id);
+  getProduct(
+    @CurrentTenant() tenant: TenantContext,
+    @Param("idOrHandle") id: string,
+    @Query("locale") locale: string | undefined,
+  ) {
+    return this.catalog.getProduct(tenant, id, locale);
   }
 
   @Get("collections")
@@ -160,6 +170,23 @@ export class StorefrontController {
   @Get("markets")
   listMarkets(@CurrentTenant() tenant: TenantContext) {
     return this.markets.list(tenant);
+  }
+
+  // L4 Global Localization (spec sections 2, 4, 9): published storefront languages this store
+  // offers, each flagged with whether it renders right-to-left — used by the storefront's root
+  // layout to build the language switcher and by the automatic-detection banner to decide which
+  // languages a suggestion may offer.
+  @Get("languages")
+  async listLanguages(@CurrentTenant() tenant: TenantContext): Promise<StorefrontLanguageSummary[]> {
+    const languages = await this.storeLanguages.listPublished(tenant);
+    return languages.map((l) => ({ locale: l.locale, isDefault: l.isDefault, isRtl: isRtlLocale(l.locale) }));
+  }
+
+  // Representative system/theme label slice (spec section 5) — resolved published translations
+  // for the given locale, falling back to the default English text per key.
+  @Get("system-labels")
+  listSystemLabels(@CurrentTenant() tenant: TenantContext, @Query("locale") locale: string | undefined) {
+    return this.translations.resolveSystemLabels(tenant, locale ?? "en-US");
   }
 
   @Get("theme")

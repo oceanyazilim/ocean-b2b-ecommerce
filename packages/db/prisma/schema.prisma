@@ -233,6 +233,10 @@ model Organization {
   taxRegistrations      TaxRegistration[]
   taxClasses            TaxClass[]
   markets               Market[]
+  storeLanguages        StoreLanguage[]
+  translations          Translation[]
+  translationMemory     TranslationMemoryEntry[]
+  glossaryTerms         GlossaryTerm[]
   pages                 Page[]
   blogs                 Blog[]
   articles              Article[]
@@ -356,6 +360,10 @@ model Store {
   taxRegistrations      TaxRegistration[]
   taxClasses            TaxClass[]
   markets               Market[]
+  storeLanguages        StoreLanguage[]
+  translations          Translation[]
+  translationMemory     TranslationMemoryEntry[]
+  glossaryTerms         GlossaryTerm[]
   pages                 Page[]
   blogs                 Blog[]
   articles              Article[]
@@ -2323,6 +2331,16 @@ model Market {
   countryCode    String   @map("country_code") @db.Char(2)
   isDefault      Boolean  @default(false) @map("is_default")
   isActive       Boolean  @default(true) @map("is_active")
+
+  // L4 Global Localization (spec section 8, "Market-based language"): the store language every
+  // buyer in this market sees by default, plus the extra languages they may switch into (e.g.
+  // Turkey market: default "tr-TR", additional ["en-US"]). Loose string references to
+  // StoreLanguage.locale rather than a real FK — a market may name a language that hasn't been
+  // added as a StoreLanguage yet (same "soft reference" convention as MenuItem.resourceId
+  // elsewhere in this schema), so removing/renaming a StoreLanguage can never break a Market row.
+  defaultLanguage     String?  @map("default_language")
+  additionalLanguages String[] @default([]) @map("additional_languages")
+
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -2332,6 +2350,114 @@ model Market {
   // Unique index on (storeId, isDefault) WHERE isDefault = true in migration.
   @@index([storeId, isActive])
   @@map("markets")
+}
+
+// ---------------------------------------------------------------------------
+// L4 Global Localization: storefront languages & translations
+//
+// Scope of this phase (see spec sections 2-9): a generic, entity-agnostic Translation table
+// covers ANY (entityType, entityId, locale, field) so it never needs a new table per content
+// type — but the *wired-up, working* coverage in this pass is Products (title, description,
+// SEO title/description) plus a representative system-label slice. Collections/Pages/Blog
+// articles/Menus/checkout content/theme-section content are NOT yet wired to a translation UI or
+// storefront fallback — they can reuse this exact same Translation table in a later pass without
+// a schema change. This mirrors the L1 admin-i18n "honest boundary" approach.
+// ---------------------------------------------------------------------------
+
+enum TranslationStatus {
+  draft
+  reviewed
+  published
+}
+
+model StoreLanguage {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  // BCP-47-style locale code, e.g. "en-US", "tr-TR", "de-DE", "ar-SA" — never a hardcoded enum,
+  // per spec section 2 ("must never hardcode a limited number of languages").
+  locale         String
+  isDefault      Boolean  @default(false) @map("is_default")
+  isPublished    Boolean  @default(false) @map("is_published")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Unique index on (storeId, isDefault) WHERE isDefault = true in migration (exactly one
+  // default language per store, same convention as Market.isDefault).
+  @@unique([storeId, locale])
+  @@index([storeId, isPublished])
+  @@map("store_languages")
+}
+
+model Translation {
+  id             String             @id @default(uuid()) @db.Uuid
+  storeId        String             @map("store_id") @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  // e.g. "product", "system_label" — a loose string, not an enum, so a later pass can add
+  // "collection" / "page" / "article" / "menu" / "checkout" without a migration.
+  entityType     String             @map("entity_type")
+  // The translated row's id (e.g. Product.id) for entity-backed content, or a stable string key
+  // (e.g. "cart.add_to_cart") for system/theme labels that have no database row of their own.
+  entityId       String             @map("entity_id")
+  locale         String
+  field          String
+  value          String             @db.Text
+  status         TranslationStatus  @default(draft)
+  updatedById    String?            @map("updated_by_id") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, entityType, entityId, locale, field])
+  @@index([storeId, entityType, locale])
+  @@map("translations")
+}
+
+// Translation memory (spec section 7): exact-source-string reuse across translatable fields —
+// e.g. "Add to cart" translated once as "Sepete ekle" gets suggested again anywhere else the
+// same English source string appears. sourceHash is a sha256 of the trimmed source text so the
+// uniqueness/lookup index never has to key on an unbounded text column.
+model TranslationMemoryEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  sourceLocale   String   @map("source_locale")
+  targetLocale   String   @map("target_locale")
+  sourceHash     String   @map("source_hash")
+  sourceText     String   @map("source_text") @db.Text
+  targetText     String   @map("target_text") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, sourceLocale, targetLocale, sourceHash])
+  @@map("translation_memory_entries")
+}
+
+// Glossary (spec section 7): brand/product terms that must never be auto-translated. Checked
+// against source text when a translation is saved (flagged, not silently altered) and surfaced
+// in the Translations UI.
+model GlossaryTerm {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  term           String
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, term])
+  @@map("glossary_terms")
 }
 
 // ---------------------------------------------------------------------------

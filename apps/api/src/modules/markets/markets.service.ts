@@ -35,6 +35,8 @@ export class MarketsService {
       countryCode: row.countryCode,
       isDefault: row.isDefault,
       isActive: row.isActive,
+      defaultLanguage: row.defaultLanguage,
+      additionalLanguages: row.additionalLanguages,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
@@ -68,6 +70,8 @@ export class MarketsService {
           countryCode: input.countryCode,
           isDefault: input.isDefault,
           isActive: input.isActive,
+          defaultLanguage: input.defaultLanguage ?? null,
+          additionalLanguages: input.additionalLanguages ?? [],
         },
       })
       .catch((error: unknown) => {
@@ -108,6 +112,8 @@ export class MarketsService {
     if (input.countryCode !== undefined) data.countryCode = input.countryCode;
     if (input.isDefault !== undefined) data.isDefault = input.isDefault;
     if (input.isActive !== undefined) data.isActive = input.isActive;
+    if (input.defaultLanguage !== undefined) data.defaultLanguage = input.defaultLanguage;
+    if (input.additionalLanguages !== undefined) data.additionalLanguages = input.additionalLanguages;
 
     const updated = await this.prisma.market.update({ where: { id }, data });
     await this.audit.record(

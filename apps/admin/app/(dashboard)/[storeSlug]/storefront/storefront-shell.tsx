@@ -32,6 +32,8 @@ export function StorefrontShell({
           { label: "Blogs", href: `${base}/blogs` },
           { label: "Menus", href: `${base}/menus` },
           { label: "Themes", href: `${base}/themes` },
+          { label: "Languages", href: `${base}/languages` },
+          { label: "Translations", href: `${base}/translations` },
         ]}
       />
       {children}

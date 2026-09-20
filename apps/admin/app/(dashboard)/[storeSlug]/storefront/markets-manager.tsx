@@ -1,6 +1,6 @@
 "use client";
 
-import type { MarketSummary } from "@ocean/types";
+import type { MarketSummary, StoreLanguageSummary } from "@ocean/types";
 import {
   Alert,
   Badge,
@@ -11,6 +11,8 @@ import {
   Dialog,
   FormField,
   Input,
+  Select,
+  TagInput,
   type DataGridColumn,
 } from "@ocean/ui";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -27,6 +29,7 @@ export function MarketsManager({ storeId, canWrite }: { storeId: string; canWrit
   const [editing, setEditing] = useState<Editing>(null);
   const [deleting, setDeleting] = useState<MarketSummary | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [languages, setLanguages] = useState<StoreLanguageSummary[]>([]);
   const action = useSubmit();
 
   const load = useCallback(async () => {
@@ -45,6 +48,21 @@ export function MarketsManager({ storeId, canWrite }: { storeId: string; canWrit
     void load();
   }, [load]);
 
+  // Storefront languages (spec section 8, market-based language assignment) — feeds the
+  // "Default language" picker below; a market may still name a language that isn't in this list
+  // yet, see the Market.defaultLanguage schema comment, so this is a convenience list, not a
+  // hard constraint.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await api<{ data: StoreLanguageSummary[] }>(`/stores/${storeId}/languages`);
+        setLanguages(res.data);
+      } catch {
+        setLanguages([]);
+      }
+    })();
+  }, [storeId]);
+
   const columns: DataGridColumn<MarketSummary>[] = [
     {
       key: "name",
@@ -58,6 +76,21 @@ export function MarketsManager({ storeId, canWrite }: { storeId: string; canWrit
     { key: "countryCode", header: "Country", cell: (m) => m.countryCode },
     { key: "currency", header: "Currency", cell: (m) => m.currency },
     { key: "locale", header: "Locale", cell: (m) => m.locale },
+    {
+      key: "language",
+      header: "Storefront language",
+      cell: (m) =>
+        m.defaultLanguage ? (
+          <span>
+            {m.defaultLanguage}
+            {m.additionalLanguages.length > 0 && (
+              <span className="text-muted-foreground"> +{m.additionalLanguages.length}</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
     {
       key: "status",
       header: "Status",
@@ -104,7 +137,13 @@ export function MarketsManager({ storeId, canWrite }: { storeId: string; canWrit
           action: canWrite ? <Button onClick={() => setEditing({ kind: "new" })}>Add your first market</Button> : undefined,
         }}
       />
-      <MarketDialog storeId={storeId} editing={editing} onClose={() => setEditing(null)} onSaved={() => void load()} />
+      <MarketDialog
+        storeId={storeId}
+        editing={editing}
+        languages={languages}
+        onClose={() => setEditing(null)}
+        onSaved={() => void load()}
+      />
       <ConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
@@ -127,11 +166,13 @@ export function MarketsManager({ storeId, canWrite }: { storeId: string; canWrit
 function MarketDialog({
   storeId,
   editing,
+  languages,
   onClose,
   onSaved,
 }: {
   storeId: string;
   editing: Editing;
+  languages: StoreLanguageSummary[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -143,6 +184,8 @@ function MarketDialog({
   const [locale, setLocale] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [isActive, setIsActive] = useState(true);
+  const [defaultLanguage, setDefaultLanguage] = useState("");
+  const [additionalLanguages, setAdditionalLanguages] = useState<string[]>([]);
   const current = editing?.kind === "edit" ? editing.market : null;
 
   useEffect(() => {
@@ -153,6 +196,8 @@ function MarketDialog({
     setLocale(current?.locale ?? "");
     setIsDefault(current?.isDefault ?? false);
     setIsActive(current?.isActive ?? true);
+    setDefaultLanguage(current?.defaultLanguage ?? "");
+    setAdditionalLanguages(current?.additionalLanguages ?? []);
   }, [current, editing, reset]);
 
   async function onSubmit(e: FormEvent) {
@@ -164,6 +209,8 @@ function MarketDialog({
       locale,
       isDefault,
       isActive,
+      defaultLanguage: defaultLanguage || null,
+      additionalLanguages,
     };
     const res = await submit.run(() =>
       current
@@ -219,6 +266,39 @@ function MarketDialog({
         </FormField>
         <FormField id="market-locale" label="Locale" error={submit.fieldErrors.locale}>
           <Input id="market-locale" value={locale} onChange={(e) => setLocale(e.target.value)} required placeholder="tr-TR" />
+        </FormField>
+        <FormField
+          id="market-default-language"
+          label="Storefront language (default)"
+          hint="The language buyers in this market see by default. Add languages under Storefront → Languages first."
+          error={submit.fieldErrors.defaultLanguage}
+        >
+          <Select
+            id="market-default-language"
+            value={defaultLanguage}
+            onChange={(e) => setDefaultLanguage(e.target.value)}
+          >
+            <option value="">Store default</option>
+            {languages.map((l) => (
+              <option key={l.locale} value={l.locale}>
+                {l.locale}
+                {l.isDefault ? " (store default)" : ""}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+        <FormField
+          id="market-additional-languages"
+          label="Additional languages"
+          hint="Other languages buyers in this market may switch into."
+          error={submit.fieldErrors.additionalLanguages}
+        >
+          <TagInput
+            id="market-additional-languages"
+            value={additionalLanguages}
+            onChange={setAdditionalLanguages}
+            placeholder="de-DE, press Enter"
+          />
         </FormField>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />

@@ -7,6 +7,7 @@ import { CreditModule } from "../credit/credit.module";
 import { CustomersModule } from "../customers/customers.module";
 import { FinanceModule } from "../finance/finance.module";
 import { InventoryModule } from "../inventory/inventory.module";
+import { LocalizationModule } from "../localization/localization.module";
 import { MarketsModule } from "../markets/markets.module";
 import { OrdersModule } from "../orders/orders.module";
 import { PaymentsModule } from "../payments/payments.module";
@@ -30,6 +31,7 @@ import { StorefrontController } from "./storefront.controller";
     OrdersModule,
     ContentModule,
     MarketsModule,
+    LocalizationModule,
     PaymentsModule,
     ThemesModule,
     UsersModule,

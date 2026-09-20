@@ -1,8 +1,9 @@
-import type { MenuSummary } from "@ocean/types";
+import type { MenuSummary, StorefrontLanguageSummary } from "@ocean/types";
 import { UserIcon } from "@ocean/ui";
 import Link from "next/link";
 
 import { CartLink } from "./cart-link";
+import { LanguageSwitcher } from "./language-switcher";
 import { NavMenu } from "./nav-menu";
 import { SearchBox } from "./search-box";
 
@@ -10,10 +11,14 @@ export function Header({
   logoUrl,
   storeName,
   menus,
+  languages,
+  activeLocale,
 }: {
   logoUrl: string | null;
   storeName: string;
   menus: MenuSummary[];
+  languages: StorefrontLanguageSummary[];
+  activeLocale: string;
 }) {
   const nav = menus.find((m) => m.handle === "main-menu") ?? menus[0] ?? null;
 
@@ -38,6 +43,7 @@ export function Header({
           <SearchBox />
         </div>
         <div className="flex items-center gap-1">
+          <LanguageSwitcher languages={languages} activeLocale={activeLocale} />
           <Link
             href="/account"
             aria-label="Account"

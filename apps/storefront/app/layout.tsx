@@ -5,7 +5,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { CartProvider } from "@/components/cart-provider";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
+import { LanguageBanner } from "@/components/language-banner";
 import { hexToHslTriplet } from "@/lib/color";
+import { getActiveLocale, getSuggestedLocale } from "@/lib/locale";
 import { getTheme, listMenus, THEME_PREVIEW_HEADER } from "@/lib/storefront";
 
 import "./globals.css";
@@ -20,10 +22,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const host = requestHeaders.get("host") ?? "";
   const storeName = host.split(".")[0] || "Store";
   const isPreview = !!requestHeaders.get(THEME_PREVIEW_HEADER);
-  const [theme, menus] = await Promise.all([
+  const [theme, menus, activeLocale, suggestedLocale] = await Promise.all([
     getTheme().catch(() => null),
     listMenus().catch(() => []),
+    getActiveLocale(),
+    getSuggestedLocale().catch(() => null),
   ]);
+  const dir = activeLocale.isRtl ? "rtl" : "ltr";
   const globalSettings = theme?.globalSettings ?? {};
   const primaryColor = typeof globalSettings.primaryColor === "string" ? globalSettings.primaryColor : undefined;
   const secondaryColor = typeof globalSettings.secondaryColor === "string" ? globalSettings.secondaryColor : undefined;
@@ -40,15 +45,22 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   if (secondaryHsl) themeVars["--secondary"] = secondaryHsl;
 
   return (
-    <html lang="en">
+    <html lang={activeLocale.locale} dir={dir}>
       <body className="flex min-h-screen flex-col bg-background text-foreground" style={themeVars}>
         {isPreview && (
           <div className="bg-amber-400 px-4 py-1.5 text-center text-xs font-medium text-amber-950">
             Theme preview — this draft isn&apos;t published yet
           </div>
         )}
+        {suggestedLocale && <LanguageBanner locale={suggestedLocale.locale} />}
         <CartProvider>
-          <Header logoUrl={logoUrl} storeName={storeName} menus={menus} />
+          <Header
+            logoUrl={logoUrl}
+            storeName={storeName}
+            menus={menus}
+            languages={activeLocale.languages}
+            activeLocale={activeLocale.locale}
+          />
           <main className="flex-1">{children}</main>
           <Footer storeName={storeName} />
         </CartProvider>

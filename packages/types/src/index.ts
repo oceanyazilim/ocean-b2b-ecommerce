@@ -24,6 +24,7 @@ export * from "./stores";
 export * from "./tax";
 export * from "./markets";
 export * from "./content";
+export * from "./localization";
 export * from "./domains";
 export * from "./themes";
 export * from "./b2b";

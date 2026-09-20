@@ -34,6 +34,12 @@ const mediaFirst = {
 type PriceEntry = { unitPrice: Money; compareAtPrice: Money | null };
 type ProductRow = Prisma.ProductGetPayload<{ include: { variants: true; media: typeof mediaFirst } }>;
 
+// L4 Global Localization: published product translations, keyed by field name — only the
+// "published" status is ever rendered on the live storefront (draft/reviewed translations stay
+// admin-only until a merchant explicitly publishes them, same draft/published convention as
+// Pages/Articles elsewhere in this codebase).
+type ProductTranslationFields = { title?: string; descriptionHtml?: string; seoTitle?: string; seoDescription?: string };
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // The one place the Storefront API prices and filters a catalog. Unlike the admin catalog
@@ -82,6 +88,33 @@ export class StorefrontCatalogService {
     );
   }
 
+  // Batch-fetches published Translation rows for a set of products in one query, keyed by
+  // product id -> field -> translated value. Returns an empty map when no locale is active or the
+  // active locale is the store's own default (nothing to translate into itself).
+  private async fetchProductTranslations(
+    ctx: TenantContext,
+    productIds: string[],
+    locale: string | undefined,
+  ): Promise<Map<string, ProductTranslationFields>> {
+    const map = new Map<string, ProductTranslationFields>();
+    if (!locale || productIds.length === 0) return map;
+    const rows = await this.prisma.translation.findMany({
+      where: {
+        storeId: ctx.storeId as string,
+        entityType: "product",
+        locale,
+        status: "published",
+        entityId: { in: productIds },
+      },
+    });
+    for (const row of rows) {
+      const entry = map.get(row.entityId) ?? {};
+      (entry as Record<string, string>)[row.field] = row.value;
+      map.set(row.entityId, entry);
+    }
+    return map;
+  }
+
   private priceRange(variantIds: string[], priceByVariant: Map<string, PriceEntry>) {
     const priced = variantIds.map((id) => priceByVariant.get(id)).filter((p): p is PriceEntry => !!p);
     if (priced.length === 0) return null;
@@ -93,11 +126,15 @@ export class StorefrontCatalogService {
     };
   }
 
-  private toSummary(row: ProductRow, priceByVariant: Map<string, PriceEntry>): StorefrontProductSummary {
+  private toSummary(
+    row: ProductRow,
+    priceByVariant: Map<string, PriceEntry>,
+    translation?: ProductTranslationFields,
+  ): StorefrontProductSummary {
     const first = row.media.find((m) => !m.media.deletedAt);
     return {
       id: row.id,
-      title: row.title,
+      title: translation?.title ?? row.title,
       handle: row.handle,
       image: first ? { url: this.storage.publicUrl(first.media.storageKey), alt: first.media.alt } : null,
       priceRange: this.priceRange(row.variants.map((v) => v.id), priceByVariant),
@@ -106,7 +143,7 @@ export class StorefrontCatalogService {
 
   async listProducts(
     ctx: TenantContext,
-    query: StorefrontProductListQuery,
+    query: StorefrontProductListQuery & { locale?: string },
   ): Promise<Paginated<StorefrontProductSummary>> {
     const storeId = ctx.storeId as string;
     const buyer = await this.resolveBuyer(ctx);
@@ -131,13 +168,16 @@ export class StorefrontCatalogService {
     const hasNextPage = rows.length > query.limit;
     const page = hasNextPage ? rows.slice(0, query.limit) : rows;
 
-    const priceByVariant = await this.priceByVariant(
-      ctx,
-      buyer,
-      page.flatMap((p) => p.variants.map((v) => v.id)),
-    );
+    const [priceByVariant, translations] = await Promise.all([
+      this.priceByVariant(
+        ctx,
+        buyer,
+        page.flatMap((p) => p.variants.map((v) => v.id)),
+      ),
+      this.fetchProductTranslations(ctx, page.map((p) => p.id), query.locale),
+    ]);
     return {
-      data: page.map((p) => this.toSummary(p, priceByVariant)),
+      data: page.map((p) => this.toSummary(p, priceByVariant, translations.get(p.id))),
       pageInfo: { hasNextPage, endCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null },
     };
   }
@@ -249,7 +289,7 @@ export class StorefrontCatalogService {
     });
   }
 
-  async getProduct(ctx: TenantContext, idOrHandle: string): Promise<StorefrontProductDetail> {
+  async getProduct(ctx: TenantContext, idOrHandle: string, locale?: string): Promise<StorefrontProductDetail> {
     const storeId = ctx.storeId as string;
     const buyer = await this.resolveBuyer(ctx);
     const access = await this.catalogAccess.resolve(ctx, buyer);
@@ -272,23 +312,26 @@ export class StorefrontCatalogService {
     });
     if (!row) throw new NotFoundError("Product");
     const variantIds = row.variants.map((v) => v.id);
-    const [priceByVariant, availability, store] = await Promise.all([
+    const [priceByVariant, availability, store, translations] = await Promise.all([
       this.priceByVariant(ctx, buyer, variantIds),
       this.reservations.availability(ctx, variantIds),
       this.prisma.store.findUnique({ where: { id: storeId }, select: { defaultCurrency: true } }),
+      this.fetchProductTranslations(ctx, [row.id], locale),
     ]);
     const currency = store?.defaultCurrency ?? "TRY";
     const media = row.media.filter((m) => !m.media.deletedAt);
     const first = media[0];
+    const t = translations.get(row.id);
     return {
       id: row.id,
-      title: row.title,
+      title: t?.title ?? row.title,
       handle: row.handle,
       image: first ? { url: this.storage.publicUrl(first.media.storageKey), alt: first.media.alt } : null,
       priceRange: this.priceRange(variantIds, priceByVariant),
-      descriptionHtml: row.descriptionHtml ?? "",
-      seoTitle: row.seoTitle,
-      seoDescription: row.seoDescription,
+      descriptionHtml: t?.descriptionHtml ?? row.descriptionHtml ?? "",
+      seoTitle: t?.seoTitle ?? row.seoTitle,
+      seoDescription: t?.seoDescription ?? row.seoDescription,
+      isTranslated: !!t && (t.title !== undefined || t.descriptionHtml !== undefined),
       options: row.options.map((o) => ({ name: o.name, values: o.values.map((v) => v.value) })),
       variants: row.variants.map((v): StorefrontVariantSummary => {
         const priced = priceByVariant.get(v.id);

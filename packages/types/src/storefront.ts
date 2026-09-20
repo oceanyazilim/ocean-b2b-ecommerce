@@ -31,6 +31,10 @@ export interface StorefrontCustomer {
 export const storefrontProductListQuerySchema = cursorPaginationQuerySchema.extend({
   q: z.string().trim().max(120).optional(),
   collectionHandle: z.string().trim().max(120).optional(),
+  // L4 Global Localization: the customer's active storefront locale, if any — when a published
+  // translation exists for it, product titles render translated; otherwise the default-language
+  // content is used unchanged.
+  locale: z.string().trim().max(35).optional(),
 });
 export type StorefrontProductListQuery = z.infer<typeof storefrontProductListQuerySchema>;
 
@@ -74,6 +78,19 @@ export interface StorefrontProductDetail extends StorefrontProductSummary {
   options: { name: string; values: string[] }[];
   variants: StorefrontVariantSummary[];
   media: { id: string; kind: string; url: string; alt: string | null }[];
+  // L4 Global Localization: true when title/descriptionHtml above came from a published
+  // Translation row for the requested locale rather than the store's default-language content.
+  isTranslated: boolean;
+}
+
+// ---- languages (L4 Global Localization, spec sections 2 & 9) ---------------------------------
+
+export interface StorefrontLanguageSummary {
+  locale: string;
+  isDefault: boolean;
+  // True when the language's script/direction is right-to-left (Arabic, Hebrew, Persian, ...) —
+  // computed from the locale's language subtag, never a hardcoded per-locale list of languages.
+  isRtl: boolean;
 }
 
 // Quick order (spec §25): a variant-level type-ahead by SKU/title/barcode, and an exact-SKU
