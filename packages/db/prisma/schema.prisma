@@ -187,6 +187,17 @@ model Organization {
   createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  // Merchant business-profile onboarding (L2 of the localization initiative, spec sections
+  // 11/12/17-19), driven entirely by the matching CountryProfile's businessEntityTypes /
+  // businessProfileSchema / addressSchema — see @ocean/types organizations.ts and
+  // OrganizationsService.updateBusinessProfile for the server-side schema validation. All
+  // nullable/additive so existing organizations are unaffected until they complete this flow.
+  businessCountryCode        String?   @map("business_country_code") @db.VarChar(2) // ISO 3166-1 alpha-2, matches CountryProfile.countryCode
+  businessEntityType         String?   @map("business_entity_type") // one of that country's businessEntityTypes[].code
+  businessProfile            Json?     @map("business_profile") @db.JsonB // BusinessProfileAnswers — answers keyed by that country's businessProfileSchema[].key
+  businessAddress            Json?     @map("business_address") @db.JsonB // BusinessAddressAnswers — answers keyed by that country's addressSchema[].key
+  businessProfileCompletedAt DateTime? @map("business_profile_completed_at") @db.Timestamptz(6)
+
   members               OrganizationMember[]
   stores                Store[]
   storeMembers          StoreMember[]

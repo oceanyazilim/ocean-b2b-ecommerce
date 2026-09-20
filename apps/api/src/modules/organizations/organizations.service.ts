@@ -1,8 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import type { Organization } from "@ocean/db";
 import type {
+  BusinessAddressAnswers,
+  BusinessProfileAnswers,
   CreateOrganizationInput,
+  OrganizationBusinessProfile,
   OrganizationSummary,
+  UpdateBusinessProfileInput,
   UpdateOrganizationInput,
 } from "@ocean/types";
 
@@ -12,7 +16,9 @@ import { uniqueSlug } from "../../common/slug";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { CountryProfilesService } from "../countries/countries.service";
 import { UsersService } from "../users/users.service";
+import { validateBusinessProfileSubmission } from "./business-profile-validation";
 import { OrganizationsRepository } from "./organizations.repository";
 
 export function toOrganizationSummary(org: Organization): OrganizationSummary {
@@ -25,6 +31,16 @@ export function toOrganizationSummary(org: Organization): OrganizationSummary {
   };
 }
 
+export function toBusinessProfile(org: Organization): OrganizationBusinessProfile {
+  return {
+    countryCode: org.businessCountryCode,
+    businessEntityType: org.businessEntityType,
+    businessProfile: (org.businessProfile as BusinessProfileAnswers | null) ?? {},
+    businessAddress: (org.businessAddress as BusinessAddressAnswers | null) ?? {},
+    businessProfileCompletedAt: org.businessProfileCompletedAt?.toISOString() ?? null,
+  };
+}
+
 @Injectable()
 export class OrganizationsService {
   constructor(
@@ -32,6 +48,7 @@ export class OrganizationsService {
     private readonly repo: OrganizationsRepository,
     private readonly users: UsersService,
     private readonly audit: AuditService,
+    private readonly countries: CountryProfilesService,
   ) {}
 
   async listForUser(userId: string): Promise<OrganizationSummary[]> {
@@ -99,5 +116,60 @@ export class OrganizationsService {
       meta,
     });
     return toOrganizationSummary(after);
+  }
+
+  async getBusinessProfile(tenant: TenantContext): Promise<OrganizationBusinessProfile> {
+    const org = await this.repo.findById(tenant.organizationId);
+    if (!org) throw new NotFoundError("Organization");
+    return toBusinessProfile(org);
+  }
+
+  // Re-validates the submitted answers against the REAL schema of whichever CountryProfile the
+  // merchant picked (see business-profile-validation.ts) before persisting — never trusts the
+  // client-side form's validation alone, since this is compliance-relevant business/tax data.
+  async updateBusinessProfile(
+    tenant: TenantContext,
+    input: UpdateBusinessProfileInput,
+    meta: RequestMeta,
+  ): Promise<OrganizationBusinessProfile> {
+    const before = await this.repo.findById(tenant.organizationId);
+    if (!before) throw new NotFoundError("Organization");
+
+    const country = await this.countries.getCountryProfile(input.countryCode);
+    if (!country) {
+      throw new ConflictError("Unknown country.", [
+        { path: "countryCode", message: "Unknown country" },
+      ]);
+    }
+
+    const validated = validateBusinessProfileSubmission(country, {
+      businessEntityType: input.businessEntityType,
+      businessProfile: input.businessProfile,
+      businessAddress: input.businessAddress,
+    });
+
+    const after = await this.repo.update(tenant.organizationId, {
+      businessCountryCode: country.countryCode,
+      businessEntityType: validated.businessEntityType,
+      businessProfile: validated.businessProfile,
+      businessAddress: validated.businessAddress,
+      businessProfileCompletedAt: new Date(),
+    });
+
+    await this.audit.record({
+      organizationId: tenant.organizationId,
+      actorId: tenant.actor.id,
+      action: "organization.business_profile_updated",
+      resourceType: "organization",
+      resourceId: after.id,
+      before: {
+        countryCode: before.businessCountryCode,
+        businessEntityType: before.businessEntityType,
+      },
+      after: { countryCode: after.businessCountryCode, businessEntityType: after.businessEntityType },
+      meta,
+    });
+
+    return toBusinessProfile(after);
   }
 }

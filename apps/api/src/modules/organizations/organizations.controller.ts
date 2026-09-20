@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, Put } from "@nestjs/common";
 import {
   createOrganizationSchema,
   createStoreSchema,
+  updateBusinessProfileSchema,
   updateOrganizationSchema,
   type CreateOrganizationInput,
   type CreateStoreInput,
+  type UpdateBusinessProfileInput,
   type UpdateOrganizationInput,
 } from "@ocean/types";
 
@@ -52,6 +54,26 @@ export class OrganizationsController {
     @ReqMeta() meta: RequestMeta,
   ) {
     return this.organizations.update(tenant, body, meta);
+  }
+
+  // Merchant business-profile onboarding (spec sections 11/12/17-19): country + entity type +
+  // the schema-driven business-profile/address answers for the selected CountryProfile. Read
+  // requires the same permission as reading the organization; write requires organization.write,
+  // matching the PATCH /:organizationId endpoint above.
+  @Get(":organizationId/business-profile")
+  @RequireOrganization("organization.read")
+  getBusinessProfile(@CurrentTenant() tenant: TenantContext) {
+    return this.organizations.getBusinessProfile(tenant);
+  }
+
+  @Put(":organizationId/business-profile")
+  @RequireOrganization("organization.write")
+  updateBusinessProfile(
+    @CurrentTenant() tenant: TenantContext,
+    @Body(new ZodValidationPipe(updateBusinessProfileSchema)) body: UpdateBusinessProfileInput,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.organizations.updateBusinessProfile(tenant, body, meta);
   }
 
   @Get(":organizationId/stores")

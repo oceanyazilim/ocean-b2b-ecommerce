@@ -29,6 +29,7 @@ export default async function SettingsLayout({
                 heading: "Store",
                 items: [
                   { label: "General", href: `${base}/general`, icon: "settings" },
+                  { label: "Business information", href: `${base}/business`, icon: "data" },
                   { label: "Billing & plan", href: `${base}/billing`, icon: "billing" },
                 ],
               },
