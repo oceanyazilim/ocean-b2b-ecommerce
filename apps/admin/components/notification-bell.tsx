@@ -2,6 +2,7 @@
 
 import type { NotificationSummary } from "@ocean/types";
 import { Badge, BellIcon, Skeleton } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, errorMessage } from "@/lib/api";
@@ -9,6 +10,7 @@ import { api, errorMessage } from "@/lib/api";
 const POLL_MS = 20_000;
 
 export function NotificationBell({ storeId }: { storeId: string }) {
+  const t = useTranslations("shell.notifications");
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<NotificationSummary[] | null>(null);
@@ -86,7 +88,7 @@ export function NotificationBell({ storeId }: { storeId: string }) {
       <button
         type="button"
         onClick={() => void toggle()}
-        aria-label="Notifications"
+        aria-label={t("ariaLabel")}
         className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
       >
         <BellIcon size={17} />
@@ -99,13 +101,13 @@ export function NotificationBell({ storeId }: { storeId: string }) {
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 rounded-lg border bg-background shadow-popover">
           <div className="flex items-center justify-between border-b px-3 py-2">
-            <span className="text-sm font-semibold">Notifications</span>
+            <span className="text-sm font-semibold">{t("title")}</span>
             <button
               type="button"
               className="text-xs text-muted-foreground hover:underline"
               onClick={() => void markAllRead()}
             >
-              Mark all read
+              {t("markAllRead")}
             </button>
           </div>
           <div className="max-h-96 overflow-y-auto">
@@ -116,7 +118,7 @@ export function NotificationBell({ storeId }: { storeId: string }) {
             )}
             {error && <div className="p-3 text-sm text-destructive">{error}</div>}
             {!loading && items?.length === 0 && (
-              <p className="p-4 text-center text-sm text-muted-foreground">No notifications yet.</p>
+              <p className="p-4 text-center text-sm text-muted-foreground">{t("empty")}</p>
             )}
             {!loading &&
               items?.map((n) => (

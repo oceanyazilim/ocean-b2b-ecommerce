@@ -27,6 +27,7 @@ export default async function AccountLayout({ children }: { children: ReactNode 
           <SidebarNav
             items={[
               { label: "Security", href: "/account/security" },
+              { label: "Language", href: "/account/language" },
               { label: "Back to stores", href: "/" },
             ]}
           />

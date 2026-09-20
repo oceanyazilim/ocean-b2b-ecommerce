@@ -22,6 +22,7 @@ import {
   Home,
   Image as ImageLucide,
   KeyRound,
+  Languages,
   Layers,
   LayoutGrid,
   LogOut,
@@ -135,3 +136,4 @@ export const DatabaseIcon = wrap(Database);
 export const KeyIcon = wrap(KeyRound);
 export const FolderIcon = wrap(Folder);
 export const UserCogIcon = wrap(UserCog);
+export const LanguagesIcon = wrap(Languages);

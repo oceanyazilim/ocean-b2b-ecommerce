@@ -10,6 +10,7 @@ import type {
   QuoteStats,
 } from "@ocean/types";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Select, Skeleton, Tabs } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -97,7 +98,8 @@ function pctChange(current: number, previous: number): number | null {
 }
 
 function ChangeBadge({ pct }: { pct: number | null }) {
-  if (pct === null) return <span className="text-xs text-muted-foreground">New</span>;
+  const t = useTranslations("dashboard.metrics");
+  if (pct === null) return <span className="text-xs text-muted-foreground">{t("new")}</span>;
   const flat = Math.abs(pct) < 0.05;
   const up = pct > 0;
   return (
@@ -188,22 +190,27 @@ interface AttentionItem {
   href: string;
 }
 
-const NOTIFICATION_LABEL: Record<string, string> = {
-  "order.created": "New order",
-  "quote.accepted": "Quote accepted",
-  "company_application.submitted": "New wholesale application",
-  "return.requested": "Return requested",
+// Maps a notification's machine `type` to its translation key under dashboard.notificationTypes.
+// Any type not listed here falls back to the notification's own (untranslated, server-sent)
+// title — same fallback behavior as before this key existed.
+const NOTIFICATION_LABEL_KEY: Record<string, string> = {
+  "order.created": "orderCreated",
+  "quote.accepted": "quoteAccepted",
+  "company_application.submitted": "companyApplicationSubmitted",
+  "return.requested": "returnRequested",
 };
 
-function timeAgo(iso: string): string {
+type ActivityTranslator = (key: string, values?: Record<string, number>) => string;
+
+function timeAgo(iso: string, t: ActivityTranslator): string {
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.round(ms / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 1) return t("justNow");
+  if (min < 60) return t("minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return t("hoursAgo", { count: hr });
   const day = Math.round(hr / 24);
-  return `${day}d ago`;
+  return t("daysAgo", { count: day });
 }
 
 export function DashboardView({
@@ -227,7 +234,11 @@ export function DashboardView({
   const [basis, setBasis] = useState<ComparisonBasis>("previous_period");
   const [chartMetric, setChartMetric] = useState<ChartMetric>("gross");
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
-  const [greeting, setGreeting] = useState("Hello");
+  const [greetingKey, setGreetingKey] = useState<"morning" | "afternoon" | "evening" | "hello">("hello");
+
+  const t = useTranslations("dashboard");
+  const tActivity = useTranslations("dashboard.activity");
+  const tNotificationTypes = useTranslations("dashboard.notificationTypes");
 
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [previousOverview, setPreviousOverview] = useState<AnalyticsOverview | null>(null);
@@ -243,7 +254,7 @@ export function DashboardView({
 
   useEffect(() => {
     const h = new Date().getHours();
-    setGreeting(h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
+    setGreetingKey(h < 12 ? "morning" : h < 18 ? "afternoon" : "evening");
   }, []);
 
   const { from, to } = useMemo(
@@ -345,12 +356,13 @@ export function DashboardView({
   const maxSeries = Math.max(1, ...series.map((d) => d[chartMetric]));
   const hovered = series.find((d) => d.date === hoveredDay) ?? null;
 
-  const comparisonLabel = basis === "previous_year" ? "vs previous year" : "vs previous period";
+  const comparisonLabel =
+    basis === "previous_year" ? t("comparison.previousYear") : t("comparison.previousPeriod");
 
   const attention: AttentionItem[] = [];
   if (permissions.orders && orderStats) {
     attention.push({
-      label: "orders waiting for fulfillment",
+      label: t("attention.toFulfill"),
       count: orderStats.toFulfill,
       severity: orderStats.toFulfill > 0 ? "warning" : "info",
       href: `/${storeSlug}/orders?view=builtin:unfulfilled`,
@@ -358,7 +370,7 @@ export function DashboardView({
   }
   if (permissions.inventory && inventoryStats) {
     attention.push({
-      label: "products low in stock",
+      label: t("attention.lowStock"),
       count: inventoryStats.lowStock,
       severity: inventoryStats.lowStock > 0 ? "warning" : "info",
       href: `/${storeSlug}/inventory?status=low`,
@@ -366,7 +378,7 @@ export function DashboardView({
   }
   if (permissions.companies && companyStats) {
     attention.push({
-      label: "pending B2B applications",
+      label: t("attention.pendingApplications"),
       count: companyStats.pendingApplications,
       severity: companyStats.pendingApplications > 0 ? "warning" : "info",
       href: `/${storeSlug}/companies/applications`,
@@ -374,7 +386,7 @@ export function DashboardView({
   }
   if (permissions.quotes && quoteStats) {
     attention.push({
-      label: "quotes awaiting customer response",
+      label: t("attention.quotesAwaiting"),
       count: quoteStats.awaitingResponse,
       severity: quoteStats.awaitingResponse > 0 ? "warning" : "info",
       href: `/${storeSlug}/quotes`,
@@ -409,23 +421,23 @@ export function DashboardView({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {greeting}, {userName.split(" ")[0]}
+            {t(`greeting.${greetingKey}`)}, {userName.split(" ")[0]}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Here&apos;s what&apos;s happening with {storeName} today. Currency: {currency}.
+            {t("subtitle", { storeName, currency })}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <Tabs
-            aria-label="Date range"
+            aria-label={t("dateRange.ariaLabel")}
             value={rangeKey}
             onChange={(v) => setRangeKey(v as RangeKey)}
             items={[
-              { value: "today", label: "Today" },
-              { value: "7d", label: "7 days" },
-              { value: "30d", label: "30 days" },
-              { value: "90d", label: "90 days" },
-              { value: "custom", label: "Custom" },
+              { value: "today", label: t("dateRange.today") },
+              { value: "7d", label: t("dateRange.sevenDays") },
+              { value: "30d", label: t("dateRange.thirtyDays") },
+              { value: "90d", label: t("dateRange.ninetyDays") },
+              { value: "custom", label: t("dateRange.custom") },
             ]}
           />
           {rangeKey === "custom" && (
@@ -436,16 +448,16 @@ export function DashboardView({
                 max={customTo}
                 onChange={(e) => setCustomFrom(e.target.value)}
                 className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                aria-label="From date"
+                aria-label={t("dateRange.fromDate")}
               />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground">{t("dateRange.to")}</span>
               <input
                 type="date"
                 value={customTo}
                 min={customFrom}
                 onChange={(e) => setCustomTo(e.target.value)}
                 className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                aria-label="To date"
+                aria-label={t("dateRange.toDate")}
               />
             </div>
           )}
@@ -453,7 +465,7 @@ export function DashboardView({
       </div>
 
       {!permissions.analytics && !permissions.orders && (
-        <Alert variant="info">Your role doesn&apos;t have access to any dashboard data.</Alert>
+        <Alert variant="info">{t("noAccess")}</Alert>
       )}
       {analyticsError && <Alert variant="error">{analyticsError}</Alert>}
 
@@ -464,10 +476,10 @@ export function DashboardView({
               value={basis}
               onChange={(e) => setBasis(e.target.value as ComparisonBasis)}
               className="w-44"
-              aria-label="Comparison basis"
+              aria-label={t("comparison.ariaLabel")}
             >
-              <option value="previous_period">vs previous period</option>
-              <option value="previous_year">vs previous year</option>
+              <option value="previous_period">{t("comparison.previousPeriod")}</option>
+              <option value="previous_year">{t("comparison.previousYear")}</option>
             </Select>
           </div>
 
@@ -480,39 +492,39 @@ export function DashboardView({
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
               <MetricCard
-                label="Total sales"
+                label={t("metrics.totalSales")}
                 value={formatMoney(overview?.revenue ?? { amount: 0, currency })}
                 pct={revenuePct}
                 comparisonLabel={comparisonLabel}
                 sparkline={grossSparkline}
               />
               <MetricCard
-                label="Net sales"
+                label={t("metrics.netSales")}
                 value={formatMoney(overview?.netRevenue ?? { amount: 0, currency })}
                 pct={netPct}
                 comparisonLabel={comparisonLabel}
                 sparkline={netSparkline}
                 note={
                   overview && overview.refunds.amount > 0
-                    ? `after ${formatMoney(overview.refunds)} refunded`
+                    ? t("metrics.netSalesNote", { amount: formatMoney(overview.refunds) })
                     : undefined
                 }
               />
               <MetricCard
-                label="Orders"
+                label={t("metrics.orders")}
                 value={String(overview?.orderCount ?? 0)}
                 pct={ordersPct}
                 comparisonLabel={comparisonLabel}
                 sparkline={ordersSparkline}
               />
               <MetricCard
-                label="Average order value"
+                label={t("metrics.averageOrderValue")}
                 value={formatMoney(overview?.averageOrderValue ?? { amount: 0, currency })}
                 pct={aovPct}
                 comparisonLabel={comparisonLabel}
               />
               <MetricCard
-                label="Returning customer rate"
+                label={t("metrics.returningCustomerRate")}
                 value={
                   isPresent(overview?.returningCustomerRate)
                     ? `${(overview.returningCustomerRate * 100).toFixed(1)}%`
@@ -523,40 +535,40 @@ export function DashboardView({
                 unavailable={!isPresent(overview?.returningCustomerRate)}
                 note={
                   !isPresent(overview?.returningCustomerRate)
-                    ? "No known-customer orders in range"
-                    : "Known customer accounts only; guest checkouts excluded"
+                    ? t("metrics.returningNoData")
+                    : t("metrics.returningKnownOnly")
                 }
               />
               <MetricCard
-                label="Conversion rate"
+                label={t("metrics.conversionRate")}
                 value="—"
                 unavailable
-                note="Not tracked yet — storefront visits aren't recorded"
+                note={t("metrics.conversionNotTracked")}
               />
             </div>
           )}
 
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-base">Revenue overview</CardTitle>
+              <CardTitle className="text-base">{t("chart.title")}</CardTitle>
               <Select
                 value={chartMetric}
                 onChange={(e) => setChartMetric(e.target.value as ChartMetric)}
                 className="w-40"
-                aria-label="Chart metric"
+                aria-label={t("chart.metricAriaLabel")}
               >
-                <option value="gross">Gross sales</option>
-                <option value="net">Net sales</option>
-                <option value="orders">Orders</option>
-                <option value="aov">Average order value</option>
-                <option value="refunds">Refunds</option>
+                <option value="gross">{t("chart.gross")}</option>
+                <option value="net">{t("chart.net")}</option>
+                <option value="orders">{t("chart.orders")}</option>
+                <option value="aov">{t("chart.aov")}</option>
+                <option value="refunds">{t("chart.refunds")}</option>
               </Select>
             </CardHeader>
             <CardContent>
               {analyticsLoading ? (
                 <Skeleton className="h-40 w-full" />
               ) : series.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No data in this range.</p>
+                <p className="text-sm text-muted-foreground">{t("chart.noData")}</p>
               ) : (
                 <>
                   <div className="mb-2 text-xs text-muted-foreground">
@@ -564,11 +576,11 @@ export function DashboardView({
                       <span>
                         <span className="font-medium text-foreground">{hovered.date}</span> ·
                         {chartMetric === "orders"
-                          ? ` ${hovered.orders} orders`
+                          ? ` ${t("chart.ordersCount", { count: hovered.orders })}`
                           : ` ${formatMoney({ amount: hovered[chartMetric], currency: overview?.currency ?? currency })}`}
                       </span>
                     ) : (
-                      <span>Hover a bar for the exact value.</span>
+                      <span>{t("chart.hoverHint")}</span>
                     )}
                   </div>
                   <div
@@ -587,7 +599,7 @@ export function DashboardView({
                         onMouseEnter={() => setHoveredDay(d.date)}
                         title={`${d.date}: ${
                           chartMetric === "orders"
-                            ? `${d.orders} orders`
+                            ? t("chart.ordersCount", { count: d.orders })
                             : formatMoney({ amount: d[chartMetric], currency: overview?.currency ?? currency })
                         }`}
                       />
@@ -603,7 +615,7 @@ export function DashboardView({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Needs attention</CardTitle>
+            <CardTitle className="text-base">{t("attention.title")}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {attentionLoading ? (
@@ -612,9 +624,7 @@ export function DashboardView({
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : attention.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">
-                Nothing to review — your role doesn&apos;t have access to operational data.
-              </p>
+              <p className="p-4 text-sm text-muted-foreground">{t("attention.empty")}</p>
             ) : (
               <ul className="divide-y">
                 {attention.map((item) => (
@@ -630,7 +640,7 @@ export function DashboardView({
                         <span>{item.label}</span>
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {item.count > 0 ? "Review →" : "All clear"}
+                        {item.count > 0 ? t("attention.review") : t("attention.allClear")}
                       </span>
                     </Link>
                   </li>
@@ -642,7 +652,7 @@ export function DashboardView({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Live activity</CardTitle>
+            <CardTitle className="text-base">{t("activity.title")}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {attentionLoading ? (
@@ -651,20 +661,25 @@ export function DashboardView({
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : notifications.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">No recent activity yet.</p>
+              <p className="p-4 text-sm text-muted-foreground">{t("activity.empty")}</p>
             ) : (
               <ul className="divide-y">
-                {notifications.map((n) => (
-                  <li key={n.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
-                    <div>
-                      <div className="font-medium">{NOTIFICATION_LABEL[n.type] ?? n.title}</div>
-                      <div className="text-xs text-muted-foreground">{n.body}</div>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {timeAgo(n.createdAt)}
-                    </span>
-                  </li>
-                ))}
+                {notifications.map((n) => {
+                  const labelKey = NOTIFICATION_LABEL_KEY[n.type];
+                  return (
+                    <li key={n.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+                      <div>
+                        <div className="font-medium">
+                          {labelKey ? tNotificationTypes(labelKey) : n.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{n.body}</div>
+                      </div>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {timeAgo(n.createdAt, tActivity)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>

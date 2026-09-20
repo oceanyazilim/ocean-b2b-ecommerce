@@ -8,6 +8,7 @@ import type {
   ProductSummary,
 } from "@ocean/types";
 import { ClockIcon, SearchIcon } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -82,6 +83,7 @@ export function CommandPalette({
   navItems: PaletteNavItem[];
   searchScope: PaletteSearchScope;
 }) {
+  const t = useTranslations("shell.commandPalette");
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,9 +140,9 @@ export function CommandPalette({
       label: r.label,
       sublabel: r.sublabel,
       href: r.href,
-      group: "Recent",
+      group: t("recent"),
     }));
-  }, [recents, query]);
+  }, [recents, query, t]);
 
   const navResults = useMemo<PaletteResult[]>(() => {
     const q = query.trim().toLowerCase();
@@ -155,9 +157,9 @@ export function CommandPalette({
       label: item.label,
       sublabel: item.group,
       href: item.href,
-      group: "Go to",
+      group: t("goTo"),
     }));
-  }, [navItems, query]);
+  }, [navItems, query, t]);
 
   // Debounced live search against the same store-scoped list endpoints the admin's own list
   // pages already call (products/orders/customers/companies), reusing their `q` param.
@@ -183,7 +185,7 @@ export function CommandPalette({
                 label: p.title,
                 sublabel: p.vendor ?? p.productType ?? undefined,
                 href: `/${storeSlug}/products/${p.id}`,
-                group: "Products",
+                group: t("groupProducts"),
               })),
             )
             .catch(() => []),
@@ -198,7 +200,7 @@ export function CommandPalette({
                 label: o.name,
                 sublabel: o.buyer.customer?.displayName ?? o.buyer.company?.displayName ?? o.email ?? undefined,
                 href: `/${storeSlug}/orders/${o.id}`,
-                group: "Orders",
+                group: t("groupOrders"),
               })),
             )
             .catch(() => []),
@@ -213,7 +215,7 @@ export function CommandPalette({
                 label: c.displayName,
                 sublabel: c.email,
                 href: `/${storeSlug}/customers/${c.id}`,
-                group: "Customers",
+                group: t("groupCustomers"),
               })),
             )
             .catch(() => []),
@@ -228,7 +230,7 @@ export function CommandPalette({
                 label: c.displayName,
                 sublabel: c.legalName !== c.displayName ? c.legalName : undefined,
                 href: `/${storeSlug}/companies/${c.id}`,
-                group: "Companies",
+                group: t("groupCompanies"),
               })),
             )
             .catch(() => []),
@@ -244,6 +246,7 @@ export function CommandPalette({
       });
     }, ENTITY_DEBOUNCE_MS);
     return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, storeId, storeSlug, searchScope]);
 
   const results = useMemo<PaletteResult[]>(
@@ -311,7 +314,7 @@ export function CommandPalette({
         className="flex w-full max-w-56 items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
       >
         <SearchIcon size={15} className="shrink-0" />
-        <span className="flex-1 text-left">Search…</span>
+        <span className="flex-1 text-left">{t("trigger")}</span>
         <kbd className="hidden shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[11px] font-medium sm:inline-block">
           {isMac ? "⌘K" : "Ctrl K"}
         </kbd>
@@ -323,7 +326,7 @@ export function CommandPalette({
           if (e.target === dialogRef.current) setOpen(false);
         }}
         className="w-full max-w-xl rounded-lg border bg-card p-0 text-card-foreground shadow-popover backdrop:bg-black/40 open:animate-in"
-        aria-label="Command palette"
+        aria-label={t("ariaLabel")}
       >
       <div className="flex max-h-[70vh] flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2.5 border-b px-4 py-3">
@@ -336,8 +339,8 @@ export function CommandPalette({
               setActiveIndex(0);
             }}
             onKeyDown={onInputKeyDown}
-            placeholder="Search products, orders, customers, companies or jump to a page…"
-            aria-label="Command palette search"
+            placeholder={t("placeholder")}
+            aria-label={t("searchAriaLabel")}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <kbd className="hidden shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-block">
@@ -348,13 +351,13 @@ export function CommandPalette({
         <div ref={listRef} className="flex-1 overflow-y-auto p-2">
           {groups.length === 0 && (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {searching ? "Searching…" : query.trim() ? "No results found." : "No matches."}
+              {searching ? t("searching") : query.trim() ? t("noResults") : t("noMatches")}
             </p>
           )}
           {groups.map(({ group, items }) => (
             <div key={group} className="mb-2 last:mb-0">
               <p className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {group === "Recent" && <ClockIcon size={12} />}
+                {group === t("recent") && <ClockIcon size={12} />}
                 {group}
               </p>
               {items.map((item) => {
@@ -383,7 +386,7 @@ export function CommandPalette({
             </div>
           ))}
           {searching && groups.length > 0 && (
-            <p className="px-3 py-1.5 text-xs text-muted-foreground">Searching…</p>
+            <p className="px-3 py-1.5 text-xs text-muted-foreground">{t("searching")}</p>
           )}
         </div>
 
@@ -391,15 +394,15 @@ export function CommandPalette({
           <span className="flex items-center gap-1">
             <kbd className="rounded border bg-muted px-1.5 py-0.5 font-medium">↑</kbd>
             <kbd className="rounded border bg-muted px-1.5 py-0.5 font-medium">↓</kbd>
-            Navigate
+            {t("navigate")}
           </span>
           <span className="flex items-center gap-1">
             <kbd className="rounded border bg-muted px-1.5 py-0.5 font-medium">↵</kbd>
-            Select
+            {t("select")}
           </span>
           <span className="flex items-center gap-1">
             <kbd className="rounded border bg-muted px-1.5 py-0.5 font-medium">Esc</kbd>
-            Close
+            {t("close")}
           </span>
         </div>
       </div>

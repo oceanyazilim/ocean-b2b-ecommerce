@@ -20,6 +20,7 @@ import {
   StorefrontIcon,
   cn,
 } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
@@ -105,6 +106,7 @@ export function AppSidebar({
   switcher: ReactNode;
   user: { name: string; initials: string; href: string };
 }) {
+  const t = useTranslations("shell.sidebar");
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -170,8 +172,8 @@ export function AppSidebar({
         <button
           type="button"
           onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
+          title={collapsed ? t("expandSidebar") : t("collapseSidebar")}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <PanelLeftIcon size={16} />
@@ -184,7 +186,7 @@ export function AppSidebar({
           <div className="mb-3">
             {!collapsed && (
               <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-                Favorites
+                {t("favorites")}
               </p>
             )}
             <div className="flex flex-col gap-0.5">
@@ -283,6 +285,7 @@ function NavLink({
   pinned: boolean;
   onTogglePin: () => void;
 }) {
+  const t = useTranslations("shell.sidebar");
   const Icon = ICONS[item.icon];
   return (
     <div className="group/item relative flex items-center">
@@ -308,7 +311,7 @@ function NavLink({
             e.preventDefault();
             onTogglePin();
           }}
-          aria-label={pinned ? `Unpin ${item.label}` : `Pin ${item.label}`}
+          aria-label={pinned ? t("unpinItem", { label: item.label }) : t("pinItem", { label: item.label })}
           aria-pressed={pinned}
           className={cn(
             "absolute right-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground",

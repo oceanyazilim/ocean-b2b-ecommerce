@@ -14,6 +14,7 @@ import {
   type IconProps,
   InventoryIcon,
   KeyIcon,
+  LanguagesIcon,
   OrdersIcon,
   PercentIcon,
   PricingIcon,
@@ -26,6 +27,7 @@ import {
   UserCogIcon,
   cn,
 } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
@@ -55,7 +57,8 @@ export type NavIconKey =
   | "payments"
   | "data"
   | "files"
-  | "activity";
+  | "activity"
+  | "language";
 
 const ICONS: Record<NavIconKey, ComponentType<IconProps>> = {
   home: HomeIcon,
@@ -81,6 +84,7 @@ const ICONS: Record<NavIconKey, ComponentType<IconProps>> = {
   data: DatabaseIcon,
   files: FolderIcon,
   activity: HistoryIcon,
+  language: LanguagesIcon,
 };
 
 export interface NavItem {
@@ -98,6 +102,10 @@ export interface NavGroup {
 }
 
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+  // This component is shared across the in-scope app shell (Settings/Account sub-nav also
+  // renders through it) — only this one fixed tooltip string is translated, since it's a small
+  // reused chrome atom, not page content; see the i18n phase report.
+  const t = useTranslations("shell.sidebar");
   const active = item.exactMatch
     ? pathname === item.href
     : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -106,7 +114,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
     return (
       <span
         aria-disabled
-        title="Coming in a later phase"
+        title={t("comingSoon")}
         className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground/50"
       >
         {Icon && <Icon size={16} className="shrink-0" />}

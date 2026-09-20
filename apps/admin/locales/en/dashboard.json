@@ -1,0 +1,114 @@
+{
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "hello": "Hello"
+  },
+  "subtitle": "Here's what's happening with {storeName} today. Currency: {currency}.",
+  "dateRange": {
+    "today": "Today",
+    "sevenDays": "7 days",
+    "thirtyDays": "30 days",
+    "ninetyDays": "90 days",
+    "custom": "Custom",
+    "ariaLabel": "Date range",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "to": "to"
+  },
+  "noAccess": "Your role doesn't have access to any dashboard data.",
+  "comparison": {
+    "ariaLabel": "Comparison basis",
+    "previousPeriod": "vs previous period",
+    "previousYear": "vs previous year"
+  },
+  "metrics": {
+    "totalSales": "Total sales",
+    "netSales": "Net sales",
+    "orders": "Orders",
+    "averageOrderValue": "Average order value",
+    "returningCustomerRate": "Returning customer rate",
+    "conversionRate": "Conversion rate",
+    "new": "New",
+    "netSalesNote": "after {amount} refunded",
+    "returningNoData": "No known-customer orders in range",
+    "returningKnownOnly": "Known customer accounts only; guest checkouts excluded",
+    "conversionNotTracked": "Not tracked yet — storefront visits aren't recorded"
+  },
+  "chart": {
+    "title": "Revenue overview",
+    "metricAriaLabel": "Chart metric",
+    "gross": "Gross sales",
+    "net": "Net sales",
+    "orders": "Orders",
+    "aov": "Average order value",
+    "refunds": "Refunds",
+    "noData": "No data in this range.",
+    "hoverHint": "Hover a bar for the exact value.",
+    "ordersCount": "{count} orders"
+  },
+  "attention": {
+    "title": "Needs attention",
+    "empty": "Nothing to review — your role doesn't have access to operational data.",
+    "toFulfill": "orders waiting for fulfillment",
+    "lowStock": "products low in stock",
+    "pendingApplications": "pending B2B applications",
+    "quotesAwaiting": "quotes awaiting customer response",
+    "review": "Review →",
+    "allClear": "All clear"
+  },
+  "activity": {
+    "title": "Live activity",
+    "empty": "No recent activity yet.",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "notificationTypes": {
+    "orderCreated": "New order",
+    "quoteAccepted": "Quote accepted",
+    "companyApplicationSubmitted": "New wholesale application",
+    "returnRequested": "Return requested"
+  },
+  "onboarding": {
+    "title": "Setup guide",
+    "stepsComplete": "{done} of {total} steps complete",
+    "open": "Open",
+    "steps": {
+      "businessDetails": {
+        "title": "Confirm business details",
+        "description": "Store name, currency, language and time zone."
+      },
+      "firstProduct": {
+        "title": "Add your first product",
+        "description": "Products arrive in Phase 2."
+      },
+      "payments": {
+        "title": "Set up payments",
+        "description": "Payment providers arrive in Phase 7."
+      },
+      "shipping": {
+        "title": "Configure shipping",
+        "description": "Shipping zones arrive in Phase 7."
+      },
+      "taxes": {
+        "title": "Configure taxes",
+        "description": "Tax rules arrive in Phase 7."
+      },
+      "domain": {
+        "title": "Connect a domain",
+        "description": "Custom domains arrive in Phase 8."
+      },
+      "theme": {
+        "title": "Choose and customize a theme",
+        "description": "Theme editor arrives in Phase 10."
+      },
+      "launch": {
+        "title": "Launch your store",
+        "description": "Make the storefront public."
+      }
+    }
+  }
+}

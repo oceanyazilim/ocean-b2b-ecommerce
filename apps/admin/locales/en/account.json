@@ -1,0 +1,7 @@
+{
+  "language": {
+    "title": "Admin language",
+    "description": "Choose the language for your own admin dashboard — sidebar, header, command palette and the Home page. This only changes what you see in this admin account; it never changes the language(s) your storefront sells in.",
+    "navLabel": "Language"
+  }
+}

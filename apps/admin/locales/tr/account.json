@@ -1,0 +1,7 @@
+{
+  "language": {
+    "title": "Yönetim paneli dili",
+    "description": "Kendi yönetim panelinizin dilini seçin — kenar çubuğu, üst bar, komut paleti ve Ana sayfa. Bu yalnızca bu yönetici hesabında gördüklerinizi değiştirir; mağazanızın satış yaptığı dil(ler)i asla değiştirmez.",
+    "navLabel": "Dil"
+  }
+}

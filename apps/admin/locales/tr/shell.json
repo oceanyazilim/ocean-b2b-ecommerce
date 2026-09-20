@@ -1,0 +1,83 @@
+{
+  "sidebar": {
+    "groups": {
+      "orders": "Siparişler",
+      "products": "Ürünler",
+      "customers": "Müşteriler",
+      "b2b": "B2B",
+      "content": "İçerik",
+      "sales": "Satış",
+      "analytics": "Analitik"
+    },
+    "nav": {
+      "home": "Ana sayfa",
+      "allOrders": "Tüm siparişler",
+      "draftOrders": "Taslak siparişler",
+      "allProducts": "Tüm ürünler",
+      "collections": "Koleksiyonlar",
+      "inventory": "Envanter",
+      "customers": "Müşteriler",
+      "companies": "Firmalar",
+      "catalogs": "Kataloglar",
+      "priceLists": "Fiyat listeleri",
+      "quotes": "Teklifler",
+      "pages": "Sayfalar",
+      "blog": "Blog",
+      "menus": "Menüler",
+      "onlineStore": "Online mağaza",
+      "analytics": "Analitik"
+    },
+    "favorites": "Favoriler",
+    "mobileMenu": "Menü",
+    "expandSidebar": "Kenar çubuğunu genişlet",
+    "collapseSidebar": "Kenar çubuğunu daralt",
+    "pinItem": "{label} sabitle",
+    "unpinItem": "{label} sabitlemeyi kaldır",
+    "comingSoon": "Sonraki bir aşamada geliyor"
+  },
+  "settingsNav": {
+    "general": "Genel",
+    "usersPermissions": "Kullanıcılar ve izinler",
+    "billingPlan": "Faturalandırma ve plan",
+    "api": "API",
+    "sso": "Tek oturum açma",
+    "shipping": "Kargo ve teslimat",
+    "taxes": "Vergiler",
+    "payments": "Ödemeler",
+    "customData": "Özel veri",
+    "files": "Dosyalar",
+    "activityLog": "Etkinlik günlüğü",
+    "adminLanguage": "Yönetim paneli dili"
+  },
+  "header": {
+    "viewingAs": "<bold>{name}</bold> ({email}) olarak görüntüleniyor — {reason}",
+    "endImpersonation": "Kullanıcı olarak görüntülemeyi bitir",
+    "switchStore": "Mağaza değiştir"
+  },
+  "notifications": {
+    "title": "Bildirimler",
+    "markAllRead": "Tümünü okundu işaretle",
+    "empty": "Henüz bildirim yok.",
+    "ariaLabel": "Bildirimler"
+  },
+  "commandPalette": {
+    "trigger": "Ara…",
+    "ariaLabel": "Komut paleti",
+    "searchAriaLabel": "Komut paleti araması",
+    "placeholder": "Ürün, sipariş, müşteri, firma arayın veya bir sayfaya gidin…",
+    "searching": "Aranıyor…",
+    "noResults": "Sonuç bulunamadı.",
+    "noMatches": "Eşleşme yok.",
+    "recent": "Son aramalar",
+    "goTo": "Git",
+    "groupProducts": "Ürünler",
+    "groupOrders": "Siparişler",
+    "groupCustomers": "Müşteriler",
+    "groupCompanies": "Firmalar",
+    "navigationGroup": "Gezinme",
+    "settingsGroup": "Ayarlar",
+    "navigate": "Gezin",
+    "select": "Seç",
+    "close": "Kapat"
+  }
+}

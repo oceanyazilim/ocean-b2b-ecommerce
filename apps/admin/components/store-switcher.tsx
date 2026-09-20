@@ -1,6 +1,7 @@
 "use client";
 
 import { Select } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 
 export interface SwitcherStore {
@@ -10,6 +11,7 @@ export interface SwitcherStore {
 }
 
 export function StoreSwitcher({ stores, current }: { stores: SwitcherStore[]; current: string }) {
+  const t = useTranslations("shell.header");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -26,7 +28,7 @@ export function StoreSwitcher({ stores, current }: { stores: SwitcherStore[]; cu
 
   return (
     <Select
-      aria-label="Switch store"
+      aria-label={t("switchStore")}
       value={current}
       onChange={(e) => go(e.target.value)}
       className="h-8 w-auto max-w-[220px]"

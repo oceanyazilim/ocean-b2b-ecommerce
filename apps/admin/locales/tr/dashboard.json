@@ -1,0 +1,114 @@
+{
+  "greeting": {
+    "morning": "Günaydın",
+    "afternoon": "İyi günler",
+    "evening": "İyi akşamlar",
+    "hello": "Merhaba"
+  },
+  "subtitle": "{storeName} mağazanızda bugün olanlar burada. Para birimi: {currency}.",
+  "dateRange": {
+    "today": "Bugün",
+    "sevenDays": "7 gün",
+    "thirtyDays": "30 gün",
+    "ninetyDays": "90 gün",
+    "custom": "Özel",
+    "ariaLabel": "Tarih aralığı",
+    "fromDate": "Başlangıç tarihi",
+    "toDate": "Bitiş tarihi",
+    "to": "ile"
+  },
+  "noAccess": "Rolünüzün herhangi bir panel verisine erişimi yok.",
+  "comparison": {
+    "ariaLabel": "Karşılaştırma temeli",
+    "previousPeriod": "önceki döneme göre",
+    "previousYear": "önceki yıla göre"
+  },
+  "metrics": {
+    "totalSales": "Toplam satış",
+    "netSales": "Net satış",
+    "orders": "Siparişler",
+    "averageOrderValue": "Ortalama sipariş değeri",
+    "returningCustomerRate": "Tekrar eden müşteri oranı",
+    "conversionRate": "Dönüşüm oranı",
+    "new": "Yeni",
+    "netSalesNote": "{amount} iade sonrası",
+    "returningNoData": "Bu aralıkta bilinen müşteri siparişi yok",
+    "returningKnownOnly": "Yalnızca bilinen müşteri hesapları; misafir siparişleri hariç",
+    "conversionNotTracked": "Henüz izlenmiyor — mağaza ziyaretleri kaydedilmiyor"
+  },
+  "chart": {
+    "title": "Gelir genel bakışı",
+    "metricAriaLabel": "Grafik metriği",
+    "gross": "Brüt satış",
+    "net": "Net satış",
+    "orders": "Siparişler",
+    "aov": "Ortalama sipariş değeri",
+    "refunds": "İadeler",
+    "noData": "Bu aralıkta veri yok.",
+    "hoverHint": "Tam değer için bir çubuğun üzerine gelin.",
+    "ordersCount": "{count} sipariş"
+  },
+  "attention": {
+    "title": "Dikkat gerekiyor",
+    "empty": "İncelenecek bir şey yok — rolünüzün operasyonel verilere erişimi yok.",
+    "toFulfill": "karşılanmayı bekleyen sipariş",
+    "lowStock": "stoğu az olan ürün",
+    "pendingApplications": "bekleyen B2B başvurusu",
+    "quotesAwaiting": "müşteri yanıtı bekleyen teklif",
+    "review": "İncele →",
+    "allClear": "Her şey yolunda"
+  },
+  "activity": {
+    "title": "Canlı etkinlik",
+    "empty": "Henüz son etkinlik yok.",
+    "justNow": "az önce",
+    "minutesAgo": "{count} dk önce",
+    "hoursAgo": "{count} sa önce",
+    "daysAgo": "{count} gün önce"
+  },
+  "notificationTypes": {
+    "orderCreated": "Yeni sipariş",
+    "quoteAccepted": "Teklif kabul edildi",
+    "companyApplicationSubmitted": "Yeni toptan satış başvurusu",
+    "returnRequested": "İade talebi"
+  },
+  "onboarding": {
+    "title": "Kurulum kılavuzu",
+    "stepsComplete": "{total} adımdan {done} tamamlandı",
+    "open": "Aç",
+    "steps": {
+      "businessDetails": {
+        "title": "İşletme bilgilerini onaylayın",
+        "description": "Mağaza adı, para birimi, dil ve saat dilimi."
+      },
+      "firstProduct": {
+        "title": "İlk ürününüzü ekleyin",
+        "description": "Ürünler Faz 2'de geliyor."
+      },
+      "payments": {
+        "title": "Ödemeleri ayarlayın",
+        "description": "Ödeme sağlayıcıları Faz 7'de geliyor."
+      },
+      "shipping": {
+        "title": "Kargoyu yapılandırın",
+        "description": "Kargo bölgeleri Faz 7'de geliyor."
+      },
+      "taxes": {
+        "title": "Vergileri yapılandırın",
+        "description": "Vergi kuralları Faz 7'de geliyor."
+      },
+      "domain": {
+        "title": "Bir alan adı bağlayın",
+        "description": "Özel alan adları Faz 8'de geliyor."
+      },
+      "theme": {
+        "title": "Bir tema seçin ve özelleştirin",
+        "description": "Tema düzenleyici Faz 10'da geliyor."
+      },
+      "launch": {
+        "title": "Mağazanızı yayınlayın",
+        "description": "Mağazayı herkese açık hale getirin."
+      }
+    }
+  }
+}

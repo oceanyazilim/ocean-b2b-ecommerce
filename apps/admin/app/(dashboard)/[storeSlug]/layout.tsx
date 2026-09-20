@@ -1,10 +1,12 @@
 import { Badge } from "@ocean/ui";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
 import { type AppNavGroup, type AppNavLink, AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette, type PaletteNavItem, type PaletteSearchScope } from "@/components/command-palette";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationBell } from "@/components/notification-bell";
 import { SidebarNav, type NavItem } from "@/components/sidebar-nav";
@@ -23,6 +25,8 @@ export default async function StoreLayout({
   const found = findStore(me, storeSlug);
   if (!found) notFound();
   const { organization, store } = found;
+  const t = await getTranslations("shell");
+  const tSettings = await getTranslations("common");
 
   const base = `/${store.slug}`;
   const canContent = can(store, "content.read") && can(store, "settings.read");
@@ -35,16 +39,27 @@ export default async function StoreLayout({
   // entries with no backing route today (Segments, Purchase orders, Gift cards, POS,
   // Marketplaces, Social commerce, Metaobjects, Marketing, Discounts, Finance, Markets, Apps,
   // Automations as top-level areas) are intentionally omitted rather than stubbed out.
-  const home: AppNavLink = { label: "Home", href: base, icon: "home" };
-  const settingsItem: AppNavLink = { label: "Settings", href: `${base}/settings/general`, icon: "settings" };
+  // Labels come from the `shell` translation namespace (locales/{en,tr}/shell.json) — this is
+  // the app shell, in scope for full Türkçe/English parity (see the i18n phase report).
+  const home: AppNavLink = { label: t("sidebar.nav.home"), href: base, icon: "home" };
+  const settingsItem: AppNavLink = {
+    label: tSettings("settings"),
+    href: `${base}/settings/general`,
+    icon: "settings",
+  };
 
   const groupDefs: { label: string; items: (AppNavLink & { allowed: boolean })[] }[] = [
     {
-      label: "Orders",
+      label: t("sidebar.groups.orders"),
       items: [
-        { label: "All orders", href: `${base}/orders`, icon: "orders", allowed: can(store, "orders.read") },
         {
-          label: "Draft orders",
+          label: t("sidebar.nav.allOrders"),
+          href: `${base}/orders`,
+          icon: "orders",
+          allowed: can(store, "orders.read"),
+        },
+        {
+          label: t("sidebar.nav.draftOrders"),
           href: `${base}/orders/drafts`,
           icon: "orders",
           allowed: can(store, "orders.read"),
@@ -52,22 +67,22 @@ export default async function StoreLayout({
       ],
     },
     {
-      label: "Products",
+      label: t("sidebar.groups.products"),
       items: [
         {
-          label: "All products",
+          label: t("sidebar.nav.allProducts"),
           href: `${base}/products`,
           icon: "products",
           allowed: can(store, "products.read"),
         },
         {
-          label: "Collections",
+          label: t("sidebar.nav.collections"),
           href: `${base}/collections`,
           icon: "collections",
           allowed: can(store, "collections.read"),
         },
         {
-          label: "Inventory",
+          label: t("sidebar.nav.inventory"),
           href: `${base}/inventory`,
           icon: "inventory",
           allowed: can(store, "inventory.read"),
@@ -75,10 +90,10 @@ export default async function StoreLayout({
       ],
     },
     {
-      label: "Customers",
+      label: t("sidebar.groups.customers"),
       items: [
         {
-          label: "Customers",
+          label: t("sidebar.nav.customers"),
           href: `${base}/customers`,
           icon: "customers",
           allowed: can(store, "customers.read"),
@@ -86,36 +101,51 @@ export default async function StoreLayout({
       ],
     },
     {
-      label: "B2B",
+      label: t("sidebar.groups.b2b"),
       items: [
         {
-          label: "Companies",
+          label: t("sidebar.nav.companies"),
           href: `${base}/companies`,
           icon: "companies",
           allowed: can(store, "companies.read"),
         },
-        { label: "Catalogs", href: `${base}/catalogs`, icon: "catalogs", allowed: can(store, "catalogs.read") },
-        { label: "Price lists", href: `${base}/pricing`, icon: "pricing", allowed: can(store, "pricing.read") },
-        { label: "Quotes", href: `${base}/quotes`, icon: "quotes", allowed: can(store, "quotes.read") },
+        {
+          label: t("sidebar.nav.catalogs"),
+          href: `${base}/catalogs`,
+          icon: "catalogs",
+          allowed: can(store, "catalogs.read"),
+        },
+        {
+          label: t("sidebar.nav.priceLists"),
+          href: `${base}/pricing`,
+          icon: "pricing",
+          allowed: can(store, "pricing.read"),
+        },
+        {
+          label: t("sidebar.nav.quotes"),
+          href: `${base}/quotes`,
+          icon: "quotes",
+          allowed: can(store, "quotes.read"),
+        },
       ],
     },
     {
-      label: "Content",
+      label: t("sidebar.groups.content"),
       items: [
         {
-          label: "Pages",
+          label: t("sidebar.nav.pages"),
           href: `${base}/storefront/pages`,
           icon: "storefront",
           allowed: canContent,
         },
         {
-          label: "Blog",
+          label: t("sidebar.nav.blog"),
           href: `${base}/storefront/blogs`,
           icon: "storefront",
           allowed: canContent,
         },
         {
-          label: "Menus",
+          label: t("sidebar.nav.menus"),
           href: `${base}/storefront/menus`,
           icon: "storefront",
           allowed: canContent,
@@ -123,10 +153,10 @@ export default async function StoreLayout({
       ],
     },
     {
-      label: "Sales",
+      label: t("sidebar.groups.sales"),
       items: [
         {
-          label: "Online store",
+          label: t("sidebar.nav.onlineStore"),
           href: `${base}/storefront`,
           icon: "storefront",
           allowed: canContent || canStorefront,
@@ -134,10 +164,10 @@ export default async function StoreLayout({
       ],
     },
     {
-      label: "Analytics",
+      label: t("sidebar.groups.analytics"),
       items: [
         {
-          label: "Analytics",
+          label: t("sidebar.nav.analytics"),
           href: `${base}/analytics`,
           icon: "analytics",
           allowed: can(store, "analytics.read"),
@@ -167,29 +197,50 @@ export default async function StoreLayout({
   // Settings sub-tab list below already includes — keeps the result list free of duplicates.
   const paletteNavItems: PaletteNavItem[] = [
     ...items
-      .filter((item) => !item.disabled && item.label !== "Settings")
-      .map((item) => ({ label: item.label, href: item.href, group: "Navigation" })),
+      .filter((item) => !item.disabled && item.href !== settingsItem.href)
+      .map((item) => ({ label: item.label, href: item.href, group: t("commandPalette.navigationGroup") })),
     ...(
       [
-        { label: "General", href: `${base}/settings/general`, allowed: can(store, "settings.read") },
-        { label: "Users & permissions", href: `${base}/settings/team`, allowed: can(store, "users.manage") },
-        { label: "Billing & plan", href: `${base}/settings/billing`, allowed: can(store, "settings.read") },
-        { label: "API", href: `${base}/settings/developer`, allowed: can(store, "apps.install") },
-        { label: "Single sign-on", href: `${base}/settings/sso`, allowed: can(store, "settings.read") },
-        { label: "Shipping & delivery", href: `${base}/settings/shipping`, allowed: can(store, "shipping.read") },
-        { label: "Taxes", href: `${base}/settings/taxes`, allowed: can(store, "taxes.read") },
+        { label: t("settingsNav.general"), href: `${base}/settings/general`, allowed: can(store, "settings.read") },
         {
-          label: "Payments",
+          label: t("settingsNav.usersPermissions"),
+          href: `${base}/settings/team`,
+          allowed: can(store, "users.manage"),
+        },
+        {
+          label: t("settingsNav.billingPlan"),
+          href: `${base}/settings/billing`,
+          allowed: can(store, "settings.read"),
+        },
+        { label: t("settingsNav.api"), href: `${base}/settings/developer`, allowed: can(store, "apps.install") },
+        { label: t("settingsNav.sso"), href: `${base}/settings/sso`, allowed: can(store, "settings.read") },
+        {
+          label: t("settingsNav.shipping"),
+          href: `${base}/settings/shipping`,
+          allowed: can(store, "shipping.read"),
+        },
+        { label: t("settingsNav.taxes"), href: `${base}/settings/taxes`, allowed: can(store, "taxes.read") },
+        {
+          label: t("settingsNav.payments"),
           href: `${base}/settings/payment-methods`,
           allowed: can(store, "payments.read"),
         },
-        { label: "Custom data", href: `${base}/settings/metafields`, allowed: can(store, "settings.read") },
-        { label: "Files", href: `${base}/settings/files`, allowed: can(store, "products.read") },
-        { label: "Activity log", href: `${base}/settings/audit`, allowed: can(store, "settings.read") },
+        {
+          label: t("settingsNav.customData"),
+          href: `${base}/settings/metafields`,
+          allowed: can(store, "settings.read"),
+        },
+        { label: t("settingsNav.files"), href: `${base}/settings/files`, allowed: can(store, "products.read") },
+        {
+          label: t("settingsNav.activityLog"),
+          href: `${base}/settings/audit`,
+          allowed: can(store, "settings.read"),
+        },
+        { label: t("settingsNav.adminLanguage"), href: "/account/language", allowed: true },
       ] as const
     )
       .filter((item) => item.allowed)
-      .map((item) => ({ label: item.label, href: item.href, group: "Settings" })),
+      .map((item) => ({ label: item.label, href: item.href, group: t("commandPalette.settingsGroup") })),
   ];
 
   const paletteSearchScope: PaletteSearchScope = {
@@ -219,7 +270,9 @@ export default async function StoreLayout({
           <StoreSwitcher stores={switcherStores} current={store.slug} />
         </div>
         <details className="px-2 pb-3">
-          <summary className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium">Menu</summary>
+          <summary className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium">
+            {t("sidebar.mobileMenu")}
+          </summary>
           <div className="pt-1">
             <SidebarNav items={items} />
           </div>
@@ -256,6 +309,7 @@ export default async function StoreLayout({
               navItems={paletteNavItems}
               searchScope={paletteSearchScope}
             />
+            <LanguageSwitcher />
             <NotificationBell storeId={store.id} />
             <LogoutButton />
           </div>

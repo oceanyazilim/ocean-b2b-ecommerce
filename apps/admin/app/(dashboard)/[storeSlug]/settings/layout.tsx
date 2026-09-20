@@ -65,6 +65,12 @@ export default async function SettingsLayout({
                     icon: "security",
                     exactMatch: true,
                   },
+                  {
+                    label: "Admin language",
+                    href: "/account/language",
+                    icon: "language",
+                    exactMatch: true,
+                  },
                 ],
               },
             ]}

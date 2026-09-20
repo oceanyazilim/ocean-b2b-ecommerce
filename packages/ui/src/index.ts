@@ -38,6 +38,7 @@ export {
   ImageIcon,
   InventoryIcon,
   KeyIcon,
+  LanguagesIcon,
   LayersIcon,
   LogoutIcon,
   MenuIcon,

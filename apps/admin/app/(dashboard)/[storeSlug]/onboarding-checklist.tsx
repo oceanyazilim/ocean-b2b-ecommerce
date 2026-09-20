@@ -2,28 +2,24 @@
 
 import { ONBOARDING_STEPS, type OnboardingStep, type StoreSummary } from "@ocean/types";
 import { Alert, Card, CardContent, CardDescription, CardHeader, CardTitle, cn } from "@ocean/ui";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { api, errorMessage } from "@/lib/api";
 
-const LABELS: Record<OnboardingStep, { title: string; description: string; href?: string }> = {
-  business_details: {
-    title: "Confirm business details",
-    description: "Store name, currency, language and time zone.",
-    href: "settings/general",
-  },
-  first_product: { title: "Add your first product", description: "Products arrive in Phase 2." },
-  payments: { title: "Set up payments", description: "Payment providers arrive in Phase 7." },
-  shipping: { title: "Configure shipping", description: "Shipping zones arrive in Phase 7." },
-  taxes: { title: "Configure taxes", description: "Tax rules arrive in Phase 7." },
-  domain: { title: "Connect a domain", description: "Custom domains arrive in Phase 8." },
-  theme: {
-    title: "Choose and customize a theme",
-    description: "Theme editor arrives in Phase 10.",
-  },
-  launch: { title: "Launch your store", description: "Make the storefront public." },
+// Maps each onboarding step to its translation key under dashboard.onboarding.steps
+// (locales/{en,tr}/dashboard.json) and, where relevant, the settings sub-page it deep-links to.
+const STEP_META: Record<OnboardingStep, { key: string; href?: string }> = {
+  business_details: { key: "businessDetails", href: "settings/general" },
+  first_product: { key: "firstProduct" },
+  payments: { key: "payments" },
+  shipping: { key: "shipping" },
+  taxes: { key: "taxes" },
+  domain: { key: "domain" },
+  theme: { key: "theme" },
+  launch: { key: "launch" },
 };
 
 export function OnboardingChecklist({
@@ -37,6 +33,7 @@ export function OnboardingChecklist({
   state: Record<string, boolean>;
   editable: boolean;
 }) {
+  const t = useTranslations("dashboard.onboarding");
   const router = useRouter();
   const [local, setLocal] = useState(state);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +68,9 @@ export function OnboardingChecklist({
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <CardTitle>Setup guide</CardTitle>
+            <CardTitle>{t("title")}</CardTitle>
             <CardDescription>
-              {done} of {ONBOARDING_STEPS.length} steps complete
+              {t("stepsComplete", { done, total: ONBOARDING_STEPS.length })}
             </CardDescription>
           </div>
           <span className="text-sm font-medium tabular-nums">{percent}%</span>
@@ -86,7 +83,7 @@ export function OnboardingChecklist({
         {error && <Alert variant="error">{error}</Alert>}
         <ul className="divide-y">
           {ONBOARDING_STEPS.map((step) => {
-            const meta = LABELS[step];
+            const meta = STEP_META[step];
             const checked = !!local[step];
             return (
               <li key={step} className="flex items-start gap-3 py-3">
@@ -105,16 +102,18 @@ export function OnboardingChecklist({
                       checked && "text-muted-foreground line-through",
                     )}
                   >
-                    {meta.title}
+                    {t(`steps.${meta.key}.title`)}
                   </span>
-                  <span className="text-xs text-muted-foreground">{meta.description}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t(`steps.${meta.key}.description`)}
+                  </span>
                 </label>
                 {meta.href && (
                   <Link
                     href={`/${storeSlug}/${meta.href}`}
                     className="text-xs font-medium text-primary hover:underline"
                   >
-                    Open
+                    {t("open")}
                   </Link>
                 )}
               </li>

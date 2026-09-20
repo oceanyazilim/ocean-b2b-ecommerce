@@ -1,0 +1,83 @@
+{
+  "sidebar": {
+    "groups": {
+      "orders": "Orders",
+      "products": "Products",
+      "customers": "Customers",
+      "b2b": "B2B",
+      "content": "Content",
+      "sales": "Sales",
+      "analytics": "Analytics"
+    },
+    "nav": {
+      "home": "Home",
+      "allOrders": "All orders",
+      "draftOrders": "Draft orders",
+      "allProducts": "All products",
+      "collections": "Collections",
+      "inventory": "Inventory",
+      "customers": "Customers",
+      "companies": "Companies",
+      "catalogs": "Catalogs",
+      "priceLists": "Price lists",
+      "quotes": "Quotes",
+      "pages": "Pages",
+      "blog": "Blog",
+      "menus": "Menus",
+      "onlineStore": "Online store",
+      "analytics": "Analytics"
+    },
+    "favorites": "Favorites",
+    "mobileMenu": "Menu",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "pinItem": "Pin {label}",
+    "unpinItem": "Unpin {label}",
+    "comingSoon": "Coming in a later phase"
+  },
+  "settingsNav": {
+    "general": "General",
+    "usersPermissions": "Users & permissions",
+    "billingPlan": "Billing & plan",
+    "api": "API",
+    "sso": "Single sign-on",
+    "shipping": "Shipping & delivery",
+    "taxes": "Taxes",
+    "payments": "Payments",
+    "customData": "Custom data",
+    "files": "Files",
+    "activityLog": "Activity log",
+    "adminLanguage": "Admin language"
+  },
+  "header": {
+    "viewingAs": "Viewing as <bold>{name}</bold> ({email}) — {reason}",
+    "endImpersonation": "End impersonation",
+    "switchStore": "Switch store"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications yet.",
+    "ariaLabel": "Notifications"
+  },
+  "commandPalette": {
+    "trigger": "Search…",
+    "ariaLabel": "Command palette",
+    "searchAriaLabel": "Command palette search",
+    "placeholder": "Search products, orders, customers, companies or jump to a page…",
+    "searching": "Searching…",
+    "noResults": "No results found.",
+    "noMatches": "No matches.",
+    "recent": "Recent",
+    "goTo": "Go to",
+    "groupProducts": "Products",
+    "groupOrders": "Orders",
+    "groupCustomers": "Customers",
+    "groupCompanies": "Companies",
+    "navigationGroup": "Navigation",
+    "settingsGroup": "Settings",
+    "navigate": "Navigate",
+    "select": "Select",
+    "close": "Close"
+  }
+}
