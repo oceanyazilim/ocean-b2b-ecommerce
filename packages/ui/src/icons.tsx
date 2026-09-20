@@ -10,14 +10,18 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  CreditCard,
+  Database,
   Eye,
   EyeOff,
   ExternalLink,
   FileText,
+  Folder,
   GripVertical,
   History,
   Home,
   Image as ImageLucide,
+  KeyRound,
   Layers,
   LayoutGrid,
   LogOut,
@@ -29,11 +33,13 @@ import {
   Palette,
   PanelLeft,
   Pencil,
+  Percent,
   Pin,
   Plus,
   Save,
   Search,
   Settings as SettingsLucide,
+  Shield,
   ShoppingBag,
   ShoppingCart,
   Smartphone,
@@ -42,9 +48,11 @@ import {
   Tablet,
   Tag,
   Trash2,
+  Truck,
   Type as TypeLucide,
   UploadCloud,
   User,
+  UserCog,
   Users,
   X,
   type LucideIcon,
@@ -117,3 +125,13 @@ export const TypeIcon = wrap(TypeLucide);
 export const ImageIcon = wrap(ImageLucide);
 export const ClickIcon = wrap(MousePointerClick);
 export const BlockIcon = wrap(SquareStack);
+
+// New in the Phase 6 (Settings / Users & permissions / Activity log) redesign.
+export const ShieldIcon = wrap(Shield);
+export const CreditCardIcon = wrap(CreditCard);
+export const TruckIcon = wrap(Truck);
+export const PercentIcon = wrap(Percent);
+export const DatabaseIcon = wrap(Database);
+export const KeyIcon = wrap(KeyRound);
+export const FolderIcon = wrap(Folder);
+export const UserCogIcon = wrap(UserCog);

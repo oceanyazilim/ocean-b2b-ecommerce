@@ -172,20 +172,20 @@ export default async function StoreLayout({
     ...(
       [
         { label: "General", href: `${base}/settings/general`, allowed: can(store, "settings.read") },
-        { label: "Team", href: `${base}/settings/team`, allowed: can(store, "users.manage") },
-        { label: "Billing", href: `${base}/settings/billing`, allowed: can(store, "settings.read") },
-        { label: "Developer", href: `${base}/settings/developer`, allowed: can(store, "apps.install") },
-        { label: "SSO", href: `${base}/settings/sso`, allowed: can(store, "settings.read") },
-        { label: "Shipping", href: `${base}/settings/shipping`, allowed: can(store, "shipping.read") },
+        { label: "Users & permissions", href: `${base}/settings/team`, allowed: can(store, "users.manage") },
+        { label: "Billing & plan", href: `${base}/settings/billing`, allowed: can(store, "settings.read") },
+        { label: "API", href: `${base}/settings/developer`, allowed: can(store, "apps.install") },
+        { label: "Single sign-on", href: `${base}/settings/sso`, allowed: can(store, "settings.read") },
+        { label: "Shipping & delivery", href: `${base}/settings/shipping`, allowed: can(store, "shipping.read") },
         { label: "Taxes", href: `${base}/settings/taxes`, allowed: can(store, "taxes.read") },
         {
-          label: "Payment methods",
+          label: "Payments",
           href: `${base}/settings/payment-methods`,
           allowed: can(store, "payments.read"),
         },
-        { label: "Metafields", href: `${base}/settings/metafields`, allowed: can(store, "settings.read") },
+        { label: "Custom data", href: `${base}/settings/metafields`, allowed: can(store, "settings.read") },
         { label: "Files", href: `${base}/settings/files`, allowed: can(store, "products.read") },
-        { label: "Audit log", href: `${base}/settings/audit`, allowed: can(store, "settings.read") },
+        { label: "Activity log", href: `${base}/settings/audit`, allowed: can(store, "settings.read") },
       ] as const
     )
       .filter((item) => item.allowed)

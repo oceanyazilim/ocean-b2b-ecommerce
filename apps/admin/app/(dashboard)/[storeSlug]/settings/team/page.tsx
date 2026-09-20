@@ -7,7 +7,7 @@ import { can, cookieHeader, findStore, requireMe } from "@/lib/session";
 
 import { TeamManager } from "./team-manager";
 
-export const metadata = { title: "Team · Ocean Admin" };
+export const metadata = { title: "Users & permissions · Ocean Admin" };
 
 export default async function TeamPage({ params }: { params: Promise<{ storeSlug: string }> }) {
   const { storeSlug } = await params;
