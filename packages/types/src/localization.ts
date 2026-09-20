@@ -116,9 +116,10 @@ export interface ProductTranslationListItem {
   productId: string;
   productTitle: string;
   productHandle: string;
-  // Coarse per-product status for the picked locale: "not_translated" if no field has a
-  // translation row yet, otherwise the least-advanced status among translated fields (draft <
-  // reviewed < published) so a merchant scanning the list sees what still needs attention.
+  // Coarse per-product status for the picked locale: the least-advanced status across the FULL
+  // set of translatable fields (see PRODUCT_TRANSLATABLE_FIELDS), where a field with no
+  // translation row at all counts as "not_translated" — worse than "draft" — so a product only
+  // partially translated (or with untouched fields) never reports as fully "published".
   status: TranslationStatus | "not_translated";
   translatedFieldCount: number;
   totalFieldCount: number;
@@ -173,6 +174,48 @@ export const SYSTEM_LABEL_REGISTRY: Record<string, string> = {
   "cart.view_cart": "View cart",
   "cart.title": "Your cart",
   "account.sign_in": "Sign in",
+
+  // Checkout chrome (spec section 45: "Checkout language should automatically follow storefront
+  // language. Translate: Contact, Delivery, Payment, Billing, Order summary, Errors,
+  // Validation.") — the labels, section headings and messages around checkout that aren't data
+  // from a CountryProfile or a product. Reuses this same registry/Translation mechanism instead
+  // of a separate hardcoded per-language dictionary, so a merchant who adds a new storefront
+  // language via the admin Languages screen gets checkout translated too, the same as every other
+  // page, with zero code changes. `{field}` in the two error templates is replaced with the
+  // specific field's own label at render time (e.g. "Postal code is required").
+  "checkout.cart_title": "Cart",
+  "checkout.loading_cart": "Loading your cart…",
+  "checkout.empty_cart": "Your cart is empty.",
+  "checkout.remove": "Remove",
+  "checkout.refresh_cart": "Refresh cart",
+  "checkout.subtotal": "Subtotal",
+  "checkout.shipping": "Shipping",
+  "checkout.tax": "Tax",
+  "checkout.total": "Total",
+  "checkout.contact_heading": "Contact",
+  "checkout.email": "Email",
+  "checkout.phone": "Phone",
+  "checkout.delivery_heading": "Delivery",
+  "checkout.country": "Country",
+  "checkout.select_country": "Select a country...",
+  "checkout.shipping_rate": "Shipping rate",
+  "checkout.choose_shipping_rate": "Choose a shipping rate",
+  "checkout.billing_heading": "Billing",
+  "checkout.billing_same_as_delivery": "Billing address same as delivery address",
+  "checkout.payment_heading": "Payment",
+  "checkout.payment_method": "Payment method",
+  "checkout.choose_payment_method": "Choose a payment method",
+  "checkout.order_summary_heading": "Order summary",
+  "checkout.place_order": "Place order",
+  "checkout.placing_order": "Placing order…",
+  "checkout.generic_error": "Something unexpected happened. Please try again.",
+  "checkout.retry": "Retry",
+  "checkout.error.required_field": "{field} is required",
+  "checkout.error.invalid_field": "{field} is not valid",
+  // Finding 1 fix: shown when the country-detail fetch fails or the selected country has no
+  // configured CountryProfile, so checkout blocks instead of silently submitting a null address.
+  "checkout.error.country_unavailable":
+    "We couldn't load delivery details for this country. Please try again or choose a different country.",
 };
 export type SystemLabelKey = keyof typeof SYSTEM_LABEL_REGISTRY;
 

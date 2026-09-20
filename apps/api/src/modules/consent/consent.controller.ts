@@ -53,7 +53,11 @@ export class ConsentController {
   @Get("records")
   @RequireStore("settings.read")
   listRecords(@CurrentTenant() tenant: TenantContext, @Query("limit") limit?: string) {
-    const parsed = limit ? Number.parseInt(limit, 10) : undefined;
-    return this.consent.listRecords(tenant, parsed && Number.isFinite(parsed) ? parsed : undefined);
+    // Note: no truthy `parsed &&` short-circuit here — an explicit `limit=0` parses to the
+    // falsy-but-valid number 0 and must be respected (zero records), not treated as "no limit
+    // given" and fall through to the service's default.
+    const parsed = limit === undefined ? undefined : Number.parseInt(limit, 10);
+    const validLimit = parsed !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+    return this.consent.listRecords(tenant, validLimit);
   }
 }

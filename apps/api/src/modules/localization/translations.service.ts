@@ -24,6 +24,13 @@ import { TranslationMemoryService } from "./translation-memory.service";
 type TranslationRow = Prisma.TranslationGetPayload<Record<string, never>>;
 
 const STATUS_RANK: Record<TranslationStatus, number> = { draft: 0, reviewed: 1, published: 2 };
+// A translatable field with no Translation row at all is worse than "draft" (it has never even
+// been started), so it must outrank every real status when computing the worst-of summary below.
+const NOT_TRANSLATED_RANK = -1;
+
+function fieldRank(status: TranslationStatus | "not_translated"): number {
+  return status === "not_translated" ? NOT_TRANSLATED_RANK : STATUS_RANK[status];
+}
 
 function toEntry(row: TranslationRow): TranslationEntry {
   return {
@@ -113,13 +120,17 @@ export class TranslationsService {
 
     return products.map((p): ProductTranslationListItem => {
       const rowsForProduct = byProduct.get(p.id) ?? [];
-      const status: TranslationStatus | "not_translated" =
-        rowsForProduct.length === 0
-          ? "not_translated"
-          : rowsForProduct.reduce<TranslationStatus>(
-              (worst, r) => (STATUS_RANK[r.status] < STATUS_RANK[worst] ? r.status : worst),
-              "published",
-            );
+      const byField = new Map(rowsForProduct.map((r) => [r.field, r.status]));
+      // Worst status across the FULL set of translatable fields for this entity type — a field
+      // with no row counts as "not_translated" (worse than draft), so a product that only has
+      // one of several fields translated (even if that one is published) never reports as fully
+      // "Published".
+      const status: TranslationStatus | "not_translated" = PRODUCT_TRANSLATABLE_FIELDS.reduce<
+        TranslationStatus | "not_translated"
+      >((worst, field) => {
+        const fieldStatus = byField.get(field) ?? "not_translated";
+        return fieldRank(fieldStatus) < fieldRank(worst) ? fieldStatus : worst;
+      }, "published");
       return {
         productId: p.id,
         productTitle: p.title,

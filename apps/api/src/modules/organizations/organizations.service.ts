@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { Organization, Prisma } from "@ocean/db";
+import type { Organization } from "@ocean/db";
 import type {
   BusinessAddressAnswers,
   BusinessProfileAnswers,
@@ -175,11 +175,15 @@ export class OrganizationsService {
     return toBusinessProfile(after);
   }
 
-  // Business verification (L5, spec section 30): recomputed from real data every time this is
-  // read — the business profile/address answers (L2) and this org's tax registrations (L3) — and
-  // the result is persisted back onto the Organization as a cache for anything else that wants to
-  // read the last-known status cheaply. See business-verification.ts for what each category
-  // checks and why identity/banking are always "not_collected".
+  // Business verification (L5, spec section 30): recomputed fresh from real data on every read —
+  // the business profile/address answers (L2) and this org's tax registrations (L3). The
+  // Organization.verification{Status,Categories,CheckedAt} columns exist for a future cheap-read
+  // consumer (an ops dashboard, an org list) but currently have zero readers anywhere in the repo,
+  // so this no longer writes them on every GET (that made a read endpoint perform a DB write on
+  // every call for a cache nothing consumes). Re-add the write, made conditional on the computed
+  // value actually changing, if/when a real consumer of those columns shows up. See
+  // business-verification.ts for what each category checks and why identity/banking are always
+  // "not_collected".
   async getBusinessVerification(tenant: TenantContext): Promise<OrganizationBusinessVerification> {
     const org = await this.repo.findById(tenant.organizationId);
     if (!org) throw new NotFoundError("Organization");
@@ -192,7 +196,7 @@ export class OrganizationsService {
       select: { countryCode: true, status: true },
     });
 
-    const result = computeBusinessVerification(
+    return computeBusinessVerification(
       {
         businessCountryCode: org.businessCountryCode,
         businessEntityType: org.businessEntityType,
@@ -202,13 +206,5 @@ export class OrganizationsService {
       country,
       taxRegistrations,
     );
-
-    await this.repo.update(tenant.organizationId, {
-      verificationStatus: result.status,
-      verificationCategories: result.categories as unknown as Prisma.InputJsonValue,
-      verificationCheckedAt: new Date(result.checkedAt),
-    });
-
-    return result;
   }
 }
