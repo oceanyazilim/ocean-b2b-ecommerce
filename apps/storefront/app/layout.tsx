@@ -3,10 +3,12 @@ import { headers } from "next/headers";
 import type { CSSProperties, ReactNode } from "react";
 
 import { CartProvider } from "@/components/cart-provider";
+import { ConsentBanner } from "@/components/consent-banner";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { LanguageBanner } from "@/components/language-banner";
 import { hexToHslTriplet } from "@/lib/color";
+import { getConsentRules } from "@/lib/consent";
 import { getActiveLocale, getSuggestedLocale } from "@/lib/locale";
 import { getTheme, listMenus, THEME_PREVIEW_HEADER } from "@/lib/storefront";
 
@@ -22,11 +24,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const host = requestHeaders.get("host") ?? "";
   const storeName = host.split(".")[0] || "Store";
   const isPreview = !!requestHeaders.get(THEME_PREVIEW_HEADER);
-  const [theme, menus, activeLocale, suggestedLocale] = await Promise.all([
+  const [theme, menus, activeLocale, suggestedLocale, consentRules] = await Promise.all([
     getTheme().catch(() => null),
     listMenus().catch(() => []),
     getActiveLocale(),
     getSuggestedLocale().catch(() => null),
+    getConsentRules(),
   ]);
   const dir = activeLocale.isRtl ? "rtl" : "ltr";
   const globalSettings = theme?.globalSettings ?? {};
@@ -64,6 +67,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <main className="flex-1">{children}</main>
           <Footer storeName={storeName} />
         </CartProvider>
+        {consentRules && !consentRules.current && (
+          <ConsentBanner categories={consentRules.categories} optInRequired={consentRules.optInRequired} />
+        )}
       </body>
     </html>
   );

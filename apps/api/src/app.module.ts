@@ -54,6 +54,8 @@ import { SupportModule } from "./modules/support/support.module";
 import { PlatformModule } from "./modules/platform/platform.module";
 import { CountriesModule } from "./modules/countries/countries.module";
 import { LocalizationModule } from "./modules/localization/localization.module";
+import { LegalModule } from "./modules/legal/legal.module";
+import { ConsentModule } from "./modules/consent/consent.module";
 
 // Domain modules are registered flat and talk to each other only through exported services.
 // Guard order: SessionGuard (who) → PermissionGuard (which tenant, which permission).
@@ -111,6 +113,8 @@ import { LocalizationModule } from "./modules/localization/localization.module";
     PlatformModule,
     CountriesModule,
     LocalizationModule,
+    LegalModule,
+    ConsentModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: SessionGuard },

@@ -5,6 +5,7 @@ import type {
   CountryProfileSummary,
   MenuSummary,
   PageInfo,
+  PageSummary,
   PaymentMethodSummary,
   ResolvedTheme,
   StorefrontArticleDetail,
@@ -90,6 +91,13 @@ export async function getCollection(handle: string): Promise<StorefrontCollectio
   } catch {
     return null;
   }
+}
+
+// Published pages, including which ones fulfill a market's legal-content requirement (spec
+// section 46) — the footer uses this to render real legal links rather than a hardcoded list.
+export async function listPages(): Promise<PageSummary[]> {
+  const res = await storefrontFetch<{ data: PageSummary[] }>("/pages");
+  return res.data;
 }
 
 export async function getPage(handle: string): Promise<StorefrontPageDetail | null> {

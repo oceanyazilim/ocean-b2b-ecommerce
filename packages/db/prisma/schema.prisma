@@ -278,6 +278,8 @@ model Organization {
   ssoConnection         SsoConnection?
   invoiceSettings       InvoiceSettings[]
   eInvoiceConnections   EInvoiceProviderConnection[]
+  trackingScripts       TrackingScript[]
+  consentRecords        ConsentRecord[]
 
   @@map("organizations")
 }
@@ -410,6 +412,8 @@ model Store {
   impersonationSessions ImpersonationSession[]
   invoiceSettings       InvoiceSettings?
   eInvoiceConnections   EInvoiceProviderConnection[]
+  trackingScripts       TrackingScript[]
+  consentRecords        ConsentRecord[]
 
   @@index([organizationId])
   @@map("stores")
@@ -1107,16 +1111,17 @@ model Customer {
   createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  store        Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  addresses    CustomerAddress[]
-  companyUsers CompanyUser[]
-  applications CompanyApplication[]
-  carts        Cart[]
-  orders       Order[]
-  draftOrders  DraftOrder[]
-  quotes       Quote[]
-  savedLists   SavedList[]
+  store          Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  addresses      CustomerAddress[]
+  companyUsers   CompanyUser[]
+  applications   CompanyApplication[]
+  carts          Cart[]
+  orders         Order[]
+  draftOrders    DraftOrder[]
+  quotes         Quote[]
+  savedLists     SavedList[]
+  consentRecords ConsentRecord[]
 
   // Partial unique index on (store_id, email) WHERE deleted_at IS NULL lives in the migration.
   @@index([storeId, createdAt(sort: Desc)])
@@ -2496,20 +2501,27 @@ enum PageStatus {
 }
 
 model Page {
-  id             String     @id @default(uuid()) @db.Uuid
-  storeId        String     @map("store_id") @db.Uuid
-  organizationId String     @map("organization_id") @db.Uuid
-  title          String
-  handle         String
-  bodyRich       Json       @default("{}") @map("body_rich")
-  seoTitle       String?    @map("seo_title")
-  seoDescription String?    @map("seo_description")
-  templateSuffix String?    @map("template_suffix")
-  status         PageStatus @default(draft)
-  publishedAt    DateTime?  @map("published_at") @db.Timestamptz(6)
-  createdById    String     @map("created_by_id") @db.Uuid
-  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String     @id @default(uuid()) @db.Uuid
+  storeId              String     @map("store_id") @db.Uuid
+  organizationId       String     @map("organization_id") @db.Uuid
+  title                String
+  handle               String
+  bodyRich             Json       @default("{}") @map("body_rich")
+  seoTitle             String?    @map("seo_title")
+  seoDescription       String?    @map("seo_description")
+  templateSuffix       String?    @map("template_suffix")
+  status               PageStatus @default(draft)
+  publishedAt          DateTime?  @map("published_at") @db.Timestamptz(6)
+  // L6 Global Localization (spec section 46): when this Page fulfills a market's local legal
+  // content requirement (e.g. "impressum", "kvkk_aydinlatma_metni" — see LegalPageRequirement.code
+  // for that country), the matching requirement code, so the Legal admin screen can show
+  // created/missing status per market without a parallel content system. Null for an ordinary
+  // (non-legal) page. Loose string reference, not a FK — same "soft reference" convention as
+  // Market.defaultLanguage/MenuItem.resourceId elsewhere in this schema.
+  legalRequirementCode String?    @map("legal_requirement_code")
+  createdById          String     @map("created_by_id") @db.Uuid
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2517,6 +2529,7 @@ model Page {
 
   @@unique([storeId, handle])
   @@index([storeId, status])
+  @@index([storeId, legalRequirementCode])
   @@map("pages")
 }
 
@@ -3648,6 +3661,14 @@ model CountryProfile {
   // required/inputType/validationRegex/placeholder/visibilityRules (entity-type dependency).
   businessProfileSchema Json @map("business_profile_schema") @db.JsonB
 
+  // L6 Global Localization (spec section 47, "market rules"): whether a first-time visitor whose
+  // market resolves to this country must see every non-necessary cookie category defaulted to
+  // OFF until they actively opt in (true — the GDPR/KVKK-style rule, e.g. DE/GB/TR), versus a
+  // market with no such requirement where non-necessary categories may default to ON until the
+  // visitor opts out (false, e.g. US). A single boolean the consent banner reads generically —
+  // never a per-country branch in banner code.
+  consentOptInRequired Boolean @default(true) @map("consent_opt_in_required")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -3656,4 +3677,108 @@ model CountryProfile {
 
   @@index([isActive])
   @@map("country_profiles")
+}
+
+// ---------------------------------------------------------------------------
+// L6 Global Localization: market-specific legal content (spec section 46)
+// ---------------------------------------------------------------------------
+
+// Platform-owned catalog (no tenant column — same convention as CountryProfile itself): which
+// legal page TYPES a given country conventionally needs, e.g. Germany needs "impressum" /
+// "datenschutz" / "widerrufsbelehrung", Turkey needs "mesafeli_satis_sozlesmesi" /
+// "on_bilgilendirme_formu" / "kvkk_aydinlatma_metni". Purely data — adding a country or revising
+// what it requires is a seed change, never a code branch. A store fulfills a requirement by
+// creating a real Page (see Page.legalRequirementCode) tagged with this row's `code`.
+model LegalPageRequirement {
+  id          String   @id @default(uuid()) @db.Uuid
+  countryCode String   @map("country_code") @db.VarChar(2) // ISO 3166-1 alpha-2, loose reference to CountryProfile.countryCode
+  code        String // stable machine key, e.g. "impressum", "kvkk_aydinlatma_metni"
+  label       String // display label, e.g. "Impressum"
+  description String?
+  // Some countries' conventional legal pages are near-universally mandatory (e.g. DE Impressum);
+  // others are strongly recommended but not strictly required for every store shape. Surfaced as
+  // "Required" vs "Recommended" on the admin Legal screen.
+  isRequired  Boolean  @default(true) @map("is_required")
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([countryCode, code])
+  @@index([countryCode])
+  @@map("legal_page_requirements")
+}
+
+// ---------------------------------------------------------------------------
+// L6 Global Localization: cookie & privacy consent framework (spec section 47)
+// ---------------------------------------------------------------------------
+
+// Fixed taxonomy the spec names verbatim as "reasonable defaults" (Necessary/Functional/
+// Analytics/Marketing) — Necessary is never toggleable by a visitor. Used to tag TrackingScript
+// rows; the actual per-category grant/deny choice a visitor makes lives on ConsentRecord as
+// explicit booleans (typed columns, not JSON, since the set is small and fixed).
+enum ConsentCategory {
+  necessary
+  functional
+  analytics
+  marketing
+}
+
+// A merchant-configured record of a third-party script/tag they use (analytics pixel, ad
+// retargeting tag, chat widget, etc.), tagged with the cookie category it belongs to. Scope of
+// this pass (see spec section 47's "third-party script controls"): this is a real, persisted
+// configuration list plus a correctly computed "is this category consented" signal the merchant
+// can wire their own script loader to — NOT a dynamic <script> injection/blocking engine, which
+// would be overengineering for this phase. See ConsentService.isCategoryAllowed for the
+// documented integration point.
+model TrackingScript {
+  id             String          @id @default(uuid()) @db.Uuid
+  storeId        String          @map("store_id") @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  name           String
+  provider       String?
+  category       ConsentCategory
+  // Optional reference snippet/id (e.g. a GA4 measurement id) — stored for the merchant's own
+  // record and for a future loader integration to read; never executed/injected by this system.
+  snippet        String?         @db.Text
+  isEnabled      Boolean         @default(true) @map("is_enabled")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, name])
+  @@index([storeId, category])
+  @@map("tracking_scripts")
+}
+
+// Consent logging (spec section 47): one row per consent decision a visitor makes at the banner
+// (accept all / reject all / customize), keyed by an anonymous per-store visitor cookie (see
+// storefront-consent.controller.ts) and optionally linked to a signed-in customer. The market/
+// country context recorded alongside is what determined which opt-in/opt-out rule the banner
+// applied when it was shown.
+model ConsentRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  visitorId      String   @map("visitor_id")
+  customerId     String?  @map("customer_id") @db.Uuid
+  countryCode    String?  @map("country_code") @db.VarChar(2)
+  marketId       String?  @map("market_id") @db.Uuid
+  necessary      Boolean  @default(true)
+  functional     Boolean  @default(false)
+  analytics      Boolean  @default(false)
+  marketing      Boolean  @default(false)
+  // "accept_all" | "reject_all" | "customize" — how the visitor arrived at these values.
+  source         String
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, visitorId, createdAt(sort: Desc)])
+  @@index([storeId, customerId])
+  @@map("consent_records")
 }

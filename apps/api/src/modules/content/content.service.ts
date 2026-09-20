@@ -60,6 +60,7 @@ export class ContentService {
       handle: row.handle,
       status: row.status,
       publishedAt: row.publishedAt?.toISOString() ?? null,
+      legalRequirementCode: row.legalRequirementCode,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
@@ -112,6 +113,7 @@ export class ContentService {
           templateSuffix: input.templateSuffix,
           status: input.status,
           publishedAt: input.status === "published" ? new Date() : null,
+          legalRequirementCode: input.legalRequirementCode ?? null,
           createdById: ctx.actor.id,
         },
       })
@@ -153,6 +155,7 @@ export class ContentService {
     if (input.seoTitle !== undefined) data.seoTitle = input.seoTitle;
     if (input.seoDescription !== undefined) data.seoDescription = input.seoDescription;
     if (input.templateSuffix !== undefined) data.templateSuffix = input.templateSuffix;
+    if (input.legalRequirementCode !== undefined) data.legalRequirementCode = input.legalRequirementCode;
     if (input.status !== undefined) {
       data.status = input.status;
       if (input.status === "published" && current.status !== "published" && !current.publishedAt) {

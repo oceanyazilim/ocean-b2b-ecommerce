@@ -14,6 +14,10 @@ export const pageInputSchema = z.object({
   seoDescription: z.string().trim().max(320).nullable().optional(),
   templateSuffix: z.string().trim().max(255).nullable().optional(),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
+  // L6 Global Localization (spec section 46): set when this Page fulfills a market's local legal
+  // content requirement — see LegalPageRequirement.code for that country. Null/omitted for an
+  // ordinary page.
+  legalRequirementCode: z.string().trim().min(1).max(120).nullable().optional(),
 });
 export type PageInput = z.infer<typeof pageInputSchema>;
 
@@ -31,6 +35,7 @@ export interface PageSummary {
   handle: string;
   status: "draft" | "published" | "archived";
   publishedAt: string | null;
+  legalRequirementCode: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -29,11 +29,13 @@ export function StorefrontShell({
           { label: "Markets", href: base, exact: true },
           { label: "Domains", href: `${base}/domains` },
           { label: "Pages", href: `${base}/pages` },
+          { label: "Legal", href: `${base}/legal` },
           { label: "Blogs", href: `${base}/blogs` },
           { label: "Menus", href: `${base}/menus` },
           { label: "Themes", href: `${base}/themes` },
           { label: "Languages", href: `${base}/languages` },
           { label: "Translations", href: `${base}/translations` },
+          { label: "Consent", href: `${base}/consent` },
         ]}
       />
       {children}

@@ -2,12 +2,14 @@ import { Module } from "@nestjs/common";
 
 import { CatalogsModule } from "../catalogs/catalogs.module";
 import { CompaniesModule } from "../companies/companies.module";
+import { ConsentModule } from "../consent/consent.module";
 import { ContentModule } from "../content/content.module";
 import { CountriesModule } from "../countries/countries.module";
 import { CreditModule } from "../credit/credit.module";
 import { CustomersModule } from "../customers/customers.module";
 import { FinanceModule } from "../finance/finance.module";
 import { InventoryModule } from "../inventory/inventory.module";
+import { LegalModule } from "../legal/legal.module";
 import { LocalizationModule } from "../localization/localization.module";
 import { MarketsModule } from "../markets/markets.module";
 import { OrdersModule } from "../orders/orders.module";
@@ -22,6 +24,7 @@ import { CustomerAuthController } from "./customer-auth.controller";
 import { CustomerAuthService } from "./customer-auth.service";
 import { StorefrontCartController } from "./storefront-cart.controller";
 import { StorefrontCatalogService } from "./storefront-catalog.service";
+import { StorefrontConsentController } from "./storefront-consent.controller";
 import { StorefrontController } from "./storefront.controller";
 
 @Module({
@@ -42,11 +45,14 @@ import { StorefrontController } from "./storefront.controller";
     CreditModule,
     CompaniesModule,
     CustomersModule,
+    LegalModule,
+    ConsentModule,
   ],
   controllers: [
     StorefrontController,
     CustomerAuthController,
     StorefrontCartController,
+    StorefrontConsentController,
     AccountController,
   ],
   providers: [StorefrontCatalogService, CustomerAuthService, AccountService],

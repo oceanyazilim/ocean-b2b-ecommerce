@@ -291,6 +291,9 @@ const COUNTRY_PROFILES = [
     countryCode: "TR",
     name: "Türkiye",
     isActive: true,
+    // L6 Global Localization (spec section 47, "market rules"): KVKK is opt-in-style, same as
+    // GDPR — non-necessary cookie categories must default to off until the visitor opts in.
+    consentOptInRequired: true,
     version: "2026.09",
     supportedCurrencies: ["TRY"],
     supportedLanguages: ["tr", "en"],
@@ -379,6 +382,9 @@ const COUNTRY_PROFILES = [
     countryCode: "US",
     name: "United States",
     isActive: true,
+    // L6 Global Localization: no federal opt-in-by-default mandate (CCPA/state laws are
+    // opt-out-style) — non-necessary categories may default to on until the visitor opts out.
+    consentOptInRequired: false,
     version: "2026.09",
     supportedCurrencies: ["USD"],
     supportedLanguages: ["en", "es"],
@@ -459,6 +465,8 @@ const COUNTRY_PROFILES = [
     countryCode: "GB",
     name: "United Kingdom",
     isActive: true,
+    // L6 Global Localization: UK GDPR/PECR — same opt-in-required rule as EU markets.
+    consentOptInRequired: true,
     version: "2026.09",
     supportedCurrencies: ["GBP"],
     supportedLanguages: ["en"],
@@ -538,6 +546,8 @@ const COUNTRY_PROFILES = [
     countryCode: "DE",
     name: "Germany",
     isActive: true,
+    // L6 Global Localization: GDPR — opt-in required for non-necessary categories.
+    consentOptInRequired: true,
     version: "2026.09",
     supportedCurrencies: ["EUR"],
     supportedLanguages: ["de", "en"],
@@ -626,6 +636,125 @@ const COUNTRY_PROFILES = [
   },
 ] as const;
 
+// L6 Global Localization (spec section 46): which legal page TYPES each country conventionally
+// needs — real seeded data, never a hardcoded UI branch. Germany: Impressum/Datenschutz/
+// Widerrufsbelehrung. Turkey: Mesafeli Satış Sözleşmesi/Ön Bilgilendirme Formu/KVKK Aydınlatma
+// Metni. US/GB: the closest general-commerce equivalents for those markets. A store fulfills a
+// requirement by creating a real Page tagged with the matching `code`.
+const LEGAL_PAGE_REQUIREMENTS = [
+  {
+    countryCode: "DE",
+    code: "impressum",
+    label: "Impressum",
+    description: "Legally required site ownership/operator disclosure (§5 TMG).",
+    isRequired: true,
+    position: 0,
+  },
+  {
+    countryCode: "DE",
+    code: "datenschutz",
+    label: "Datenschutzerklärung",
+    description: "GDPR-mandated privacy policy describing what data is collected and why.",
+    isRequired: true,
+    position: 1,
+  },
+  {
+    countryCode: "DE",
+    code: "widerrufsbelehrung",
+    label: "Widerrufsbelehrung",
+    description: "Right-of-withdrawal notice required for distance/online sales to consumers.",
+    isRequired: true,
+    position: 2,
+  },
+  {
+    countryCode: "TR",
+    code: "mesafeli_satis_sozlesmesi",
+    label: "Mesafeli Satış Sözleşmesi",
+    description: "Distance sales agreement required for every online order under Turkish consumer law.",
+    isRequired: true,
+    position: 0,
+  },
+  {
+    countryCode: "TR",
+    code: "on_bilgilendirme_formu",
+    label: "Ön Bilgilendirme Formu",
+    description: "Pre-contractual information form the buyer must see before completing a distance sale.",
+    isRequired: true,
+    position: 1,
+  },
+  {
+    countryCode: "TR",
+    code: "kvkk_aydinlatma_metni",
+    label: "KVKK Aydınlatma Metni",
+    description: "KVKK (Turkish data protection law) disclosure on how personal data is processed.",
+    isRequired: true,
+    position: 2,
+  },
+  {
+    countryCode: "GB",
+    code: "privacy_policy",
+    label: "Privacy Policy",
+    description: "UK GDPR-mandated privacy policy describing what data is collected and why.",
+    isRequired: true,
+    position: 0,
+  },
+  {
+    countryCode: "GB",
+    code: "terms_of_service",
+    label: "Terms of Service",
+    description: "Terms governing use of the storefront and sales contract.",
+    isRequired: true,
+    position: 1,
+  },
+  {
+    countryCode: "GB",
+    code: "cookie_policy",
+    label: "Cookie Policy",
+    description: "Explains the cookie categories used and how visitors can control consent.",
+    isRequired: false,
+    position: 2,
+  },
+  {
+    countryCode: "US",
+    code: "privacy_policy",
+    label: "Privacy Policy",
+    description: "Discloses what personal information is collected and how it's used (state privacy laws, e.g. CCPA).",
+    isRequired: true,
+    position: 0,
+  },
+  {
+    countryCode: "US",
+    code: "terms_of_service",
+    label: "Terms of Service",
+    description: "Terms governing use of the storefront and sales contract.",
+    isRequired: true,
+    position: 1,
+  },
+  {
+    countryCode: "US",
+    code: "return_policy",
+    label: "Return Policy",
+    description: "Store's return/refund policy — strongly recommended, not federally mandated.",
+    isRequired: false,
+    position: 2,
+  },
+] as const;
+
+async function seedLegalPageRequirements(): Promise<void> {
+  for (const req of LEGAL_PAGE_REQUIREMENTS) {
+    await prisma.legalPageRequirement.upsert({
+      where: { countryCode_code: { countryCode: req.countryCode, code: req.code } },
+      update: {
+        label: req.label,
+        description: req.description,
+        isRequired: req.isRequired,
+        position: req.position,
+      },
+      create: { ...req },
+    });
+  }
+}
+
 async function seedCountryProfiles(): Promise<void> {
   for (const profile of COUNTRY_PROFILES) {
     const { countryCode, ...data } = profile;
@@ -663,6 +792,7 @@ async function main(): Promise<void> {
   await seedThemes();
   await seedBilling();
   await seedCountryProfiles();
+  await seedLegalPageRequirements();
   await seedPlatformOperator();
 
   const passwordHash = await hash(DEMO_PASSWORD, {

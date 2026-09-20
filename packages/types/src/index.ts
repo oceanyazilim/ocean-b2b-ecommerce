@@ -39,3 +39,4 @@ export * from "./sso";
 export * from "./platform";
 export * from "./countries";
 export * from "./invoicing";
+export * from "./legal-consent";
