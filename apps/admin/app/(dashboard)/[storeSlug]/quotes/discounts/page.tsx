@@ -14,7 +14,11 @@ export default async function DiscountsPage({ params }: { params: Promise<{ stor
   return (
     <QuotesShell storeSlug={store.slug}>
       {can(store, "discounts.read") ? (
-        <DiscountsManager storeId={store.id} canWrite={can(store, "discounts.write")} />
+        <DiscountsManager
+          storeId={store.id}
+          currency={store.defaultCurrency}
+          canWrite={can(store, "discounts.write")}
+        />
       ) : (
         <Alert variant="warning">Your role cannot view discounts.</Alert>
       )}
