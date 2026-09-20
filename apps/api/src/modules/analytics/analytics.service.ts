@@ -210,12 +210,13 @@ export class AnalyticsService {
     }
     for (const market of activeMarkets) codes.add(market.countryCode.toUpperCase());
 
-    const options: MarketFilterOption[] = await Promise.all(
-      [...codes].map(async (code) => {
-        const profile = await this.countries.getCountryProfile(code);
-        return { countryCode: code, countryName: profile?.name ?? code, orderCount: orderCounts.get(code) ?? 0 };
-      }),
-    );
+    const profiles = await this.countries.getCountryProfiles([...codes]);
+    const profileByCode = new Map(profiles.map((p) => [p.countryCode, p]));
+    const options: MarketFilterOption[] = [...codes].map((code) => ({
+      countryCode: code,
+      countryName: profileByCode.get(code)?.name ?? code,
+      orderCount: orderCounts.get(code) ?? 0,
+    }));
     options.sort((a, b) => a.countryName.localeCompare(b.countryName));
 
     const euCodes = [...codes].filter((c) => (EU_COUNTRY_CODES as readonly string[]).includes(c));
@@ -285,19 +286,22 @@ export class AnalyticsService {
       }),
     ]);
 
-    const byCountry: CountrySalesRow[] = await Promise.all(
-      countryRows.map(async (r) => {
-        const code = r.country_code?.toUpperCase() ?? null;
-        const profile = code ? await this.countries.getCountryProfile(code) : null;
-        return {
-          countryCode: code ?? "unknown",
-          countryName: code ? (profile?.name ?? code) : "Unknown",
-          orderCount: Number(r.orders),
-          revenue: toMoney(r.revenue ?? 0n, currency),
-          taxCollected: toMoney(r.tax ?? 0n, currency),
-        };
-      }),
-    );
+    const countryReportCodes = countryRows
+      .map((r) => r.country_code?.toUpperCase())
+      .filter((code): code is string => !!code);
+    const countryReportProfiles = await this.countries.getCountryProfiles(countryReportCodes);
+    const countryReportProfileByCode = new Map(countryReportProfiles.map((p) => [p.countryCode, p]));
+    const byCountry: CountrySalesRow[] = countryRows.map((r) => {
+      const code = r.country_code?.toUpperCase() ?? null;
+      const profile = code ? countryReportProfileByCode.get(code) : null;
+      return {
+        countryCode: code ?? "unknown",
+        countryName: code ? (profile?.name ?? code) : "Unknown",
+        orderCount: Number(r.orders),
+        revenue: toMoney(r.revenue ?? 0n, currency),
+        taxCollected: toMoney(r.tax ?? 0n, currency),
+      };
+    });
 
     const byCurrency: CurrencyRevenueRow[] = currencyRows.map((r) => ({
       currency: r.currency,

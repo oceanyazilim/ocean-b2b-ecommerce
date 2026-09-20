@@ -116,8 +116,14 @@ export class ManualTaxProvider implements TaxProvider {
     const format = match ?? formats[0];
     if (!format) return { valid: true, formatLabel: null };
     const trimmed = taxId.trim();
-    const valid = format.regex ? new RegExp(format.regex).test(trimmed) : trimmed.length > 0;
-    return { valid, formatLabel: format.label };
+    if (!format.regex) return { valid: trimmed.length > 0, formatLabel: format.label };
+    // format.regex is admin-configured, unvalidated data (Platform Admin Countries screen) — the
+    // same class of input business-profile-validation.ts and metafields/validation.ts already
+    // guard with a try/catch'd RegExp construction. A malformed pattern here must fail this one
+    // tax-ID check gracefully, not throw a SyntaxError into an unhandled 500 for the whole request.
+    const regex = safeRegex(format.regex);
+    if (!regex) return { valid: false, formatLabel: format.label };
+    return { valid: regex.test(trimmed), formatLabel: format.label };
   }
 
   // The same most-specific-rule lookup the real calculator uses, exposed standalone (spec
@@ -157,5 +163,16 @@ export class ManualTaxProvider implements TaxProvider {
       orderBy: [{ countryCode: "asc" }],
     });
     return rows;
+  }
+}
+
+// Same safe-construction pattern used elsewhere for admin-configured regex strings (see
+// organizations/business-profile-validation.ts and catalog/metafields/validation.ts): a
+// malformed pattern returns null instead of throwing a SyntaxError.
+function safeRegex(pattern: string): RegExp | null {
+  try {
+    return new RegExp(pattern);
+  } catch {
+    return null;
   }
 }

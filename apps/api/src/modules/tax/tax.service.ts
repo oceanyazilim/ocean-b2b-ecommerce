@@ -233,6 +233,13 @@ export class TaxService {
     };
   }
 
+  private terminologyFrom(profile: { name: string; taxTerminology: unknown } | undefined) {
+    return {
+      countryName: profile?.name ?? null,
+      taxTerminology: (profile?.taxTerminology as TaxTerminology | undefined) ?? null,
+    };
+  }
+
   private toRegistrationSummary(
     row: RegistrationRow,
     resolved: { countryName: string | null; taxTerminology: TaxTerminology | null },
@@ -260,8 +267,10 @@ export class TaxService {
       orderBy: [{ countryCode: "asc" }, { createdAt: "asc" }],
     });
     const codes = [...new Set(rows.map((r) => r.countryCode))];
+    const profiles = await this.countries.getCountryProfiles(codes);
+    const profileByCode = new Map(profiles.map((p) => [p.countryCode, p]));
     const resolved = new Map(
-      await Promise.all(codes.map(async (code) => [code, await this.terminologyFor(code)] as const)),
+      codes.map((code) => [code, this.terminologyFrom(profileByCode.get(code.toUpperCase()))] as const),
     );
     const groups = new Map<string, TaxRegistrationCountryGroup>();
     for (const row of rows) {
@@ -607,12 +616,12 @@ export class TaxService {
     ]);
 
     const missing = [...sellingCountries.entries()].filter(([code]) => !configured.has(code));
-    const warnings = await Promise.all(
-      missing.map(async ([countryCode, source]) => {
-        const profile = await this.countries.getCountryProfile(countryCode);
-        return { countryCode, countryName: profile?.name ?? countryCode, source } satisfies TaxMarketWarning;
-      }),
-    );
+    const missingProfiles = await this.countries.getCountryProfiles(missing.map(([code]) => code));
+    const missingProfileByCode = new Map(missingProfiles.map((p) => [p.countryCode, p]));
+    const warnings = missing.map(([countryCode, source]) => {
+      const profile = missingProfileByCode.get(countryCode.toUpperCase());
+      return { countryCode, countryName: profile?.name ?? countryCode, source } satisfies TaxMarketWarning;
+    });
     return warnings.sort((a, b) => a.countryName.localeCompare(b.countryName));
   }
 }

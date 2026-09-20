@@ -74,6 +74,19 @@ export class CountryProfilesService {
     return row ? toDetail(row) : null;
   }
 
+  // Batched form of getCountryProfile for callers that need N countries' worth of data at once
+  // (tax registrations grouped by country, market/analytics country breakdowns, ...) — a single
+  // `WHERE country_code IN (...)` instead of one round trip per country, which is the difference
+  // between a page load that's DB-latency-bound by 1 query and one that's bound by N. Keyed
+  // lookup is left to the caller (build a Map from `.countryCode`) since callers want different
+  // key shapes (some also need a `null`/unmatched fallback).
+  async getCountryProfiles(countryCodes: string[]): Promise<CountryProfileDetail[]> {
+    const codes = [...new Set(countryCodes.map((c) => c.trim().toUpperCase()).filter(Boolean))];
+    if (codes.length === 0) return [];
+    const rows = await this.prisma.countryProfile.findMany({ where: { countryCode: { in: codes } } });
+    return rows.map(toDetail);
+  }
+
   // HTTP-facing wrapper: same lookup, but 404s instead of returning null, for the merchant-facing
   // read endpoint (onboarding forms need to know a code is invalid, not silently render nothing).
   async getByCode(countryCode: string): Promise<CountryProfileDetail> {
