@@ -23,6 +23,7 @@ import { StorefrontGuard } from "../../common/tenant/storefront.guard";
 import type { TenantContext } from "../../common/tenant/tenant-context";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { ContentService } from "../content/content.service";
+import { CountryProfilesService } from "../countries/countries.service";
 import { StoreLanguagesService } from "../localization/store-languages.service";
 import { TranslationsService } from "../localization/translations.service";
 import { MarketsService } from "../markets/markets.service";
@@ -42,6 +43,7 @@ export class StorefrontController {
     private readonly paymentMethods: PaymentMethodsService,
     private readonly storeLanguages: StoreLanguagesService,
     private readonly translations: TranslationsService,
+    private readonly countries: CountryProfilesService,
   ) {}
 
   @Get("products")
@@ -203,6 +205,21 @@ export class StorefrontController {
     const theme = await this.themes.resolvePreviewTheme(token);
     if (!theme) throw new NotFoundError("Preview");
     return theme;
+  }
+
+  // Checkout localization (spec section 44): the same CountryProfile catalog the merchant
+  // onboarding form (L2) reads from, exposed here so the storefront checkout can render a
+  // genuinely per-country shipping/billing address form instead of a hardcoded field list. No
+  // tenant scoping needed — this is the platform-wide country catalog, same as GET /countries in
+  // the admin API.
+  @Get("countries")
+  listCountries() {
+    return this.countries.listActive();
+  }
+
+  @Get("countries/:countryCode")
+  getCountry(@Param("countryCode") countryCode: string) {
+    return this.countries.getByCode(countryCode);
   }
 
   @Get("payment-methods")

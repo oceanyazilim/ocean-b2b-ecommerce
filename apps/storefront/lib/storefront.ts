@@ -1,6 +1,8 @@
 import "server-only";
 
 import type {
+  CountryProfileDetail,
+  CountryProfileSummary,
   MenuSummary,
   PageInfo,
   PaymentMethodSummary,
@@ -140,4 +142,22 @@ export async function listMenus(): Promise<MenuSummary[]> {
 export async function listPaymentMethods(): Promise<PaymentMethodSummary[]> {
   const res = await storefrontFetch<{ data: PaymentMethodSummary[] }>("/payment-methods");
   return res.data;
+}
+
+// Country-specific checkout (spec section 44): the same CountryProfile catalog the merchant
+// onboarding form (L2) reads from — see GET /storefront/v1/countries.
+export async function listCountries(): Promise<CountryProfileSummary[]> {
+  const res = await storefrontFetch<{ data: CountryProfileSummary[] }>("/countries");
+  return res.data;
+}
+
+export async function getCountry(countryCode: string): Promise<CountryProfileDetail | null> {
+  try {
+    const res = await storefrontFetch<{ data: CountryProfileDetail }>(
+      `/countries/${encodeURIComponent(countryCode)}`,
+    );
+    return res.data;
+  } catch {
+    return null;
+  }
 }

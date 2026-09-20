@@ -76,6 +76,14 @@ export class OrganizationsController {
     return this.organizations.updateBusinessProfile(tenant, body, meta);
   }
 
+  // Business verification (spec section 30): read-only completeness view, same permission as
+  // reading the organization — nothing here is ever written directly by a client.
+  @Get(":organizationId/business-verification")
+  @RequireOrganization("organization.read")
+  getBusinessVerification(@CurrentTenant() tenant: TenantContext) {
+    return this.organizations.getBusinessVerification(tenant);
+  }
+
   @Get(":organizationId/stores")
   @RequireOrganization("organization.read")
   listStores(@CurrentTenant() tenant: TenantContext) {

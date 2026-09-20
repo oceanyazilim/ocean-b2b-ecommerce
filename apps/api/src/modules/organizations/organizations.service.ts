@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import type { Organization } from "@ocean/db";
+import type { Organization, Prisma } from "@ocean/db";
 import type {
   BusinessAddressAnswers,
   BusinessProfileAnswers,
   CreateOrganizationInput,
   OrganizationBusinessProfile,
+  OrganizationBusinessVerification,
   OrganizationSummary,
   UpdateBusinessProfileInput,
   UpdateOrganizationInput,
@@ -18,6 +19,7 @@ import { PrismaService } from "../../infrastructure/prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { CountryProfilesService } from "../countries/countries.service";
 import { UsersService } from "../users/users.service";
+import { computeBusinessVerification } from "./business-verification";
 import { validateBusinessProfileSubmission } from "./business-profile-validation";
 import { OrganizationsRepository } from "./organizations.repository";
 
@@ -171,5 +173,42 @@ export class OrganizationsService {
     });
 
     return toBusinessProfile(after);
+  }
+
+  // Business verification (L5, spec section 30): recomputed from real data every time this is
+  // read — the business profile/address answers (L2) and this org's tax registrations (L3) — and
+  // the result is persisted back onto the Organization as a cache for anything else that wants to
+  // read the last-known status cheaply. See business-verification.ts for what each category
+  // checks and why identity/banking are always "not_collected".
+  async getBusinessVerification(tenant: TenantContext): Promise<OrganizationBusinessVerification> {
+    const org = await this.repo.findById(tenant.organizationId);
+    if (!org) throw new NotFoundError("Organization");
+
+    const country = org.businessCountryCode
+      ? await this.countries.getCountryProfile(org.businessCountryCode)
+      : null;
+    const taxRegistrations = await this.prisma.taxRegistration.findMany({
+      where: { organizationId: tenant.organizationId },
+      select: { countryCode: true, status: true },
+    });
+
+    const result = computeBusinessVerification(
+      {
+        businessCountryCode: org.businessCountryCode,
+        businessEntityType: org.businessEntityType,
+        businessProfile: (org.businessProfile as BusinessProfileAnswers | null) ?? {},
+        businessAddress: (org.businessAddress as BusinessAddressAnswers | null) ?? {},
+      },
+      country,
+      taxRegistrations,
+    );
+
+    await this.repo.update(tenant.organizationId, {
+      verificationStatus: result.status,
+      verificationCategories: result.categories as unknown as Prisma.InputJsonValue,
+      verificationCheckedAt: new Date(result.checkedAt),
+    });
+
+    return result;
   }
 }

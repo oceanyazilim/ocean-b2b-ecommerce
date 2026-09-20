@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { CatalogsModule } from "../catalogs/catalogs.module";
 import { CompaniesModule } from "../companies/companies.module";
 import { ContentModule } from "../content/content.module";
+import { CountriesModule } from "../countries/countries.module";
 import { CreditModule } from "../credit/credit.module";
 import { CustomersModule } from "../customers/customers.module";
 import { FinanceModule } from "../finance/finance.module";
@@ -30,6 +31,7 @@ import { StorefrontController } from "./storefront.controller";
     InventoryModule,
     OrdersModule,
     ContentModule,
+    CountriesModule,
     MarketsModule,
     LocalizationModule,
     PaymentsModule,
