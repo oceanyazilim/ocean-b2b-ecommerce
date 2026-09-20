@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 import { cursorPaginationQuerySchema } from "./api";
+import { countryCodeSchema } from "./countries";
 import { emailSchema } from "./primitives";
 import type { SubscriptionDetail } from "./billing";
 
@@ -151,10 +152,13 @@ export const setFeatureFlagTargetInputSchema = z
   .object({
     organizationId: z.string().uuid().optional(),
     storeId: z.string().uuid().optional(),
+    // L5 Global Localization (spec section 33): a country-scoped target, e.g. turn a flag on for
+    // every organization trading from Turkey. ISO 3166-1 alpha-2, matches CountryProfile.countryCode.
+    countryCode: countryCodeSchema.optional(),
     enabled: z.boolean(),
   })
-  .refine((v) => Boolean(v.organizationId) !== Boolean(v.storeId), {
-    message: "Provide exactly one of organizationId or storeId",
+  .refine((v) => [v.organizationId, v.storeId, v.countryCode].filter(Boolean).length === 1, {
+    message: "Provide exactly one of organizationId, storeId or countryCode",
   });
 export type SetFeatureFlagTargetInput = z.infer<typeof setFeatureFlagTargetInputSchema>;
 
@@ -164,6 +168,8 @@ export interface PlatformFeatureFlagTarget {
   organizationName: string | null;
   storeId: string | null;
   storeName: string | null;
+  countryCode: string | null;
+  countryName: string | null;
   enabled: boolean;
   updatedAt: string;
 }

@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import type { Prisma } from "@ocean/db";
 import type {
+  BankInfo,
   CreateInvoiceInput,
   InvoiceDetail,
+  InvoiceIssuerSnapshot,
   InvoiceListQuery,
   InvoiceSummary,
   Paginated,
@@ -56,7 +58,25 @@ export class FinanceService {
     };
   }
 
-  private toDetail(row: InvoiceRow): InvoiceDetail {
+  // L5 Global Localization (spec section 28): the one real "invoice output" surface this
+  // codebase has today (no PDF/document generator exists yet — see InvoicingSettingsService's
+  // comment) is this InvoiceDetail response, so this is where the store's Finance -> Invoicing
+  // settings actually get wired in: read live, not snapshotted at Invoice creation time, so
+  // editing the legal name/address/bank info later is reflected on every invoice immediately —
+  // the same way a real invoicing system's header reflects its current merchant configuration.
+  private async issuerSnapshot(storeId: string): Promise<InvoiceIssuerSnapshot | null> {
+    const settings = await this.prisma.invoiceSettings.findUnique({ where: { storeId } });
+    if (!settings) return null;
+    return {
+      legalName: settings.legalName,
+      taxId: settings.taxId,
+      registeredAddress: settings.registeredAddress,
+      bankInfo: (settings.bankInfo as unknown as BankInfo | null) ?? null,
+      footerNotice: settings.footerNotice,
+    };
+  }
+
+  private async toDetail(row: InvoiceRow): Promise<InvoiceDetail> {
     const currency = row.order.currency;
     return {
       ...this.toSummary(row),
@@ -65,6 +85,7 @@ export class FinanceService {
         amount: toMoney(p.amount, currency),
         createdAt: p.createdAt.toISOString(),
       })),
+      issuer: await this.issuerSnapshot(row.storeId),
     };
   }
 
@@ -92,7 +113,7 @@ export class FinanceService {
   async get(ctx: TenantContext, id: string): Promise<InvoiceDetail> {
     const row = await this.prisma.invoice.findFirst({ where: { ...this.scope(ctx), id }, include });
     if (!row) throw new NotFoundError("Invoice");
-    return this.toDetail(row);
+    return await this.toDetail(row);
   }
 
   async create(ctx: TenantContext, input: CreateInvoiceInput, meta: RequestMeta): Promise<InvoiceDetail> {
@@ -109,6 +130,13 @@ export class FinanceService {
       ]);
     }
     const amount = input.amount ?? Number(order.total);
+    // Finance -> Invoicing settings (spec section 28): the configured prefix, when the store has
+    // saved one, instead of a hardcoded "INV-" — see InvoicingSettingsService.
+    const settings = await this.prisma.invoiceSettings.findUnique({
+      where: { storeId },
+      select: { invoicePrefix: true },
+    });
+    const prefix = settings?.invoicePrefix ?? "INV-";
     const id = await this.prisma.$transaction(async (tx) => {
       const store = await tx.store.update({
         where: { id: storeId },
@@ -121,7 +149,7 @@ export class FinanceService {
           organizationId: ctx.organizationId,
           orderId: order.id,
           companyId: order.companyId!,
-          number: `INV-${store.invoiceSequence}`,
+          number: `${prefix}${store.invoiceSequence}`,
           dueAt: new Date(input.dueAt),
           amount: BigInt(amount),
           paidAmount: 0n,

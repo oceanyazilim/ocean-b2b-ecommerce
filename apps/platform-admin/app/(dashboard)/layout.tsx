@@ -11,6 +11,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Organizations", href: "/organizations" },
   { label: "Stores", href: "/stores" },
   { label: "Domains", href: "/domains" },
+  { label: "Countries", href: "/countries" },
   { label: "Feature flags", href: "/feature-flags" },
   { label: "Audit log", href: "/audit" },
 ];

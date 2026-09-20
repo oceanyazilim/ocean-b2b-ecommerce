@@ -19,12 +19,30 @@ export class FeatureFlagsService {
   ) {}
 
   async listForOrganization(organizationId: string): Promise<FeatureFlagSummary[]> {
+    // L5 Global Localization (spec section 33): resolve a country-level target too, using this
+    // org's real L2 business country (Organization.businessCountryCode) — there's no other
+    // "what country is this org in" signal to resolve against yet, and none is invented here; an
+    // org with no business country set simply never matches a country-level target.
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { businessCountryCode: true },
+    });
+    const countryCode = org?.businessCountryCode ?? null;
+
     const flags = await this.prisma.featureFlag.findMany({
-      include: { targets: { where: { organizationId } } },
+      include: {
+        targets: {
+          where: countryCode
+            ? { OR: [{ organizationId }, { countryCode }] }
+            : { organizationId },
+        },
+      },
       orderBy: { key: "asc" },
     });
     return flags.map((f) => {
-      const target = f.targets[0];
+      // An organization-level target always wins over a country-level one — it's the more
+      // specific signal (an operator opting this exact org in/out on purpose).
+      const target = f.targets.find((t) => t.organizationId === organizationId) ?? f.targets[0];
       return {
         key: f.key,
         description: f.description,

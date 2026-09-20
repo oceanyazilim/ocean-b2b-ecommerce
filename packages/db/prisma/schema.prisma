@@ -179,6 +179,18 @@ enum MembershipStatus {
   removed
 }
 
+// L5 Global Localization: Business verification (spec section 30) — a completeness view over
+// data the platform already collects (L2 business profile/address, L3 tax registrations), never
+// a real identity/KYC integration. "verified" only ever reflects the categories this platform
+// actually has real data for; identity verification and banking information have no real backing
+// yet (no document upload, no bank-account model) and are reported as not-yet-collected rather
+// than counted against this status — see OrganizationsService.getBusinessVerification.
+enum OrganizationVerificationStatus {
+  unverified
+  action_required
+  verified
+}
+
 model Organization {
   id        String             @id @default(uuid()) @db.Uuid
   name      String
@@ -197,6 +209,15 @@ model Organization {
   businessProfile            Json?     @map("business_profile") @db.JsonB // BusinessProfileAnswers — answers keyed by that country's businessProfileSchema[].key
   businessAddress            Json?     @map("business_address") @db.JsonB // BusinessAddressAnswers — answers keyed by that country's addressSchema[].key
   businessProfileCompletedAt DateTime? @map("business_profile_completed_at") @db.Timestamptz(6)
+
+  // Business verification (L5, spec section 30): a materialized cache of the completeness check
+  // OrganizationsService.getBusinessVerification() recomputes live from real data every time the
+  // Business Verification settings page is read — persisted here too so other surfaces (a future
+  // ops dashboard, an org list) can read the last-known status cheaply without recomputing it.
+  // Never hand-set outside that recompute.
+  verificationStatus     OrganizationVerificationStatus @default(unverified) @map("verification_status")
+  verificationCategories Json?                          @map("verification_categories") @db.JsonB
+  verificationCheckedAt  DateTime?                      @map("verification_checked_at") @db.Timestamptz(6)
 
   members               OrganizationMember[]
   stores                Store[]
@@ -255,6 +276,8 @@ model Organization {
   platformInvoices      PlatformInvoice[]
   featureFlagTargets    FeatureFlagTarget[]
   ssoConnection         SsoConnection?
+  invoiceSettings       InvoiceSettings[]
+  eInvoiceConnections   EInvoiceProviderConnection[]
 
   @@map("organizations")
 }
@@ -319,7 +342,7 @@ model Store {
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization          Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members               StoreMember[]
   invitations           Invitation[]
   auditLogs             AuditLog[]
@@ -385,6 +408,8 @@ model Store {
   webhooks              Webhook[]
   customRoles           CustomRole[]
   impersonationSessions ImpersonationSession[]
+  invoiceSettings       InvoiceSettings?
+  eInvoiceConnections   EInvoiceProviderConnection[]
 
   @@index([organizationId])
   @@map("stores")
@@ -2322,15 +2347,15 @@ model TaxClass {
 // ---------------------------------------------------------------------------
 
 model Market {
-  id             String   @id @default(uuid()) @db.Uuid
-  storeId        String   @map("store_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  storeId        String  @map("store_id") @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
   name           String
-  currency       String   @db.Char(3)
+  currency       String  @db.Char(3)
   locale         String
-  countryCode    String   @map("country_code") @db.Char(2)
-  isDefault      Boolean  @default(false) @map("is_default")
-  isActive       Boolean  @default(true) @map("is_active")
+  countryCode    String  @map("country_code") @db.Char(2)
+  isDefault      Boolean @default(false) @map("is_default")
+  isActive       Boolean @default(true) @map("is_active")
 
   // L4 Global Localization (spec section 8, "Market-based language"): the store language every
   // buyer in this market sees by default, plus the extra languages they may switch into (e.g.
@@ -2341,8 +2366,8 @@ model Market {
   defaultLanguage     String?  @map("default_language")
   additionalLanguages String[] @default([]) @map("additional_languages")
 
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2393,22 +2418,22 @@ model StoreLanguage {
 }
 
 model Translation {
-  id             String             @id @default(uuid()) @db.Uuid
-  storeId        String             @map("store_id") @db.Uuid
-  organizationId String             @map("organization_id") @db.Uuid
+  id             String            @id @default(uuid()) @db.Uuid
+  storeId        String            @map("store_id") @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
   // e.g. "product", "system_label" — a loose string, not an enum, so a later pass can add
   // "collection" / "page" / "article" / "menu" / "checkout" without a migration.
-  entityType     String             @map("entity_type")
+  entityType     String            @map("entity_type")
   // The translated row's id (e.g. Product.id) for entity-backed content, or a stable string key
   // (e.g. "cart.add_to_cart") for system/theme labels that have no database row of their own.
-  entityId       String             @map("entity_id")
+  entityId       String            @map("entity_id")
   locale         String
   field          String
-  value          String             @db.Text
-  status         TranslationStatus  @default(draft)
-  updatedById    String?            @map("updated_by_id") @db.Uuid
-  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  value          String            @db.Text
+  status         TranslationStatus @default(draft)
+  updatedById    String?           @map("updated_by_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -3226,23 +3251,124 @@ model FeatureFlagTarget {
   flagId         String   @map("flag_id") @db.Uuid
   organizationId String?  @map("organization_id") @db.Uuid
   storeId        String?  @map("store_id") @db.Uuid
+  // L5 Global Localization (spec section 33: "Some features may not exist in every country ...
+  // feature availability must be determined dynamically. Use feature flags"). ISO 3166-1 alpha-2,
+  // matches CountryProfile.countryCode. A country-level target lets a platform operator turn a
+  // flag on/off for every org whose Organization.businessCountryCode (L2) matches, without
+  // enumerating every org in that country by hand — resolved in FeatureFlagsService.listForOrganization.
+  countryCode    String?  @map("country_code") @db.VarChar(2)
   enabled        Boolean
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  flag         FeatureFlag   @relation(fields: [flagId], references: [id], onDelete: Cascade)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  store        Store?        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  flag         FeatureFlag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  organization Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  country      CountryProfile? @relation(fields: [countryCode], references: [countryCode], onDelete: Cascade)
 
-  // A target is exactly one of org-level or store-level (never both, never neither — enforced by
-  // SetFeatureFlagTargetInput's zod refine, and at the DB layer by a CHECK constraint plus two
-  // partial unique indexes added in migration 20260919090000_platform_operator_role_and_flag_target_unique,
-  // same "one-of-two" shape as CatalogAssignment/PriceListAssignment above. Prisma's schema
-  // language has no WHERE-clause unique index, so those two constraints exist only in the
-  // migration SQL, not modeled here — same as those other models.
+  // A target is exactly one of org-level, store-level or (new in L5) country-level — never more
+  // than one, never none — enforced by SetFeatureFlagTargetInput's zod refine, and at the DB
+  // layer by a CHECK constraint plus three partial unique indexes. Originally a two-way CHECK
+  // (feature_flag_targets_one_target, migration 20260919090000_platform_operator_role_and_flag_target_unique);
+  // widened to three-way + the country_code column and its partial unique index in migration
+  // 20260921100000_l5_countries_admin_and_invoicing. Same "exactly-one-of-N nullable FKs" shape as
+  // CatalogAssignment/PriceListAssignment above. Prisma's schema language has no WHERE-clause
+  // unique index, so those constraints exist only in the migration SQL, not modeled here — same
+  // as those other models.
   @@index([flagId, organizationId])
   @@index([flagId, storeId])
+  @@index([flagId, countryCode])
   @@map("feature_flag_targets")
+}
+
+// ---------------------------------------------------------------------------
+// L5 Global Localization (half B): Finance -> Invoicing configuration (spec section 28) and the
+// e-invoicing provider-connection abstraction (spec section 29).
+// ---------------------------------------------------------------------------
+
+// The configuration layer real invoice generation reads from (see FinanceService.create, which
+// already generates `Invoice.number` from Store.invoiceSequence — this hangs off Store, the same
+// scope that sequence lives at, not Organization). One row per store; created lazily on first
+// PUT, defaulted from Organization/Store/TaxRegistration data where sensible (see
+// InvoicingSettingsService).
+model InvoiceSettings {
+  id             String @id @default(uuid()) @db.Uuid
+  storeId        String @unique @map("store_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  // Prefixed onto Store.invoiceSequence to form Invoice.number, e.g. "INV-" -> "INV-1000".
+  invoicePrefix  String @default("INV-") @map("invoice_prefix") @db.VarChar(20)
+  // One-time re-seed of Store.invoiceSequence — only ever applied (by InvoicingSettingsService)
+  // when the store has issued zero invoices so far, to never renumber/collide with real invoices
+  // already sent to a buyer.
+  numberingStart Int?   @map("numbering_start")
+
+  legalName         String? @map("legal_name")
+  taxId             String? @map("tax_id")
+  registeredAddress String? @map("registered_address")
+  // BankInfo (see @ocean/types invoicing.ts) — bankName/accountName/accountNumber(IBAN)/swiftBic,
+  // free-form so it fits a market using IBAN (TR/DE) or routing+account numbers (US) alike.
+  bankInfo          Json?   @map("bank_info") @db.JsonB
+  footerNotice      String? @map("footer_notice")
+  // Defaults to Store.defaultCurrency / Store.defaultLocale when unset — see
+  // InvoicingSettingsService.toSummary.
+  currency          String? @db.Char(3)
+  language          String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_settings")
+}
+
+// Spec section 29's four provider categories — never a specific vendor name, since no real
+// external e-invoicing integration exists here (deliberately: see EInvoiceService's comment).
+enum EInvoiceProviderCategory {
+  electronic_invoice_provider
+  government_tax_platform
+  certified_third_party
+  accounting_platform
+}
+
+enum EInvoiceConnectionStatus {
+  disconnected
+  action_required
+  connected
+}
+
+// A real, persisted config surface — not a fake working integration. Same honesty precedent as
+// Phase 7's ManualPaymentAdapter (apps/api/src/modules/payments/adapters/manual.adapter.ts):
+// nothing here ever calls a real e-Fatura/government/accounting-platform API. `status` is
+// computed by EInvoiceService from whether the merchant has actually filled in an account
+// identifier and a credential — never hand-set to "connected" — so an unconfigured connection
+// honestly reads "Disconnected", a half-filled one "Action required".
+model EInvoiceProviderConnection {
+  id                String                   @id @default(uuid()) @db.Uuid
+  storeId           String                   @map("store_id") @db.Uuid
+  organizationId    String                   @map("organization_id") @db.Uuid
+  category          EInvoiceProviderCategory
+  // Merchant-entered label, e.g. "e-Fatura (GİB)", "QuickBooks Online" — never a hardcoded vendor.
+  providerName      String                   @map("provider_name")
+  // Non-secret account/tax-office identifier, shown back to the merchant as-is.
+  accountIdentifier String?                  @map("account_identifier")
+  // The credential's raw value is never persisted (nothing calls out to a real API with it, so
+  // there is nothing legitimate to store it *for*) — only whether one was supplied, which feeds
+  // the status computation below.
+  hasCredential     Boolean                  @default(false) @map("has_credential")
+  status            EInvoiceConnectionStatus @default(disconnected)
+  statusDetail      String?                  @map("status_detail")
+  connectedAt       DateTime?                @map("connected_at") @db.Timestamptz(6)
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, category])
+  @@map("einvoice_provider_connections")
 }
 
 // ---------------------------------------------------------------------------
@@ -3524,6 +3650,9 @@ model CountryProfile {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Country-scoped FeatureFlagTarget rows (L5, spec section 33) — see that model's comment.
+  featureFlagTargets FeatureFlagTarget[]
 
   @@index([isActive])
   @@map("country_profiles")

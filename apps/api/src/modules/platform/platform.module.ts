@@ -13,6 +13,8 @@ import {
   PlatformBillingController,
   PlatformPlansController,
 } from "./platform-billing.controller";
+import { PlatformCountriesController } from "./platform-countries.controller";
+import { PlatformCountriesService } from "./platform-countries.service";
 import { PlatformDomainsController } from "./platform-domains.controller";
 import { PlatformDomainsService } from "./platform-domains.service";
 import { PlatformFeatureFlagsController } from "./platform-feature-flags.controller";
@@ -45,6 +47,7 @@ import { PlatformOrganizationsService } from "./platform-organizations.service";
     PlatformAuditController,
     PlatformFeatureFlagsController,
     PlatformMetricsController,
+    PlatformCountriesController,
   ],
   providers: [
     PlatformSessionGuard,
@@ -56,6 +59,7 @@ import { PlatformOrganizationsService } from "./platform-organizations.service";
     PlatformAuditService,
     PlatformFeatureFlagsService,
     PlatformMetricsService,
+    PlatformCountriesService,
   ],
 })
 export class PlatformModule {}

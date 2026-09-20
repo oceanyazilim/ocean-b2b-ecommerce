@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlatformFeatureFlagSummary } from "@ocean/types";
+import type { PlatformCountrySummary, PlatformFeatureFlagSummary } from "@ocean/types";
 import {
   Alert,
   Badge,
@@ -84,22 +84,31 @@ function CreateFlagForm({ onCreated }: { onCreated: (flag: PlatformFeatureFlagSu
 
 function AddTargetForm({
   flagKey,
+  countries,
   onChanged,
 }: {
   flagKey: string;
+  countries: PlatformCountrySummary[];
   onChanged: (flag: PlatformFeatureFlagSummary) => void;
 }) {
   const { pending, error, run } = useSubmit();
-  const [scope, setScope] = useState<"organization" | "store">("organization");
+  const [scope, setScope] = useState<"organization" | "store" | "country">("organization");
   const [id, setId] = useState("");
+  const [countryCode, setCountryCode] = useState(countries[0]?.countryCode ?? "");
   const [enabled, setEnabled] = useState(true);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const body =
+      scope === "organization"
+        ? { organizationId: id, enabled }
+        : scope === "store"
+          ? { storeId: id, enabled }
+          : { countryCode, enabled };
     const res = await run(() =>
       api<{ data: PlatformFeatureFlagSummary }>(`/feature-flags/${flagKey}/targets`, {
         method: "PUT",
-        body: scope === "organization" ? { organizationId: id, enabled } : { storeId: id, enabled },
+        body,
       }),
     );
     if (!res) return;
@@ -116,20 +125,37 @@ function AddTargetForm({
       )}
       <select
         value={scope}
-        onChange={(e) => setScope(e.target.value as "organization" | "store")}
+        onChange={(e) => setScope(e.target.value as "organization" | "store" | "country")}
         className="h-9 rounded-md border border-input bg-background px-2 text-sm"
       >
         <option value="organization">Organization ID</option>
         <option value="store">Store ID</option>
+        <option value="country">Country</option>
       </select>
-      <input
-        type="text"
-        required
-        placeholder="uuid"
-        value={id}
-        onChange={(e) => setId(e.target.value)}
-        className="h-9 w-72 rounded-md border border-input bg-background px-2 text-sm font-mono text-xs"
-      />
+      {scope === "country" ? (
+        <select
+          value={countryCode}
+          onChange={(e) => setCountryCode(e.target.value)}
+          required
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          {countries.length === 0 && <option value="">No countries configured</option>}
+          {countries.map((c) => (
+            <option key={c.countryCode} value={c.countryCode}>
+              {c.name} ({c.countryCode})
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type="text"
+          required
+          placeholder="uuid"
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          className="h-9 w-72 rounded-md border border-input bg-background px-2 text-sm font-mono text-xs"
+        />
+      )}
       <label className="flex items-center gap-1.5 text-sm">
         <Checkbox checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
         Enabled
@@ -143,9 +169,11 @@ function AddTargetForm({
 
 function FlagCard({
   flag,
+  countries,
   onUpdate,
 }: {
   flag: PlatformFeatureFlagSummary;
+  countries: PlatformCountrySummary[];
   onUpdate: (flag: PlatformFeatureFlagSummary) => void;
 }) {
   const { run } = useSubmit();
@@ -189,7 +217,11 @@ function FlagCard({
             {flag.targets.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 px-6 py-2.5 text-sm">
                 <span>
-                  {t.organizationName ? `Org: ${t.organizationName}` : `Store: ${t.storeName}`}
+                  {t.organizationName
+                    ? `Org: ${t.organizationName}`
+                    : t.storeName
+                      ? `Store: ${t.storeName}`
+                      : `Country: ${t.countryName ?? t.countryCode}`}
                   <Badge variant={t.enabled ? "success" : "secondary"} className="ml-2">
                     {t.enabled ? "on" : "off"}
                   </Badge>
@@ -205,13 +237,19 @@ function FlagCard({
             ))}
           </ul>
         )}
-        <AddTargetForm flagKey={flag.key} onChanged={onUpdate} />
+        <AddTargetForm flagKey={flag.key} countries={countries} onChanged={onUpdate} />
       </CardContent>
     </Card>
   );
 }
 
-export function FeatureFlagsClient({ initialFlags }: { initialFlags: PlatformFeatureFlagSummary[] }) {
+export function FeatureFlagsClient({
+  initialFlags,
+  countries,
+}: {
+  initialFlags: PlatformFeatureFlagSummary[];
+  countries: PlatformCountrySummary[];
+}) {
   const [flags, setFlags] = useState(initialFlags);
 
   function upsert(flag: PlatformFeatureFlagSummary) {
@@ -234,7 +272,9 @@ export function FeatureFlagsClient({ initialFlags }: { initialFlags: PlatformFea
           </CardContent>
         </Card>
       ) : (
-        flags.map((flag) => <FlagCard key={flag.key} flag={flag} onUpdate={upsert} />)
+        flags.map((flag) => (
+          <FlagCard key={flag.key} flag={flag} countries={countries} onUpdate={upsert} />
+        ))
       )}
     </div>
   );

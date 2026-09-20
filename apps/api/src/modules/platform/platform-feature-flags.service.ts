@@ -37,6 +37,8 @@ export class PlatformFeatureFlagsService {
       organization: { name: string } | null;
       storeId: string | null;
       store: { name: string } | null;
+      countryCode: string | null;
+      country: { name: string } | null;
       enabled: boolean;
       updatedAt: Date;
     }[];
@@ -53,6 +55,8 @@ export class PlatformFeatureFlagsService {
         organizationName: t.organization?.name ?? null,
         storeId: t.storeId,
         storeName: t.store?.name ?? null,
+        countryCode: t.countryCode,
+        countryName: t.country?.name ?? null,
         enabled: t.enabled,
         updatedAt: t.updatedAt.toISOString(),
       })),
@@ -65,6 +69,7 @@ export class PlatformFeatureFlagsService {
         include: {
           organization: { select: { name: true } },
           store: { select: { name: true } },
+          country: { select: { name: true } },
         },
         orderBy: { updatedAt: "desc" as const },
       },
@@ -154,29 +159,44 @@ export class PlatformFeatureFlagsService {
       const store = await this.prisma.store.findUnique({ where: { id: input.storeId } });
       if (!store) throw new ValidationError("Store not found.", [{ path: "storeId", message: "Not found" }]);
     }
+    if (input.countryCode) {
+      const country = await this.prisma.countryProfile.findUnique({
+        where: { countryCode: input.countryCode },
+      });
+      if (!country) {
+        throw new ValidationError("Country not found.", [{ path: "countryCode", message: "Not found" }]);
+      }
+    }
 
     // A real DB-level upsert against the partial unique index that backs "one target row per
-    // (flag, organization) / (flag, store)" (see this table's @@index comment in schema.prisma and
-    // the feature_flag_targets_one_target migration) — not the findFirst-then-create/update this
-    // replaced, which raced: two concurrent setTarget calls for the same target could both see no
-    // existing row and both insert one. Postgres now rejects the second insert's conflict itself,
-    // and ON CONFLICT ... DO UPDATE turns that into the intended update. Prisma's schema DSL can't
-    // express a partial unique constraint, so there's no generated `upsert()` for it — this is the
-    // raw-SQL equivalent. Wrapped in a transaction so the row write and its audit entry commit
-    // together.
+    // (flag, organization) / (flag, store) / (flag, country)" (see this table's @@index comment
+    // in schema.prisma and the feature_flag_targets_one_target migration) — not the
+    // findFirst-then-create/update this replaced, which raced: two concurrent setTarget calls for
+    // the same target could both see no existing row and both insert one. Postgres now rejects
+    // the second insert's conflict itself, and ON CONFLICT ... DO UPDATE turns that into the
+    // intended update. Prisma's schema DSL can't express a partial unique constraint, so there's
+    // no generated `upsert()` for it — this is the raw-SQL equivalent. Wrapped in a transaction so
+    // the row write and its audit entry commit together.
     await this.prisma.$transaction(async (tx) => {
       if (input.organizationId) {
         await tx.$executeRaw`
-          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "enabled", "created_at", "updated_at")
-          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, ${input.organizationId}::uuid, NULL, ${input.enabled}, now(), now())
+          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "country_code", "enabled", "created_at", "updated_at")
+          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, ${input.organizationId}::uuid, NULL, NULL, ${input.enabled}, now(), now())
           ON CONFLICT ("flag_id", "organization_id") WHERE "organization_id" IS NOT NULL
+          DO UPDATE SET "enabled" = EXCLUDED."enabled", "updated_at" = now()
+        `;
+      } else if (input.storeId) {
+        await tx.$executeRaw`
+          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "country_code", "enabled", "created_at", "updated_at")
+          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, NULL, ${input.storeId}::uuid, NULL, ${input.enabled}, now(), now())
+          ON CONFLICT ("flag_id", "store_id") WHERE "store_id" IS NOT NULL
           DO UPDATE SET "enabled" = EXCLUDED."enabled", "updated_at" = now()
         `;
       } else {
         await tx.$executeRaw`
-          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "enabled", "created_at", "updated_at")
-          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, NULL, ${input.storeId}::uuid, ${input.enabled}, now(), now())
-          ON CONFLICT ("flag_id", "store_id") WHERE "store_id" IS NOT NULL
+          INSERT INTO "feature_flag_targets" ("id", "flag_id", "organization_id", "store_id", "country_code", "enabled", "created_at", "updated_at")
+          VALUES (${randomUUID()}::uuid, ${flag.id}::uuid, NULL, NULL, ${input.countryCode}, ${input.enabled}, now(), now())
+          ON CONFLICT ("flag_id", "country_code") WHERE "country_code" IS NOT NULL
           DO UPDATE SET "enabled" = EXCLUDED."enabled", "updated_at" = now()
         `;
       }
@@ -193,6 +213,7 @@ export class PlatformFeatureFlagsService {
             key: flag.key,
             organizationId: input.organizationId,
             storeId: input.storeId,
+            countryCode: input.countryCode,
             enabled: input.enabled,
           },
           meta,
@@ -221,7 +242,12 @@ export class PlatformFeatureFlagsService {
       action: "feature_flag.target_removed",
       resourceType: "feature_flag",
       resourceId: flag.id,
-      before: { organizationId: target.organizationId, storeId: target.storeId, enabled: target.enabled },
+      before: {
+        organizationId: target.organizationId,
+        storeId: target.storeId,
+        countryCode: target.countryCode,
+        enabled: target.enabled,
+      },
       meta,
     });
     return this.toSummary(await this.findByKeyOrThrow(key));

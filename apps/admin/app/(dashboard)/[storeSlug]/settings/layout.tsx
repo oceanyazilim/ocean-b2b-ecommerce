@@ -30,6 +30,7 @@ export default async function SettingsLayout({
                 items: [
                   { label: "General", href: `${base}/general`, icon: "settings" },
                   { label: "Business information", href: `${base}/business`, icon: "data" },
+                  { label: "Business verification", href: `${base}/verification`, icon: "security" },
                   { label: "Billing & plan", href: `${base}/billing`, icon: "billing" },
                 ],
               },
@@ -46,6 +47,7 @@ export default async function SettingsLayout({
                   { label: "Payments", href: `${base}/payment-methods`, icon: "payments" },
                   { label: "Shipping & delivery", href: `${base}/shipping`, icon: "shipping" },
                   { label: "Taxes", href: `${base}/taxes`, icon: "taxes" },
+                  { label: "Invoicing", href: `${base}/invoicing`, icon: "billing" },
                 ],
               },
               {

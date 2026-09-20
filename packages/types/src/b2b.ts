@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { cursorPaginationQuerySchema } from "./api";
+import type { InvoiceIssuerSnapshot } from "./invoicing";
 import { currencyCodeSchema, idSchema, moneyMinorSchema, type Money } from "./primitives";
 
 // ---- quotes ---------------------------------------------------------------------------------
@@ -255,6 +256,11 @@ export interface InvoiceSummary {
 
 export interface InvoiceDetail extends InvoiceSummary {
   payments: InvoicePaymentEntry[];
+  // L5 Global Localization (spec section 28): the issuing store's current Finance -> Invoicing
+  // settings (legal name/tax id/address/bank info/footer notice), read live at fetch time — see
+  // FinanceService.toDetail and InvoiceIssuerSnapshot in @ocean/types invoicing.ts. Null only
+  // when the store has never saved invoicing settings, so there's nothing to snapshot yet.
+  issuer: InvoiceIssuerSnapshot | null;
 }
 
 // ---- discounts ----------------------------------------------------------------------------

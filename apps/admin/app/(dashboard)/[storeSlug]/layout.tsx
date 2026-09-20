@@ -221,6 +221,11 @@ export default async function StoreLayout({
         },
         { label: t("settingsNav.taxes"), href: `${base}/settings/taxes`, allowed: can(store, "taxes.read") },
         {
+          label: t("settingsNav.invoicing"),
+          href: `${base}/settings/invoicing`,
+          allowed: can(store, "finance.read"),
+        },
+        {
           label: t("settingsNav.payments"),
           href: `${base}/settings/payment-methods`,
           allowed: can(store, "payments.read"),
