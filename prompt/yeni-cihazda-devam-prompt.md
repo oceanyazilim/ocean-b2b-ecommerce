@@ -25,8 +25,9 @@ Benimle Türkçe konuş.
 **Bu cihazda kurulum adımlarını benimle birlikte yap:**
 1. Node 22+ ve `npm i -g pnpm@10` kurulu mu kontrol et, `pnpm install` çalıştır.
    (pnpm 10 postinstall scriptlerini engeller; izin listesi kök `package.json` → `pnpm.onlyBuiltDependencies`.)
-2. `.env` dosyaları: kök `.env` ve `apps/api/.env` var mı kontrol et. Yoksa `.env.example`'dan oluştur
-   ve eksik değerleri bana sor.
+2. `.env` dosyaları: kök `.env` ve `apps/api/.env` dosyalarını eski bilgisayardan USB ile kopyaladım,
+   yerlerinde olduklarını kontrol et. Eksik biri varsa bana söyle; ancak ben onaylarsam
+   `.env.example`'dan oluştur. Bu dosyaları asla commit etme.
 3. Altyapı: Docker varsa `pnpm infra:up`. Docker yoksa README'deki "Without Docker (native Windows)"
    bölümüne göre PostgreSQL 16 (kullanıcı `ocean`/`ocean`, veritabanı `ocean_dev`) + Memurai (Redis, 6379)
    + Meilisearch (7700, master key `.env`'deki `MEILI_MASTER_KEY` ile aynı) kur.
@@ -59,5 +60,17 @@ git clone https://github.com/oceanyazilim/ocean-b2b-ecommerce.git
 cd ocean-b2b-ecommerce
 ```
 
-`.env` dosyaları repoda yok. Eski bilgisayardan kök `.env` ve `apps/api/.env` dosyalarını
-(USB, şifreli bulut vb. ile) aynı konumlara kopyala. Yoksa Claude `.env.example`'dan oluşturur.
+### `.env` dosyaları (USB ile aktarılıyor)
+
+`.env` dosyaları şifre içerdiği için repoda **yok**; USB ile aktarılacak. Eski bilgisayarda
+hepsi tek klasörde hazır: `C:\ocean-development\usb-icin-dosyalar`
+
+| USB'deki dosya  | Yeni bilgisayarda kopyalanacağı yer      |
+| --------------- | ---------------------------------------- |
+| `.env`          | `ocean-b2b-ecommerce\.env`               |
+| `apps\api\.env` | `ocean-b2b-ecommerce\apps\api\.env`      |
+
+Klasörün içindekileri (`OKU-BENI.txt` hariç) proje kök klasörüne yapıştırman yeterli; alt klasör
+yapısı aynı olduğu için dosyalar doğru yere gider. Bunu **Claude Code'a prompt'u yapıştırmadan önce**
+yap. Böylece kurulum adımı 2'de Claude dosyaları hazır bulur ve `.env.example`'dan yenisini oluşturmaz.
+(`.env` dosyaları Gezgin'de gizli görünebilir: Görünüm → Göster → Gizli öğeler.)
