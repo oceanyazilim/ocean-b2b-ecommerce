@@ -1,0 +1,3767 @@
+MASTER DEVELOPMENT PROMPT
+Enterprise B2B Commerce SaaS Platform — Shopify-Class Architecture, Store Builder, Theme Editor, Commerce Engine and Multi-Tenant Operations
+
+You are acting as a Principal Software Architect, Staff Full-Stack Engineer, SaaS Product Architect, UX Systems Designer, Database Architect, DevOps Engineer, Security Engineer, and B2B Commerce Product Strategist.
+
+Your task is to design and progressively implement a production-grade, enterprise-ready, multi-tenant B2B e-commerce SaaS platform.
+
+The platform should provide merchants with an experience comparable in scope and quality to modern hosted commerce platforms such as Shopify, while being designed specifically around:
+
+B2B commerce
+Wholesale commerce
+DTC commerce
+Company accounts
+Custom catalogs
+Customer-specific pricing
+Volume pricing
+Quote workflows
+Credit limits
+Payment terms
+Order approval flows
+Inventory
+Multi-location operations
+Theme customization
+Live storefront editing
+Custom domains
+APIs
+Integrations
+Analytics
+SaaS subscriptions
+Platform administration
+
+This is NOT a single online store.
+
+This is a commerce infrastructure platform where thousands of independent companies can create, configure, customize, operate, and scale their own online stores.
+
+The system must therefore be built as a true:
+
+Multi-Tenant SaaS Commerce Platform.
+
+1. PRIMARY PRODUCT VISION
+
+Build a platform where a merchant can:
+
+Sign up.
+Create an organization.
+Create one or multiple stores.
+Configure their company information.
+Add products.
+Create product variants.
+Upload media.
+Configure inventory.
+Create collections/categories.
+Configure customer groups.
+Create B2B companies.
+Define company locations.
+Assign buyers.
+Create custom catalogs.
+Create price lists.
+Define volume pricing.
+Configure payment terms.
+Configure credit limits.
+Configure order approval workflows.
+Manage quotes.
+Manage orders.
+Manage payments.
+Manage shipments.
+Manage invoices.
+Manage returns and refunds.
+Select a storefront theme.
+Customize that theme visually.
+Preview changes in real time.
+Publish theme changes.
+Connect a custom domain.
+Configure taxes.
+Configure shipping.
+Configure integrations.
+Access analytics.
+Manage staff permissions.
+Use API access.
+Install applications.
+Manage subscription and billing.
+Launch the store.
+
+The merchant should be able to operate almost the entire commerce business from one administrative interface.
+
+2. PRODUCT SURFACES
+
+Design the system as several connected applications.
+
+2.1 Marketing Website
+
+The public SaaS website.
+
+Routes may include:
+
+/
+/features
+/commerce
+/b2b
+/wholesale
+/themes
+/integrations
+/pricing
+/enterprise
+/partners
+/developers
+/customers
+/resources
+/blog
+/help
+/status
+/login
+/signup
+/legal/privacy
+/legal/terms
+/legal/cookies
+
+Its purpose is marketing, conversion, onboarding and documentation.
+
+2.2 Merchant Admin
+
+The main administrative application used by merchants.
+
+Example:
+
+admin.platform.com
+
+Main navigation:
+
+Home
+Orders
+Products
+Inventory
+Customers
+Companies
+Catalogs
+Pricing
+Quotes
+Finance
+Discounts
+Content
+Storefront
+Markets
+Analytics
+Marketing
+Apps
+Settings
+
+The merchant admin must feel fast, modern, consistent and suitable for businesses managing thousands of SKUs and high order volumes.
+
+2.3 Storefront
+
+Each merchant receives a storefront.
+
+Default example:
+
+storename.platform.com
+
+Custom domain examples:
+
+company.com
+
+shop.company.com
+
+The storefront consumes the commerce APIs but must never be responsible for critical business logic such as pricing authorization, tax calculations, inventory authorization or credit validation.
+
+2.4 B2B Customer Portal
+
+Business customers need a dedicated authenticated experience.
+
+Customer portal should support:
+
+Company dashboard
+Company information
+Locations
+Team members
+Buyers
+Approvers
+Orders
+Order history
+Reorder
+Quotes
+Invoices
+Statements
+Credit information
+Payment terms
+Addresses
+Saved carts
+Quick order
+Purchase order numbers
+Account manager information
+2.5 Platform Super Admin
+
+A completely separate internal application.
+
+Example:
+
+platform-admin.internal
+
+Used by platform staff.
+
+It must manage:
+
+Organizations
+Stores
+Users
+Merchants
+Plans
+Subscriptions
+Billing
+Themes
+Applications
+Domains
+Support
+Risk
+Security
+Webhooks
+Jobs
+Audit logs
+Feature flags
+Incidents
+Platform metrics
+
+Never expose platform super-admin functionality inside the normal merchant admin.
+
+3. CORE TENANCY MODEL
+
+Use the following conceptual hierarchy:
+
+Platform
+
+→ Organization
+
+→ Store
+
+→ Store users
+
+→ Store data
+
+A company may own multiple stores.
+
+Do NOT assume:
+
+Organization = Store.
+
+Example:
+
+Organization:
+ABC Holding
+
+Stores:
+
+ABC Wholesale
+ABC Retail
+ABC Germany
+
+This distinction must exist from the beginning.
+
+4. MULTI-TENANT SECURITY
+
+Every tenant-owned resource must be scoped securely.
+
+Most business tables should contain identifiers such as:
+
+organization_id
+store_id
+
+Every query must operate inside a validated tenant context.
+
+Never depend only on frontend restrictions.
+
+Prevent cross-tenant access at:
+
+API layer
+service layer
+database query layer
+caching layer
+search index layer
+file storage layer
+background jobs
+analytics
+
+Consider PostgreSQL Row Level Security where appropriate.
+
+Tenant isolation is a critical security requirement.
+
+5. AUTHENTICATION
+
+Build enterprise-ready authentication.
+
+Support:
+
+Email/password
+Email verification
+Password reset
+Session management
+Remember device
+MFA
+TOTP
+Recovery codes
+Session revocation
+Login history
+Suspicious login detection
+
+Architect the authentication system so that future support can include:
+
+Google
+Microsoft
+SAML
+OIDC
+Enterprise SSO
+
+Separate:
+
+Platform identity
+
+from:
+
+Store membership.
+
+One user may belong to multiple organizations or stores.
+
+6. AUTHORIZATION
+
+Build fine-grained RBAC.
+
+Example merchant roles:
+
+Store Owner
+Admin
+Store Manager
+Product Manager
+Order Manager
+Marketing
+Finance
+Developer
+Viewer
+
+Example B2B company roles:
+
+Company Admin
+Buyer
+Approver
+Finance
+Viewer
+
+Example permissions:
+
+products.read
+products.write
+products.delete
+orders.read
+orders.write
+orders.refund
+customers.read
+companies.write
+finance.read
+analytics.read
+themes.edit
+themes.publish
+apps.install
+settings.write
+users.manage
+
+Do not hard-code permissions directly into UI logic.
+
+Use a proper permission engine.
+
+7. ONBOARDING FLOW
+
+Design an onboarding experience.
+
+Suggested flow:
+
+Sign up
+
+→ Verify email
+
+→ Create organization
+
+→ Create store
+
+→ Select business type
+
+→ Select industry
+
+→ Choose theme
+
+→ Configure business details
+
+→ Add first product
+
+→ Configure payment
+
+→ Configure shipping
+
+→ Configure taxes
+
+→ Connect domain
+
+→ Publish store
+
+The onboarding dashboard should show a checklist and completion state.
+
+8. MERCHANT ADMIN DASHBOARD
+
+Create a professional dashboard.
+
+Display metrics such as:
+
+Gross sales
+Net sales
+GMV
+Orders
+AOV
+Conversion rate
+Sessions
+Returning customer rate
+Outstanding receivables
+
+Operational cards:
+
+Orders to fulfill
+Orders awaiting payment
+Quotes awaiting response
+Company applications
+Inventory alerts
+Returns
+Refunds
+Failed payments
+Expiring quotes
+
+Include configurable date ranges.
+
+Examples:
+
+Today
+Yesterday
+Last 7 days
+Last 30 days
+This month
+Previous month
+Custom range
+
+Add a global command palette:
+
+Ctrl / Cmd + K
+
+Actions:
+
+Find order
+Find customer
+Find company
+Add product
+Create order
+Create quote
+Open settings
+Open theme editor
+9. PRODUCT CATALOG SYSTEM
+
+Products must support:
+
+Title
+Handle
+Description
+Rich content
+Vendor
+Brand
+Product type
+Category
+Collections
+Tags
+SEO
+Status
+Publishing channels
+Media
+Images
+Videos
+Files
+Specifications
+Metafields
+
+Product statuses:
+
+Draft
+Active
+Archived
+10. PRODUCT VARIANTS
+
+Variants must support:
+
+SKU
+Barcode
+Options
+Price
+Compare-at price
+Cost
+Weight
+Dimensions
+Taxability
+Inventory tracking
+Shipping requirement
+
+Example:
+
+Product:
+Industrial Glove
+
+Options:
+
+Color:
+
+Black
+Red
+
+Size:
+
+M
+L
+XL
+
+Generate proper product variants.
+
+11. PRODUCT OPTIONS
+
+Do not hard-code option names.
+
+Allow arbitrary option groups.
+
+Examples:
+
+Size
+Color
+Material
+Packaging
+Length
+Voltage
+
+Support configurable limits.
+
+12. COLLECTIONS
+
+Support:
+
+Manual collections
+
+and
+
+Automated collections.
+
+Automated collection rules may include:
+
+Product type
+Vendor
+Tag
+Price
+Inventory
+Category
+
+Use AND / OR rule groups.
+
+13. METAFIELDS AND CUSTOM DATA
+
+Implement extensible custom data.
+
+Resources should support metadata/metafields.
+
+Examples:
+
+Product:
+
+material
+warranty
+origin_country
+
+Company:
+
+ERP customer number
+account manager
+industry
+
+Order:
+
+warehouse reference
+external ERP ID
+
+Metafields should support:
+
+string
+integer
+decimal
+boolean
+date
+JSON
+URL
+product reference
+collection reference
+file reference
+14. INVENTORY MODEL
+
+Do not store inventory as one number on the product.
+
+Use:
+
+Product Variant
+
+→ Inventory Item
+
+→ Inventory Level
+
+→ Location
+
+Inventory locations may represent:
+
+Warehouse
+Store
+Supplier
+Fulfillment center
+
+Track values such as:
+
+On hand
+Available
+Reserved
+Incoming
+Damaged
+Committed
+
+Provide inventory movements.
+
+Movement reasons:
+
+Sale
+Return
+Manual adjustment
+Transfer
+Receiving
+Damage
+Correction
+
+Keep a complete inventory ledger.
+
+15. INVENTORY TRANSFERS
+
+Support warehouse-to-warehouse transfer.
+
+Transfer lifecycle:
+
+Draft
+
+→ Requested
+
+→ Shipped
+
+→ Partially received
+
+→ Received
+
+→ Cancelled
+
+Track each item and quantity.
+
+16. CUSTOMERS
+
+Customer records should include:
+
+Personal details
+Contact information
+Addresses
+Notes
+Tags
+Orders
+Lifetime value
+Marketing consent
+Account status
+
+Distinguish:
+
+Individual Customer
+
+from:
+
+Company Buyer.
+
+17. B2B COMPANY MODEL
+
+Companies are first-class resources.
+
+Company:
+
+Legal name
+Display name
+Tax number
+Tax office
+Industry
+Currency
+Status
+Notes
+Account manager
+Credit settings
+
+Company has:
+
+Company Locations.
+
+Example:
+
+ACME LTD
+
+→ Istanbul HQ
+
+→ Ankara Branch
+
+→ Izmir Branch
+
+Each location may have different:
+
+Address
+Buyers
+Catalog
+Price list
+Payment terms
+Credit limit
+Currency
+Tax settings
+Shipping settings
+Approval rules
+18. COMPANY USERS
+
+Users can be assigned to companies.
+
+Roles:
+
+Company Admin
+Buyer
+Approver
+Finance
+Viewer
+
+A buyer may create an order.
+
+An approver may approve it.
+
+Finance may view invoices without modifying orders.
+
+19. COMPANY APPLICATIONS
+
+Support B2B account applications.
+
+Public storefront flow:
+
+Apply for wholesale account
+
+→ Company information
+
+→ Tax information
+
+→ Contact information
+
+→ Supporting documents
+
+→ Submit
+
+Merchant admin:
+
+Pending application
+
+→ Review
+
+→ Approve / Reject
+
+→ Assign catalog
+
+→ Assign pricing
+
+→ Assign payment terms
+
+→ Activate company
+
+20. CATALOG ENGINE
+
+Catalogs control which products a company can see or purchase.
+
+Example:
+
+Catalog:
+Distributor Europe
+
+Contains:
+
+Product A
+Product B
+Product C
+
+Product D may not be accessible.
+
+Never rely on frontend hiding.
+
+Catalog access must be enforced server-side.
+
+21. PRICING ENGINE
+
+Pricing must be its own domain/service boundary.
+
+Pricing may depend on:
+
+Product
+Variant
+Company
+Company location
+Catalog
+Price list
+Market
+Currency
+Quantity
+Active discounts
+Contract prices
+
+Possible precedence:
+
+Company-specific override
+
+→ Company-location override
+
+→ Catalog price
+
+→ Price list
+
+→ Volume pricing
+
+→ Automatic discount
+
+→ Market adjustment
+
+→ Base price
+
+All checkout prices must be recalculated server-side.
+
+Never trust pricing sent by the client.
+
+22. VOLUME PRICING
+
+Support tier pricing.
+
+Example:
+
+1–9 units:
+100 TRY
+
+10–49:
+92 TRY
+
+50–99:
+85 TRY
+
+100+:
+78 TRY
+
+Volume pricing should work together with B2B catalogs.
+
+23. QUANTITY RULES
+
+Support:
+
+Minimum order quantity
+Maximum quantity
+Multiples
+Case pack
+Increment
+
+Example:
+
+Minimum:
+12
+
+Increment:
+6
+
+Valid:
+12, 18, 24, 30
+
+Invalid:
+13
+
+24. QUOTE / RFQ ENGINE
+
+Build professional B2B quote workflows.
+
+Customer can:
+
+Create quote request
+Add products
+Add quantities
+Add notes
+Attach files
+
+Merchant can:
+
+Modify pricing
+Modify quantities
+Add discount
+Add shipping
+Define payment terms
+Define expiration
+Add internal notes
+
+Quote lifecycle:
+
+Draft
+
+→ Requested
+
+→ Under Review
+
+→ Sent
+
+→ Negotiation
+
+→ Accepted
+
+→ Converted
+
+→ Expired
+
+→ Rejected
+
+Accepted quote:
+
+Quote
+
+→ Draft Order
+
+→ Order
+
+→ Invoice
+
+25. QUICK ORDER
+
+Create a dedicated B2B quick order experience.
+
+Support:
+
+SKU input
+Product search
+Barcode
+Quantity
+Bulk add
+CSV upload
+Spreadsheet-like entry
+Saved order list
+
+Businesses with hundreds of SKUs should not need to browse product cards.
+
+26. SAVED LISTS
+
+B2B users should create saved product/order lists.
+
+Examples:
+
+Weekly Restock
+Office Supplies
+Store A Restock
+Monthly Purchase
+
+A saved list can be converted directly into a cart.
+
+27. ORDER SYSTEM
+
+Order lifecycle:
+
+Draft
+
+→ Pending Approval
+
+→ Confirmed
+
+→ Payment Pending
+
+→ Paid / Payment Terms
+
+→ Processing
+
+→ Partially Fulfilled
+
+→ Fulfilled
+
+→ Delivered
+
+Other states:
+
+Cancelled
+Returned
+Partially Returned
+Refunded
+Partially Refunded
+
+Orders must support:
+
+Items
+Discounts
+Taxes
+Shipping
+Notes
+Customer
+Company
+Company location
+Currency
+Payment status
+Fulfillment status
+Source
+PO number
+28. DRAFT ORDERS
+
+Merchants should manually create orders.
+
+Use cases:
+
+Phone orders
+Sales representative orders
+Negotiated B2B orders
+Offline orders
+
+Draft Order
+
+→ Send invoice
+
+or
+
+→ Convert directly to Order
+
+29. ORDER APPROVAL WORKFLOW
+
+Support configurable approval rules.
+
+Examples:
+
+Orders above 10,000 TRY require approval.
+
+Orders containing restricted products require approval.
+
+Buyer A has a 50,000 TRY limit.
+
+Approval states:
+
+Pending approval
+
+→ Approved
+
+or
+
+→ Rejected
+
+Support multi-level approvals later.
+
+30. PAYMENT TERMS
+
+Support:
+
+Immediate
+Net 7
+Net 15
+Net 30
+Net 45
+Net 60
+Net 90
+
+Also architect for:
+
+Deposit
+Partial payment
+Scheduled payment
+
+Example:
+
+20% deposit
+
+80% Net 30
+
+31. CREDIT MANAGEMENT
+
+Each company/location may have:
+
+Credit limit
+Used credit
+Available credit
+
+Example:
+
+Credit Limit:
+500,000 TRY
+
+Used:
+380,000 TRY
+
+Available:
+120,000 TRY
+
+Orders exceeding available credit may:
+
+Be rejected
+Require approval
+Require immediate payment
+
+Make this configurable.
+
+32. ACCOUNTS RECEIVABLE
+
+Finance module should provide:
+
+Outstanding invoices
+Due dates
+Aging
+Paid invoices
+Partially paid invoices
+Overdue invoices
+
+Aging buckets:
+
+0–30
+31–60
+61–90
+90+
+33. PAYMENT ARCHITECTURE
+
+Initially avoid directly storing or processing raw card data.
+
+Use external payment providers.
+
+Architecture:
+
+Commerce Platform
+
+→ Payment Provider Adapter
+
+→ PSP
+
+→ Merchant settlement account
+
+Create provider interface:
+
+createPayment
+authorize
+capture
+cancel
+refund
+getStatus
+tokenize
+webhook
+
+Use adapter architecture so multiple PSPs can be added.
+
+34. IDEMPOTENCY
+
+Critical operations require idempotency protection.
+
+Especially:
+
+Checkout
+Payment creation
+Payment capture
+Refund
+Order creation
+Webhooks
+
+Prevent duplicate charges and duplicate orders.
+
+35. SHIPPING
+
+Shipping domain should include:
+
+Shipping Zone
+Shipping Profile
+Shipping Rate
+Carrier
+Shipment
+Fulfillment
+Tracking
+
+Support rate types:
+
+Flat rate
+Free shipping
+Weight-based
+Price-based
+Carrier calculated
+Custom freight
+
+B2B modes:
+
+Pallet
+Freight
+Pickup
+Customer carrier
+Negotiated shipping
+36. FULFILLMENT
+
+Orders may be fulfilled partially.
+
+Example:
+
+Order:
+100 Product A
+100 Product B
+
+Shipment #1:
+100 Product A
+
+Shipment #2:
+100 Product B
+
+Support multiple fulfillment locations.
+
+37. RETURNS
+
+Create structured return management.
+
+Return:
+
+Requested
+
+→ Approved
+
+→ Received
+
+→ Inspected
+
+→ Refund / Exchange / Credit
+
+Track return reasons.
+
+38. TAXES
+
+Design a configurable tax engine.
+
+Support:
+
+Tax-inclusive pricing
+Tax-exclusive pricing
+Country-specific taxes
+Region-specific taxes
+Product tax classes
+Customer tax exemptions
+Company tax rules
+
+Do not tightly hard-code taxation into checkout.
+
+Create clear tax service abstractions.
+
+39. MARKETS
+
+Stores may operate in multiple markets.
+
+Market configuration:
+
+Countries
+Currency
+Language
+Domain
+Pricing adjustment
+Tax behavior
+Catalog availability
+
+Example:
+
+Turkey:
+TRY
+Turkish
+
+Germany:
+EUR
+German
+
+UK:
+GBP
+English
+
+40. DISCOUNTS
+
+Support:
+
+Discount codes
+
+and
+
+Automatic discounts.
+
+Discount types:
+
+Percentage
+Fixed amount
+Free shipping
+Buy X Get Y
+Product discount
+Collection discount
+Order discount
+
+Conditions:
+
+Customer
+Company
+Catalog
+Minimum spend
+Minimum quantity
+Date range
+Usage limits
+41. STORE CONTENT
+
+CMS should include:
+
+Pages
+Blogs
+Articles
+Navigation menus
+Files
+Redirects
+SEO metadata
+
+Page examples:
+
+About
+Contact
+Shipping
+Returns
+Terms
+42. STOREFRONT ROUTES
+
+Storefront should support:
+
+/
+/collections
+/collections/
+/products/
+/search
+/cart
+/checkout
+/pages/
+/blogs
+/blogs/
+/blogs//
+/contact
+/account
+/account/orders
+/account/orders/
+/account/invoices
+/account/quotes
+/account/company
+/account/team
+/account/addresses
+/quick-order
+43. THEME PLATFORM
+
+Theme architecture is one of the most important parts of this product.
+
+Do NOT create 10 completely independent storefront codebases.
+
+Create ONE reusable:
+
+Theme Engine
+
+and build multiple themes on top of it.
+
+Terminology:
+
+Theme:
+Complete visual design system.
+
+Template:
+Page layout inside a theme.
+
+Section:
+Large configurable component.
+
+Block:
+Nested content component.
+
+Setting:
+Editable value.
+
+Hierarchy:
+
+Page
+
+→ Template
+
+→ Section
+
+→ Block
+
+→ Setting
+
+44. INITIAL THEMES
+
+Create at least ten distinct themes eventually.
+
+Suggested themes:
+
+Foundation
+General purpose.
+Wholesale Pro
+Wholesale and B2B.
+Industrial
+Manufacturing.
+Supply
+Distribution and supply.
+Build
+Construction materials.
+Techline
+Technology and electronics.
+Atelier
+Furniture/design.
+Essentials
+Minimal product catalog.
+Market
+Large catalog.
+Prestige
+Premium brands.
+
+Start implementation with only:
+
+Foundation
+
+and
+
+Wholesale Pro.
+
+Stabilize the engine before implementing the remaining themes.
+
+45. THEME PACKAGE STRUCTURE
+
+Example:
+
+themes/
+wholesale-pro/
+manifest.json
+
+templates/
+  home.json
+  product.json
+  collection.json
+  cart.json
+  search.json
+
+sections/
+  hero.tsx
+  featured-products.tsx
+  collection-grid.tsx
+  image-text.tsx
+
+blocks/
+  heading.tsx
+  text.tsx
+  button.tsx
+  image.tsx
+
+schema/
+  theme-settings.json
+
+locales/
+  en.json
+  tr.json
+
+assets/
+  theme.css
+
+Theme source code is controlled by platform developers.
+
+Normal merchants edit only configuration/schema values.
+
+46. THEME MANIFEST
+
+Each theme should contain metadata such as:
+
+id
+name
+version
+author
+description
+category
+screenshot
+capabilities
+supported platform version
+
+Example capabilities:
+
+b2b
+quick-order
+volume-pricing
+quotes
+mega-menu
+47. TEMPLATE TYPES
+
+Support templates such as:
+
+Home
+Product
+Collection
+Search
+Cart
+Blog
+Article
+Page
+Contact
+Login
+Register
+Account
+Orders
+Order detail
+Company
+Quotes
+Quick Order
+404
+48. ALTERNATE TEMPLATES
+
+Allow multiple templates for one resource type.
+
+Example Product templates:
+
+Default
+Wholesale
+Luxury
+Pre-order
+Technical
+
+Individual products can choose their assigned template.
+
+49. SECTION SYSTEM
+
+Each section defines:
+
+Component
+Schema
+Settings
+Blocks
+Presets
+Availability
+
+Example:
+
+Hero section settings:
+
+Heading
+Text
+Image
+Video
+Alignment
+Height
+Overlay
+Buttons
+Spacing
+Animation
+50. SECTION LIBRARY
+
+Create categories.
+
+Commerce:
+
+Featured Product
+Product Grid
+Product Carousel
+Collection Grid
+Recommendations
+Recently Viewed
+Brands
+Quick Add
+
+Content:
+
+Rich Text
+Image
+Image + Text
+Video
+Gallery
+Slideshow
+Tabs
+Accordion
+FAQ
+Blog Posts
+
+Marketing:
+
+Hero
+Banner
+Countdown
+Promo
+Logo Cloud
+Newsletter
+Testimonials
+Stats
+
+B2B:
+
+Quick Order
+Request Quote
+Volume Pricing
+Wholesale Categories
+Company Benefits
+Download Catalog
+Contact Sales
+B2B Registration
+Account Manager
+51. BLOCK SYSTEM
+
+Sections can contain blocks.
+
+Example Product Information section:
+
+Vendor
+Title
+SKU
+Rating
+Price
+Volume Pricing
+Stock
+Variant Picker
+Quantity
+Buy Button
+Quote Button
+Description
+Specifications
+Shipping info
+
+Blocks must be sortable.
+
+Support controlled nested blocks.
+
+Avoid unlimited nesting.
+
+Recommended maximum initial depth:
+
+3 levels.
+
+52. SETTING TYPES
+
+Theme schemas should support:
+
+text
+textarea
+rich_text
+number
+range
+checkbox
+radio
+select
+color
+gradient
+image
+video
+file
+URL
+product
+collection
+menu
+font
+icon
+alignment
+spacing
+date
+dynamic source
+53. GLOBAL THEME SETTINGS
+
+Theme-wide settings include:
+
+Brand:
+
+Logo
+Mobile logo
+Favicon
+
+Colors:
+
+Background
+Text
+Primary
+Secondary
+Accent
+Border
+Success
+Warning
+Error
+
+Typography:
+
+Heading font
+Body font
+H1
+H2
+H3
+Body
+Letter spacing
+Line height
+
+Layout:
+
+Page width
+Container behavior
+Grid
+Spacing scale
+
+Buttons:
+
+Radius
+Border
+Height
+Font
+Hover style
+
+Product Cards:
+
+Image ratio
+Vendor
+Price
+Rating
+Quick add
+Secondary image
+Badges
+
+Animations:
+
+None
+Subtle
+Standard
+Enhanced
+54. HEADER BUILDER
+
+Header should be configurable.
+
+Blocks may include:
+
+Logo
+Navigation
+Search
+Account
+Cart
+Language
+Currency
+CTA button
+
+Settings:
+
+Sticky
+Transparent
+Logo alignment
+Menu alignment
+Height
+Search style
+Mega menu
+55. MEGA MENU BUILDER
+
+Support:
+
+Columns
+Nested navigation
+Images
+Promotional banners
+Featured products
+Featured collections
+
+Mega menus should be editable through the theme editor.
+
+56. FOOTER BUILDER
+
+Support:
+
+Logo
+Company information
+Navigation groups
+Newsletter
+Social links
+Payment methods
+Language selector
+Currency selector
+Copyright
+Legal links
+57. LIVE THEME EDITOR
+
+Build an advanced visual editor.
+
+Suggested layout:
+
+Left Sidebar:
+Page structure tree.
+
+Center:
+Live storefront preview.
+
+Right Sidebar:
+Selected element settings.
+
+Top Bar:
+
+Exit
+Page selector
+Market selector
+Language selector
+Undo
+Redo
+Desktop
+Tablet
+Mobile
+Save
+Publish
+58. LIVE PREVIEW
+
+Use an isolated storefront preview, preferably iframe-based.
+
+Architecture:
+
+Theme Editor
+
+→ postMessage/event bridge
+
+→ Storefront Preview
+
+→ Theme Runtime
+
+When a merchant changes a setting, update the preview immediately.
+
+Avoid full page refresh whenever possible.
+
+59. SELECT ON CANVAS
+
+Hovering over sections in the preview should highlight them.
+
+Clicking a section should select it in the editor.
+
+Possible UI:
+
+Hero Banner
+
+[Edit]
+
+[Move]
+
+[Hide]
+
+[Duplicate]
+
+Selected element opens its settings on the right.
+
+60. DRAG AND DROP
+
+Allow rearranging:
+
+Sections
+Blocks
+
+Both sidebar and, where practical, canvas interactions may support drag and drop.
+
+Preserve stable unique component IDs.
+
+61. RESPONSIVE EDITING
+
+Support preview:
+
+Desktop
+Tablet
+Mobile
+
+Allow selected settings to be responsive.
+
+Example:
+
+Hero height:
+
+desktop: 720px
+
+tablet: 600px
+
+mobile: 480px
+
+Example:
+
+Alignment:
+
+desktop: left
+
+mobile: center
+
+62. DYNAMIC SOURCES
+
+Theme fields should be connectable to store data.
+
+Example:
+
+Product title
+
+Product vendor
+
+Product description
+
+Product metafield
+
+Collection title
+
+Company name
+
+Company credit limit
+
+Company payment terms
+
+Dynamic values should be resolved securely by the server/API.
+
+63. B2B DYNAMIC CONTENT
+
+Allow authenticated B2B storefront personalization.
+
+Example:
+
+Welcome back, ACME LTD.
+
+Account Manager:
+John Smith
+
+Available Credit:
+120,000 TRY
+
+Payment Terms:
+Net 30
+
+Never expose inaccessible company data across accounts.
+
+64. DRAFT AND PUBLISHED THEME STATES
+
+Editing must never immediately modify the live storefront.
+
+Maintain:
+
+Draft Version
+
+and
+
+Published Version.
+
+Flow:
+
+Merchant edits
+
+→ Draft autosave
+
+→ Preview
+
+→ Validate
+
+→ Publish
+
+→ Create immutable published snapshot
+
+→ Invalidate relevant cache
+
+65. AUTOSAVE
+
+Editor changes:
+
+Update local state immediately.
+
+Then debounce autosave.
+
+Show:
+
+Saving...
+
+Saved
+
+Failed to save
+
+Retry
+
+The editor must remain responsive even when the network is slow.
+
+66. THEME VERSION HISTORY
+
+Track versions.
+
+Example:
+
+Version 49
+Published today
+By User A
+
+Version 48
+Yesterday
+By User B
+
+Support:
+
+View
+Compare eventually
+Restore
+Republish
+
+Always preserve published history.
+
+67. UNDO / REDO
+
+Represent editor actions as commands.
+
+Examples:
+
+CHANGE_SETTING
+ADD_SECTION
+REMOVE_SECTION
+MOVE_SECTION
+DUPLICATE_SECTION
+ADD_BLOCK
+MOVE_BLOCK
+REMOVE_BLOCK
+
+Support local undo/redo history.
+
+68. THEME LIBRARY
+
+Merchant sees:
+
+Current Theme
+
+and
+
+Installed Themes.
+
+Actions:
+
+Customize
+Preview
+Duplicate
+Rename
+Publish
+Remove
+
+New themes should be customized privately before publishing.
+
+69. THEME PREVIEW LINKS
+
+Generate signed preview URLs.
+
+Preview token should include:
+
+Store
+Theme
+Theme version
+Expiry
+
+Optional:
+
+Password protection
+
+Do not expose unpublished themes through guessable query parameters.
+
+70. SCHEDULED THEME PUBLISHING
+
+Architect for:
+
+Publish now
+
+or
+
+Schedule publishing.
+
+Useful for:
+
+Campaigns
+Seasonal launches
+Product drops
+71. THEME DATA SEPARATION
+
+Business content does NOT belong to a theme.
+
+Products, customers, collections, menus and orders must survive theme switches.
+
+Theme configuration is presentation only.
+
+Each installed theme keeps its own configuration.
+
+Switching away from a theme must not delete its settings.
+
+72. THEME RENDERER
+
+Storefront runtime should work approximately as:
+
+Template JSON
+
+→ Section Registry
+
+→ Section Component
+
+→ Blocks
+
+→ HTML/React output
+
+Maintain a registry such as:
+
+hero → HeroSection
+
+featured_collection → FeaturedCollectionSection
+
+image_text → ImageTextSection
+
+Never dynamically execute arbitrary merchant code.
+
+73. THEME SECURITY
+
+Do not allow arbitrary JavaScript execution for standard merchants.
+
+Avoid unsafe arbitrary HTML where possible.
+
+Prevent:
+
+XSS
+Token stealing
+Checkout hijacking
+Data exfiltration
+DOM injection
+
+A future Developer Mode may offer stricter sandboxed extension mechanisms.
+
+74. THEME DEVELOPER SDK
+
+Architect for a future CLI.
+
+Example:
+
+platform theme init
+
+platform theme dev
+
+platform theme pull
+
+platform theme push
+
+platform theme validate
+
+platform theme publish
+
+Developers should eventually be able to build themes safely.
+
+75. APP BLOCKS
+
+Architecture should support apps extending themes.
+
+Example:
+
+Reviews App
+
+→ Theme Extension
+
+→ Reviews Block
+
+Merchant:
+
+Add Block
+
+→ Reviews
+
+Avoid requiring apps to directly edit theme source code.
+
+76. STORE DATA VS THEME DATA
+
+Theme must never calculate trusted commerce values.
+
+Theme may request:
+
+Product
+Price
+Availability
+Company pricing
+Shipping estimate
+
+But Commerce Core computes the authoritative answer.
+
+Architecture:
+
+Theme
+
+→ Storefront API
+
+→ Commerce Core
+
+This separation is mandatory.
+
+77. STOREFRONT API
+
+Create a dedicated Storefront API.
+
+It should support:
+
+Products
+Collections
+Search
+Cart
+Pricing
+Customer context
+Company context
+Availability
+Localization
+
+Use appropriate caching while preventing leakage of personalized B2B data.
+
+78. CART
+
+Cart should support:
+
+Anonymous users
+Authenticated users
+B2B companies
+Company locations
+Custom pricing
+Discounts
+Notes
+PO number
+
+Persist carts where appropriate.
+
+79. CHECKOUT ENGINE
+
+Checkout must be its own critical domain.
+
+Flow:
+
+Customer Context
+
+→ Company Context
+
+→ Catalog Validation
+
+→ Pricing
+
+→ Inventory Validation
+
+→ Discounts
+
+→ Shipping
+
+→ Tax
+
+→ Payment / Terms
+
+→ Order
+
+Never trust price, discount, tax or total amounts from the browser.
+
+80. CHECKOUT CUSTOMIZATION
+
+Do not initially allow merchants to fully manipulate checkout markup.
+
+Allow branding controls such as:
+
+Logo
+Colors
+Typography
+Banner
+
+Protect checkout integrity and performance.
+
+81. DOMAIN MANAGEMENT
+
+Each store receives a default subdomain.
+
+Example:
+
+mystore.platform.com
+
+Support custom domains:
+
+store.company.com
+
+company.com
+
+Domain lifecycle:
+
+Add domain
+
+→ DNS instructions
+
+→ Verify ownership
+
+→ Provision SSL
+
+→ Configure routing
+
+→ Activate
+
+Use CDN/edge infrastructure.
+
+82. FILE AND MEDIA MANAGEMENT
+
+Build a media library.
+
+Support:
+
+Images
+Video
+Documents
+PDFs
+Theme assets
+
+Store in S3-compatible object storage.
+
+Serve through CDN.
+
+83. IMAGE OPTIMIZATION
+
+Generate optimized images.
+
+Support:
+
+WebP
+AVIF
+Responsive widths
+Lazy loading
+CDN transforms
+
+Avoid serving raw huge source images to storefront users.
+
+84. SEARCH
+
+Use a dedicated search system eventually.
+
+Options:
+
+Meilisearch
+OpenSearch
+Elasticsearch equivalent
+
+Search fields:
+
+Product title
+SKU
+Vendor
+Tags
+Description
+Category
+Barcode
+
+Support filtering:
+
+Category
+Price
+Availability
+Brand
+Attribute
+
+Respect B2B catalog visibility.
+
+85. ANALYTICS
+
+Merchant analytics:
+
+Revenue
+GMV
+Orders
+AOV
+Conversion
+Customers
+Returning customers
+Top products
+Top collections
+Top channels
+
+B2B analytics:
+
+Revenue by company
+Revenue by company location
+Revenue by account manager
+Quote conversion
+Reorder rate
+Average payment time
+Outstanding receivables
+Credit utilization
+Catalog performance
+86. EVENTS AND ANALYTICS PIPELINE
+
+Avoid calculating every metric directly from transactional tables.
+
+Create event-driven analytics architecture.
+
+Possible events:
+
+product_viewed
+search_performed
+cart_created
+item_added
+checkout_started
+order_created
+payment_completed
+quote_requested
+
+Events may later feed an analytics warehouse.
+
+87. NOTIFICATIONS
+
+Create a notification system.
+
+Channels:
+
+Email
+In-app
+Webhook
+
+Future:
+
+SMS
+WhatsApp
+
+Events:
+
+New order
+Payment received
+Quote requested
+Quote accepted
+Inventory low
+Customer registered
+Company application
+Shipment delivered
+Invoice overdue
+88. EMAIL TEMPLATE SYSTEM
+
+Create customizable transactional emails.
+
+Examples:
+
+Order confirmation
+Invoice
+Shipment
+Quote
+Password reset
+Company invitation
+
+Provide safe branding/customization.
+
+89. SAAS PLANS
+
+Platform subscription model.
+
+Example plans:
+
+Starter
+
+Business
+
+Advanced
+
+Enterprise
+
+Do not hard-code plan logic throughout the application.
+
+Use entitlement system.
+
+Example entitlements:
+
+stores.max
+staff.max
+products.max
+api.requests
+advanced_b2b
+custom_domain
+quotes
+multiple_locations
+theme_versions
+90. PLATFORM BILLING
+
+Platform itself must charge merchants for SaaS usage.
+
+Support:
+
+Subscription
+Trial
+Upgrade
+Downgrade
+Cancellation
+Invoice
+Failed payment
+Grace period
+
+Potential future:
+
+Transaction fees
+App fees
+Usage billing
+
+Keep platform billing separate from store customer payments.
+
+91. API ARCHITECTURE
+
+Separate API concerns.
+
+Admin API:
+Merchant operations.
+
+Storefront API:
+Storefront data.
+
+Platform API:
+Internal platform operations.
+
+Future Developer API:
+Third-party apps.
+
+92. API DESIGN RULES
+
+Use:
+
+Versioned endpoints
+Consistent error shape
+Pagination
+Filtering
+Sorting
+Idempotency
+Rate limiting
+Request IDs
+Auditability
+
+Choose REST and/or GraphQL intentionally.
+
+Do not mix patterns randomly.
+
+93. WEBHOOKS
+
+Support events such as:
+
+product.created
+product.updated
+order.created
+order.updated
+customer.created
+inventory.updated
+refund.created
+company.created
+
+Webhook system needs:
+
+Signing
+Retry
+Dead letter handling
+Delivery logs
+Replay
+94. APP PLATFORM
+
+Future application architecture:
+
+Merchant
+
+→ Install App
+
+→ OAuth / authorization
+
+→ Permission scopes
+
+→ API
+
+→ Webhooks
+
+Example scopes:
+
+read_products
+write_products
+read_orders
+write_orders
+read_customers
+read_inventory
+write_inventory
+
+Use least privilege.
+
+95. INTEGRATIONS
+
+Plan for integration categories:
+
+ERP
+CRM
+Accounting
+Shipping
+Warehouse
+Marketing
+Analytics
+Support
+PIM
+
+Examples should use adapters rather than hard-coding external systems throughout the core.
+
+96. PLATFORM SUPER ADMIN
+
+Internal operators should be able to:
+
+Search merchant
+View organization
+View store status
+Inspect billing state
+Inspect domain
+Inspect webhook failures
+View audit logs
+View job failures
+Toggle features
+
+Support impersonation only with strict controls.
+
+Any support impersonation must:
+
+Require authorization
+Create audit event
+Show visible support session status
+Expire automatically
+97. AUDIT LOGS
+
+Audit critical actions.
+
+Examples:
+
+User login
+Product deletion
+Price change
+Order refund
+Company credit change
+Role change
+Theme publish
+Domain change
+App installation
+Permission change
+
+Store:
+
+Actor
+Action
+Resource
+Old state where useful
+New state where useful
+Timestamp
+IP
+Session
+Metadata
+98. BACKGROUND JOBS
+
+Use queues for long-running tasks.
+
+Examples:
+
+Imports
+Exports
+Emails
+Search indexing
+Analytics
+Webhooks
+Image processing
+Theme publishing
+Cache invalidation
+Domain provisioning
+
+Do not block HTTP requests for long tasks.
+
+99. IMPORT / EXPORT
+
+Support CSV import/export for:
+
+Products
+Inventory
+Customers
+Companies
+Orders where appropriate
+Pricing
+Catalog assignments
+
+Build job progress UI.
+
+Example:
+
+Importing products
+
+2,481 / 5,000
+
+49%
+
+Show validation errors.
+
+100. RECOMMENDED TECH STACK
+
+Preferred initial stack:
+
+Frontend:
+Next.js
+
+Language:
+TypeScript
+
+Admin UI:
+React / Next.js
+
+Storefront:
+Next.js
+
+Backend:
+NestJS or similarly structured TypeScript backend
+
+Database:
+PostgreSQL
+
+ORM:
+Prisma or Drizzle, selected intentionally
+
+Cache:
+Redis
+
+Queue:
+BullMQ or managed queue system
+
+Storage:
+S3-compatible object storage
+
+Search:
+Meilisearch initially, OpenSearch at larger scale
+
+CDN / Edge:
+Cloudflare or equivalent
+
+Containers:
+Docker
+
+Observability:
+OpenTelemetry
+
+Errors:
+Centralized error monitoring
+
+CI/CD:
+Automated pipelines
+
+101. ARCHITECTURAL STYLE
+
+Do NOT start with dozens of microservices.
+
+Begin with a:
+
+Modular Monolith.
+
+Domains should be independently structured so they may later be extracted.
+
+Example modules:
+
+auth
+
+organizations
+
+stores
+
+users
+
+permissions
+
+products
+
+collections
+
+inventory
+
+customers
+
+companies
+
+catalogs
+
+pricing
+
+quotes
+
+carts
+
+checkout
+
+orders
+
+payments
+
+shipping
+
+returns
+
+taxes
+
+markets
+
+discounts
+
+content
+
+themes
+
+analytics
+
+apps
+
+webhooks
+
+billing
+
+Eventually extract high-load services such as:
+
+Search
+
+Pricing
+
+Checkout
+
+Payments
+
+Analytics
+
+102. DATABASE PRINCIPLES
+
+Use PostgreSQL.
+
+Use:
+
+UUID/appropriate identifiers
+Foreign keys
+Unique constraints
+Indexes
+Transactions
+Soft deletion only where justified
+Explicit timestamps
+
+Important tables may include:
+
+users
+
+organizations
+
+organization_members
+
+stores
+
+store_members
+
+roles
+
+permissions
+
+products
+
+product_variants
+
+product_options
+
+product_media
+
+collections
+
+inventory_items
+
+inventory_locations
+
+inventory_levels
+
+inventory_movements
+
+customers
+
+companies
+
+company_locations
+
+company_users
+
+catalogs
+
+catalog_products
+
+price_lists
+
+price_rules
+
+quantity_rules
+
+quotes
+
+quote_items
+
+carts
+
+cart_items
+
+orders
+
+order_items
+
+payments
+
+transactions
+
+refunds
+
+fulfillments
+
+shipments
+
+returns
+
+invoices
+
+credit_accounts
+
+discounts
+
+markets
+
+tax_rules
+
+pages
+
+blogs
+
+articles
+
+menus
+
+themes
+
+theme_releases
+
+store_themes
+
+store_theme_versions
+
+theme_template_versions
+
+domains
+
+apps
+
+app_installations
+
+webhooks
+
+subscriptions
+
+plans
+
+entitlements
+
+audit_logs
+
+jobs
+
+events
+
+103. THEME DATABASE MODEL
+
+Suggested structure:
+
+themes
+
+id
+name
+slug
+description
+category
+status
+
+theme_releases
+
+id
+theme_id
+version
+manifest
+release_date
+
+store_themes
+
+id
+store_id
+theme_id
+theme_release_id
+status
+published_at
+
+store_theme_versions
+
+id
+store_theme_id
+version
+global_settings JSONB
+status
+created_by
+created_at
+
+theme_template_versions
+
+id
+theme_version_id
+template_type
+template_name
+configuration JSONB
+104. THEME CONFIGURATION FORMAT
+
+Example:
+
+{
+"sections": {
+"hero_01": {
+"type": "hero",
+"settings": {
+"heading": "Wholesale made simple",
+"height": "large"
+},
+"blocks": {
+"button_01": {
+"type": "button",
+"settings": {
+"label": "Shop now",
+"url": "/collections/all"
+}
+}
+}
+}
+},
+"order": [
+"hero_01"
+]
+}
+
+Use stable IDs.
+
+Validate all configuration against schema.
+
+105. SECURITY REQUIREMENTS
+
+Mandatory:
+
+Strong authentication
+Tenant isolation
+RBAC
+MFA
+Secure session handling
+CSRF protection where applicable
+XSS prevention
+SQL injection prevention
+Rate limiting
+Brute-force protection
+Encrypted secrets
+Signed webhooks
+API key rotation
+Secure headers
+Audit logs
+Backups
+Disaster recovery planning
+
+Never store raw payment card details.
+
+106. PRIVACY
+
+Design for:
+
+GDPR
+KVKK
+Cookie consent
+Data export
+Customer deletion
+Retention policies
+Consent tracking
+
+Do not scatter personal data unnecessarily across services.
+
+107. OBSERVABILITY
+
+Implement:
+
+Structured logs
+Request IDs
+Metrics
+Distributed tracing
+Error monitoring
+Queue monitoring
+Database monitoring
+
+Track:
+
+API latency
+Checkout errors
+Payment failures
+Storefront uptime
+Job failures
+Webhook failures
+Theme render errors
+108. PERFORMANCE
+
+Performance must be treated as a product feature.
+
+Use:
+
+CDN
+Caching
+Edge caching where appropriate
+Image optimization
+Query optimization
+Database indexing
+Lazy loading
+Code splitting
+Streaming where beneficial
+
+Public storefront pages should be highly cacheable.
+
+Authenticated B2B pricing must not leak through shared caches.
+
+109. ACCESSIBILITY
+
+Theme components should be accessible by default.
+
+Use:
+
+Semantic HTML
+Keyboard navigation
+Focus states
+Labels
+Appropriate ARIA
+Contrast guidance
+Alt text
+
+Merchants should not easily break accessibility through the visual editor.
+
+110. INTERNATIONALIZATION
+
+Prepare platform and storefront for multiple languages.
+
+Separate:
+
+Platform UI translations
+
+from:
+
+Store content translations.
+
+Support locale fallback.
+
+Architect for RTL even if not implemented initially.
+
+111. FEATURE FLAGS
+
+Create feature flag infrastructure.
+
+Use cases:
+
+Progressive rollout
+Beta features
+Enterprise-only features
+Testing
+Emergency disabling
+
+Flags should support tenant targeting.
+
+112. TESTING STRATEGY
+
+Require:
+
+Unit tests
+
+Integration tests
+
+API tests
+
+End-to-end tests
+
+Security tests
+
+Critical E2E workflows:
+
+Signup
+
+Create store
+
+Create product
+
+Configure B2B company
+
+Create catalog
+
+Configure pricing
+
+Add to cart
+
+Checkout
+
+Create order
+
+Payment
+
+Refund
+
+Create quote
+
+Accept quote
+
+Customize theme
+
+Publish theme
+
+Rollback theme
+
+113. DEVELOPMENT ENVIRONMENTS
+
+Use:
+
+Local
+
+Development
+
+Staging
+
+Production
+
+Never test dangerous migrations directly in production.
+
+Use migration strategy and rollback planning.
+
+114. CODE QUALITY
+
+Require:
+
+TypeScript strict mode
+Domain boundaries
+No giant files
+Reusable components
+No duplicated business logic
+Centralized validation
+Consistent errors
+No silent failures
+Clear naming
+Comments only where useful
+Proper dependency direction
+
+Avoid:
+
+God services
+God components
+Hard-coded tenant IDs
+Hard-coded plan rules
+Hard-coded currencies
+Business logic in UI
+Business logic in themes
+115. DESIGN SYSTEM
+
+Create one platform design system.
+
+Components:
+
+Button
+Input
+Select
+Combobox
+Modal
+Drawer
+Popover
+Tooltip
+Table
+Data Grid
+Badge
+Card
+Tabs
+Pagination
+Command Menu
+Toast
+Empty State
+Skeleton
+Date Picker
+File Picker
+Color Picker
+
+Admin should visually feel like one coherent product.
+
+116. TABLE AND DATA GRID REQUIREMENTS
+
+Commerce admin relies heavily on tables.
+
+Support:
+
+Search
+Filters
+Sorting
+Column visibility
+Bulk actions
+Saved views
+Pagination
+Selection
+
+Examples:
+
+Orders table
+
+Products table
+
+Customers table
+
+Companies table
+
+Inventory table
+
+117. SAVED ADMIN VIEWS
+
+Users should create saved filters.
+
+Example Orders views:
+
+Unfulfilled
+Awaiting Payment
+High Value
+B2B
+Overdue
+
+Saved views may be personal or shared later.
+
+118. COMMAND PALETTE
+
+Global command interface.
+
+Search:
+
+Pages
+Orders
+Products
+Customers
+Companies
+Settings
+
+Actions:
+
+New product
+New order
+New quote
+
+Keyboard-first admin navigation is encouraged.
+
+119. MOBILE ADMIN
+
+Merchant admin must remain usable on tablets and mobile.
+
+Do not assume desktop-only operations.
+
+Critical actions should work responsively.
+
+120. INITIAL MVP BOUNDARY
+
+Do not attempt all features simultaneously.
+
+MVP should contain:
+
+Authentication
+
+Organization
+
+Store
+
+RBAC foundation
+
+Products
+
+Variants
+
+Collections
+
+Inventory
+
+Customers
+
+Companies
+
+Company locations
+
+Catalogs
+
+Pricing
+
+Cart
+
+Checkout
+
+Orders
+
+Basic payment provider
+
+Basic shipping
+
+Storefront
+
+Theme Engine
+
+Theme Editor
+
+Foundation Theme
+
+Wholesale Pro Theme
+
+Custom domain foundation
+
+Basic analytics
+
+Platform subscription foundation
+
+121. IMPLEMENTATION PHASES
+Phase 0 — Foundation
+Monorepo
+Architecture
+Coding standards
+CI
+Database
+Design system
+Auth foundations
+Phase 1 — SaaS Core
+Users
+Organizations
+Stores
+Memberships
+RBAC
+Phase 2 — Product Catalog
+Products
+Variants
+Collections
+Media
+Metafields
+Phase 3 — Inventory
+Locations
+Inventory
+Movements
+Phase 4 — Customer & B2B
+Customers
+Companies
+Locations
+Buyers
+Phase 5 — Catalog & Pricing
+Catalogs
+Price lists
+Volume pricing
+Quantity rules
+Phase 6 — Commerce
+Cart
+Checkout
+Orders
+Phase 7 — Payments / Shipping
+Payment adapters
+Fulfillment
+Shipping
+Phase 8 — Storefront Runtime
+Storefront API
+Product pages
+Collection pages
+Cart
+Phase 9 — Theme Engine
+Manifest
+Templates
+Sections
+Blocks
+Settings
+Renderer
+Phase 10 — Theme Editor
+Preview
+Section tree
+Settings panel
+Drag/drop
+Responsive editor
+Autosave
+Draft/published state
+Phase 11 — Theme Versioning
+Version history
+Undo/redo
+Preview URLs
+Rollback
+Phase 12 — B2B Advanced
+Quotes
+Credit
+Payment terms
+Approval workflow
+Quick order
+Phase 13 — Analytics
+Reporting
+Events
+Dashboards
+Phase 14 — SaaS Billing
+Plans
+Entitlements
+Subscription
+Phase 15 — Developers
+API
+Webhooks
+OAuth
+Apps
+Phase 16 — Enterprise
+SSO
+Audit expansion
+Advanced permissions
+Large catalog performance
+Enterprise support tools
+122. DEVELOPMENT METHOD
+
+When implementing the platform:
+
+Do not generate the entire project in one uncontrolled step.
+
+Work module-by-module.
+
+Before each module:
+
+Explain the goal.
+Explain dependencies.
+Define data model.
+Define API.
+Define service layer.
+Define UI screens.
+Define validation.
+Define permissions.
+Define tests.
+Implement.
+
+After implementation:
+
+Run type checks.
+Run tests.
+Run lint.
+Verify migrations.
+Verify tenant isolation.
+Check responsive UI.
+Check error states.
+Check loading states.
+Check empty states.
+Review security.
+123. UX PRINCIPLES
+
+The platform should feel:
+
+Premium
+Fast
+Professional
+Calm
+Enterprise-grade
+Modern
+Consistent
+
+Avoid overly decorative dashboards.
+
+Commerce operations require clarity.
+
+Use strong information hierarchy.
+
+Important information should be visible without excessive clicks.
+
+124. ERROR EXPERIENCE
+
+Never show generic unexplained errors where avoidable.
+
+Provide useful errors.
+
+Example:
+
+Instead of:
+
+“Something went wrong.”
+
+Use:
+
+“This product could not be added because the requested quantity exceeds available inventory.”
+
+Support:
+
+Inline errors
+Toasts
+Retry
+Error boundaries
+125. EMPTY STATES
+
+Every operational page needs useful empty states.
+
+Example Products:
+
+“No products yet.”
+
+CTA:
+
+“Add your first product”
+
+Secondary:
+
+“Import products”
+
+126. LOADING STATES
+
+Use skeletons.
+
+Avoid unnecessary full-page spinners.
+
+Maintain layout stability.
+
+127. DESTRUCTIVE ACTIONS
+
+Require clear confirmation for:
+
+Delete store
+Delete product
+Remove domain
+Cancel subscription
+Refund order
+Delete company
+Publish destructive theme changes when necessary
+
+Use permission checks.
+
+128. CONCURRENCY
+
+Protect against conflicting edits.
+
+Example:
+
+Two staff users edit the same product.
+
+Consider:
+
+updated_at versioning
+optimistic locking
+conflict warnings
+
+Theme editing should also handle multi-session changes safely.
+
+129. CACHE SAFETY
+
+Be extremely careful with:
+
+B2B prices
+Company-specific content
+Credit
+Authenticated customer data
+
+Never share personalized responses through public shared cache keys.
+
+130. DATA OWNERSHIP
+
+The commerce platform owns operational data.
+
+Themes consume data.
+
+Apps receive only permitted data.
+
+Background jobs receive explicit tenant context.
+
+Analytics data must remain tenant scoped.
+
+131. FUTURE CAPABILITIES
+
+Architect so the platform can later support:
+
+POS
+Marketplace
+Dropshipping
+Subscription commerce
+Headless storefronts
+AI merchandising
+AI storefront generation
+Mobile apps
+Multi-brand organizations
+Supplier portals
+Procurement workflows
+Advanced ERP integration
+B2B EDI
+PunchOut catalogs
+Marketplace apps
+Marketplace themes
+
+Do not overbuild these now, but avoid architectural decisions that make them impossible.
+
+132. AI-ASSISTED STORE BUILDING — FUTURE
+
+Plan for an AI layer that can eventually:
+
+Generate homepage layouts
+Recommend sections
+Generate product descriptions
+Create navigation
+Suggest theme settings
+Build pages from text prompts
+
+Example:
+
+“Create a modern industrial wholesale homepage for a construction materials supplier.”
+
+AI outputs:
+
+Template configuration
+
+using allowed Theme Engine schemas.
+
+AI must not generate uncontrolled application code.
+
+133. PLATFORM PRINCIPLE
+
+Always maintain this separation:
+
+Commerce Core
+
+is responsible for:
+
+Truth
+Validation
+Pricing
+Inventory
+Orders
+Payments
+Authorization
+
+Theme Engine
+
+is responsible for:
+
+Presentation
+Layout
+Visual configuration
+
+Admin
+
+is responsible for:
+
+Operations
+
+Apps
+
+are responsible for:
+
+Extensions
+
+Analytics
+
+is responsible for:
+
+Reporting
+
+Do not blur these boundaries.
+
+134. EXPECTED OUTPUT FROM YOU
+
+Before writing major production code, provide:
+
+Full architecture map.
+Monorepo structure.
+Backend module structure.
+Frontend application structure.
+Theme Engine structure.
+Theme Editor architecture.
+PostgreSQL schema plan.
+Authentication plan.
+RBAC model.
+Multi-tenant model.
+API conventions.
+Event model.
+Queue architecture.
+Caching strategy.
+Security model.
+Deployment architecture.
+Development phases.
+Testing strategy.
+
+Then begin implementation in controlled phases.
+
+For every significant implementation decision, preserve consistency with this master architecture.
+
+The final product should not feel like a collection of loosely connected dashboards.
+
+It should feel like a single, deeply integrated, professional commerce operating system.
+
+Build for correctness first.
+
+Then extensibility.
+
+Then scale.
+
+Then ecosystem.
+
+Never sacrifice tenant security, payment integrity, pricing integrity, or data isolation for implementation speed.

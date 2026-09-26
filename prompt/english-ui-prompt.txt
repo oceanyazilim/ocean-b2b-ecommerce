@@ -1,0 +1,2622 @@
+# MASTER UI/UX DESIGN PROMPT
+
+## Modern B2B Commerce Platform — Storefront, Admin Dashboard & Theme Builder
+
+Design and implement a complete, production-grade UI/UX system for a modern B2B commerce SaaS platform.
+
+The product should provide the operational depth of Shopify, but must NOT visually clone Shopify.
+
+The final experience should feel like a modern commerce operating system built from the ground up for 2026.
+
+The design direction should combine:
+
+* Shopify-level commerce usability
+* Linear-style interface clarity
+* Stripe-style data presentation
+* Vercel-style modern SaaS polish
+* Strong B2B functionality
+* Enterprise-grade information architecture
+* Fast keyboard-driven workflows
+* Minimal cognitive load
+* High information density without visual clutter
+
+The application should feel premium, calm, extremely responsive, professional and trustworthy.
+
+---
+
+# 1. CORE PRODUCT PHILOSOPHY
+
+The platform is not simply an online store builder.
+
+It is a complete commerce operating system where merchants can:
+
+* create stores
+* manage products
+* manage variants
+* manage inventory
+* manage orders
+* manage customers
+* manage B2B companies
+* define custom catalogs
+* manage wholesale pricing
+* configure payment terms
+* create discounts
+* manage markets
+* configure shipping
+* manage taxes
+* create marketing campaigns
+* view analytics
+* manage staff
+* install applications
+* automate workflows
+* customize storefront themes
+* manage domains
+* manage checkout
+* communicate with customers
+* manage multiple stores
+* interact with an AI commerce assistant
+
+Everything should feel interconnected.
+
+Avoid designing isolated pages.
+
+Create a coherent commerce ecosystem.
+
+---
+
+# 2. GLOBAL DESIGN LANGUAGE
+
+Create a clean, neutral and highly polished SaaS interface.
+
+Do not overuse cards.
+
+Do not create excessive gradients.
+
+Do not create giant rounded containers everywhere.
+
+Do not make the interface look like a generic startup dashboard template.
+
+The interface should feel intentionally designed for commerce operations.
+
+## Visual principles
+
+Use:
+
+* neutral background colors
+* subtle borders
+* extremely subtle shadows
+* clear typography hierarchy
+* restrained accent colors
+* compact but comfortable spacing
+* contextual status colors
+* clear iconography
+* clean tables
+* sophisticated empty states
+* lightweight animations
+* high-quality hover states
+* precise alignment
+
+Prefer borders and surface contrast over large drop shadows.
+
+Recommended visual characteristics:
+
+Border radius:
+6px–10px for most UI elements.
+
+Large promotional surfaces:
+12px–16px maximum.
+
+Avoid excessive pill-shaped UI.
+
+Buttons should be compact and functional.
+
+Tables should feel dense but readable.
+
+Forms should be clear and structured.
+
+---
+
+# 3. APPLICATION SHELL
+
+Create a persistent application shell.
+
+Desktop layout:
+
+LEFT SIDEBAR
+MAIN CONTENT
+OPTIONAL CONTEXT PANEL
+
+The interface must work beautifully from:
+
+1280px
+1440px
+1600px
+1920px
+2560px
+
+Responsive tablet and mobile layouts must also exist.
+
+---
+
+# 4. LEFT SIDEBAR
+
+The sidebar is the main navigation surface.
+
+It should be approximately 230–250px expanded.
+
+Collapsed state:
+approximately 64px.
+
+Allow merchants to collapse the sidebar.
+
+At the top show:
+
+Store logo/avatar
+Store name
+Environment/status indicator
+Store switcher dropdown
+
+Example:
+
+ACME Wholesale
+Production
+
+Clicking this area opens:
+
+Switch store
+Create store
+Store settings
+Organization settings
+
+---
+
+# 5. GLOBAL SEARCH
+
+Place a prominent search/action trigger near the top of the navigation.
+
+Example:
+
+Search
+
+Keyboard shortcut:
+
+⌘ K / Ctrl K
+
+Clicking opens a command palette.
+
+The command palette must search:
+
+Products
+Orders
+Customers
+Companies
+Pages
+Apps
+Settings
+Navigation actions
+
+It should also support actions such as:
+
+Create product
+Create order
+Add customer
+Create company
+Create discount
+Open analytics
+Edit theme
+
+Recent searches should appear before typing.
+
+---
+
+# 6. MAIN NAVIGATION
+
+Use the following information architecture.
+
+HOME
+
+ORDERS
+
+* All orders
+* Draft orders
+* Abandoned checkouts
+* Returns
+* Fulfillment
+
+PRODUCTS
+
+* All products
+* Collections
+* Inventory
+* Transfers
+* Purchase orders
+* Gift cards
+
+CUSTOMERS
+
+* Customers
+* Segments
+
+B2B
+
+* Companies
+* Company locations
+* Contacts
+* Catalogs
+* Price lists
+* Quotes
+* Payment terms
+* Purchase orders
+
+CONTENT
+
+* Pages
+* Blog
+* Media
+* Files
+* Menus
+* Metaobjects
+
+SALES
+
+* Online store
+* Point of sale
+* Marketplaces
+* Social commerce
+
+MARKETING
+
+* Campaigns
+* Automations
+* Email
+* Attribution
+
+DISCOUNTS
+
+ANALYTICS
+
+* Overview
+* Reports
+* Live view
+* Customer analytics
+* Product analytics
+* Sales analytics
+
+FINANCE
+
+* Payments
+* Payouts
+* Transactions
+* Invoices
+* Taxes
+
+MARKETS
+
+* Countries
+* Currencies
+* Languages
+* Regional pricing
+
+APPS
+
+AUTOMATIONS
+
+At the bottom:
+
+Settings
+Help & support
+
+---
+
+# 7. SIDEBAR BEHAVIOUR
+
+Navigation groups should intelligently expand and collapse.
+
+Highlight the active section clearly without using an oversized colored background.
+
+Use:
+
+subtle surface change
+icon emphasis
+slightly stronger typography
+
+When collapsed, show tooltips on hover.
+
+Allow merchants to pin favorite pages.
+
+Example:
+
+★ Orders
+★ Inventory
+★ Companies
+
+---
+
+# 8. GLOBAL TOP AREA
+
+Do not create a traditional giant navbar above the application.
+
+The main workspace should have a compact contextual header.
+
+Example:
+
+Products
+
+[Search products]       [Import] [Export] [+ Add product]
+
+Use breadcrumbs when necessary.
+
+Example:
+
+Products / Nike Air Max / Variants
+
+The right side may include:
+
+notifications
+activity
+help
+user profile
+
+---
+
+# 9. ADMIN HOME DASHBOARD
+
+The dashboard must answer four questions immediately:
+
+1. What happened?
+2. What requires my attention?
+3. How is my business performing?
+4. What should I do next?
+
+Avoid filling the screen with meaningless graphs.
+
+---
+
+# 10. DASHBOARD HEADER
+
+Example:
+
+Good morning, Emirhan
+
+Here's what's happening with your business today.
+
+Controls:
+
+Today
+7 days
+30 days
+90 days
+Custom range
+
+Store selector
+
+Currency selector
+
+---
+
+# 11. PRIMARY METRICS
+
+Create a responsive metric strip.
+
+Metrics:
+
+Total sales
+Net sales
+Orders
+Average order value
+Conversion rate
+Returning customer rate
+
+Each metric should show:
+
+current value
+percentage change
+comparison period
+tiny sparkline where appropriate
+
+Example:
+
+Total sales
+₺482,350
+↑ 18.4%
+vs previous period
+
+Avoid huge cards.
+
+Use compact data surfaces.
+
+---
+
+# 12. REVENUE OVERVIEW
+
+Create a sophisticated revenue chart.
+
+Allow metrics:
+
+Gross sales
+Net sales
+Orders
+AOV
+Refunds
+
+Allow comparison:
+
+Previous period
+Previous year
+
+Interactive tooltip should display exact values.
+
+---
+
+# 13. BUSINESS ATTENTION CENTER
+
+Create an operational section called:
+
+Needs attention
+
+Examples:
+
+12 orders waiting for fulfillment
+4 products low in stock
+3 payment failures
+8 pending B2B applications
+2 quotes waiting for approval
+5 invoices overdue
+
+Each row should lead directly to the relevant workflow.
+
+Severity states:
+
+Information
+Warning
+Critical
+
+---
+
+# 14. LIVE ACTIVITY FEED
+
+Show recent commerce activity.
+
+Examples:
+
+New order #1054 — ₺2,450
+New B2B application — Atlas GmbH
+Inventory adjusted — SKU-A128
+Payment received — Invoice #INV-228
+Product published — Minimal Chair
+Refund processed — Order #1041
+
+Include timestamps.
+
+---
+
+# 15. AI COMMERCE ASSISTANT
+
+Create a floating AI assistant button in the bottom-right corner.
+
+Do NOT permanently consume a large side panel.
+
+Clicking opens a floating conversational panel.
+
+The assistant should understand commerce context.
+
+Example prompts:
+
+"Show products that may run out of stock this week."
+
+"Create a 10% discount for our German wholesale customers."
+
+"Which products generated the most revenue this month?"
+
+"Draft an email for customers with abandoned carts."
+
+"Create a catalog for our Istanbul distributors."
+
+"Why did revenue decrease yesterday?"
+
+The AI assistant should be able to generate previews before executing actions.
+
+Example:
+
+AI proposes:
+Create catalog
+"Turkey Wholesale 2026"
+
+Products:
+482
+
+Pricing:
+-20%
+
+[Cancel]
+[Create catalog]
+
+Never execute destructive actions without confirmation.
+
+---
+
+# 16. ORDERS PAGE
+
+Use a powerful data-table interface.
+
+Header:
+
+Orders
+
+Buttons:
+
+Export
+More actions
+Create order
+
+Tabs:
+
+All
+Unfulfilled
+Unpaid
+Open
+Closed
+Cancelled
+
+Filters:
+
+Date
+Status
+Payment status
+Fulfillment status
+Channel
+Customer
+Market
+B2B/DTC
+
+Allow saved views.
+
+Example:
+
+High value orders
+EU orders
+Wholesale orders
+Needs fulfillment
+
+---
+
+# 17. ORDER TABLE
+
+Columns:
+
+Checkbox
+Order
+Date
+Customer
+Channel
+Total
+Payment
+Fulfillment
+Items
+Delivery
+
+Status badges must be subtle.
+
+Examples:
+
+Paid
+Pending
+Refunded
+Unfulfilled
+Partially fulfilled
+Fulfilled
+
+Bulk actions should appear contextually after selecting rows.
+
+Example:
+
+12 selected
+
+Mark fulfilled
+Capture payment
+Archive
+More
+
+---
+
+# 18. ORDER DETAIL PAGE
+
+Create a structured order detail workspace.
+
+Header:
+
+#1054
+
+Paid
+Unfulfilled
+
+Actions:
+
+Refund
+Edit
+More
+
+Main area:
+
+Products
+Quantity
+Price
+Discount
+Tax
+Total
+
+Right side:
+
+Customer
+Company
+Contact
+Shipping address
+Billing address
+Payment information
+Order source
+Timeline
+
+Timeline example:
+
+Order created
+Payment authorized
+Payment captured
+Fulfillment created
+Email sent
+
+---
+
+# 19. PRODUCTS PAGE
+
+Header:
+
+Products
+
+Actions:
+
+Import
+Export
+Add product
+
+Tabs:
+
+All
+Active
+Draft
+Archived
+
+Filters:
+
+Vendor
+Category
+Collection
+Status
+Inventory
+Market
+
+Table:
+
+Image
+Product
+Status
+Inventory
+Category
+Vendor
+Sales channels
+
+---
+
+# 20. PRODUCT DETAIL EXPERIENCE
+
+Use a clean two-column editor.
+
+Main area:
+
+Title
+Description
+Media
+Category
+Variants
+Pricing
+Inventory
+Shipping
+SEO
+
+Secondary sidebar:
+
+Status
+Publishing
+Sales channels
+Markets
+Organization
+
+Sections should collapse when appropriate.
+
+Autosave should be supported.
+
+Show:
+
+Saved
+
+instead of requiring constant manual Save actions.
+
+---
+
+# 21. VARIANT MANAGEMENT
+
+Support complex variants.
+
+Example:
+
+Color
+Size
+Material
+
+Allow merchants to generate combinations.
+
+Variant table:
+
+Variant
+SKU
+Price
+Cost
+Margin
+Inventory
+Barcode
+
+Support bulk editing.
+
+---
+
+# 22. INVENTORY
+
+Create dedicated inventory management.
+
+Table:
+
+Product
+Variant
+SKU
+Committed
+Available
+Incoming
+On hand
+
+Warehouse selector.
+
+Support multiple locations.
+
+Example locations:
+
+Istanbul Warehouse
+Ankara Warehouse
+Berlin Warehouse
+
+Inventory history should be available.
+
+---
+
+# 23. CUSTOMERS
+
+Customer list should support:
+
+Search
+Segments
+Filters
+Tags
+Lifetime value
+Orders
+Last order
+Location
+
+Customer profile page:
+
+Overview
+Orders
+Addresses
+Notes
+Timeline
+Segments
+Marketing consent
+B2B relationship
+
+---
+
+# 24. B2B COMPANIES
+
+This is one of the most important parts of the platform.
+
+Model B2B customers as companies rather than normal consumers.
+
+Company page:
+
+Company name
+Status
+Tax/VAT number
+Industry
+Website
+Credit limit
+Outstanding balance
+Lifetime value
+
+Sections:
+
+Locations
+Contacts
+Orders
+Catalogs
+Quotes
+Invoices
+Payment terms
+Activity
+
+---
+
+# 25. COMPANY LOCATIONS
+
+Companies can contain multiple purchasing locations.
+
+Example:
+
+ACME GmbH
+
+Berlin HQ
+Munich Branch
+Hamburg Distribution Center
+
+Each location can independently define:
+
+Shipping address
+Billing address
+Tax configuration
+Currency
+Catalog
+Payment terms
+Shipping rules
+Buyer permissions
+
+---
+
+# 26. COMPANY CONTACTS
+
+Support multiple users within a company.
+
+Roles:
+
+Owner
+Buyer
+Approver
+Accountant
+Viewer
+
+Permissions:
+
+Place orders
+View pricing
+Approve orders
+Manage users
+View invoices
+
+---
+
+# 27. B2B CATALOGS
+
+Create a powerful catalog management system.
+
+Catalog example:
+
+Europe Wholesale 2026
+
+Status:
+Active
+
+Assigned companies:
+142
+
+Products:
+1,482
+
+Currency:
+EUR
+
+Pricing adjustment:
+-22%
+
+Catalog detail should include:
+
+Products
+Pricing
+Companies
+Markets
+Rules
+
+---
+
+# 28. CUSTOM PRICING
+
+Support:
+
+percentage price adjustments
+fixed pricing
+variant pricing
+company pricing
+location pricing
+market pricing
+
+Example:
+
+Retail price:
+€100
+
+Wholesale adjustment:
+-20%
+
+Wholesale price:
+€80
+
+Allow bulk price editing.
+
+---
+
+# 29. VOLUME PRICING
+
+Example:
+
+1–9 units
+€100
+
+10–49
+€92
+
+50–99
+€85
+
+100+
+€78
+
+Visualize this clearly.
+
+---
+
+# 30. QUANTITY RULES
+
+Allow:
+
+Minimum quantity
+Maximum quantity
+Increment
+
+Example:
+
+Minimum:
+10
+
+Increment:
+5
+
+Maximum:
+500
+
+---
+
+# 31. PAYMENT TERMS
+
+Create payment term presets:
+
+Due immediately
+Net 7
+Net 15
+Net 30
+Net 45
+Net 60
+Net 90
+Custom
+
+Support deposit requirements.
+
+Example:
+
+20% deposit
+80% Net 30
+
+---
+
+# 32. QUOTES
+
+Create a B2B quotation workflow.
+
+Status:
+
+Draft
+Sent
+Viewed
+Negotiating
+Accepted
+Rejected
+Expired
+
+Quote editor should resemble the order editor.
+
+Allow converting:
+
+Quote → Draft Order → Order
+
+---
+
+# 33. PURCHASE ORDER NUMBERS
+
+B2B checkout and orders should support customer PO numbers.
+
+Example:
+
+PO Number
+PO-ACME-2026-00125
+
+Make PO numbers searchable globally.
+
+---
+
+# 34. B2B APPROVAL WORKFLOW
+
+Companies can require order approval.
+
+Example:
+
+Buyer creates order
+
+↓
+
+Company Approver
+
+↓
+
+Merchant Review
+
+↓
+
+Order created
+
+Display approval status clearly.
+
+---
+
+# 35. QUICK ORDER SYSTEM
+
+Create a fast wholesale ordering page.
+
+Users can:
+
+search SKU
+paste SKU list
+enter quantities
+upload CSV
+
+Example table:
+
+SKU
+Product
+Price
+Quantity
+Subtotal
+
+Optimized for customers ordering hundreds of products.
+
+---
+
+# 36. REORDER
+
+Allow buyers to open a previous order and click:
+
+Reorder
+
+Show differences before adding:
+
+Product unavailable
+Price changed
+Minimum quantity changed
+
+---
+
+# 37. ANALYTICS
+
+Analytics should feel premium and useful.
+
+Do not overload pages with graphs.
+
+Create:
+
+Sales overview
+Product performance
+Customer performance
+B2B performance
+Inventory performance
+Marketing attribution
+Geographic sales
+Channel performance
+
+---
+
+# 38. ANALYTICS DASHBOARD BUILDER
+
+Allow users to customize analytics dashboards.
+
+Widget examples:
+
+Metric
+Line chart
+Bar chart
+Area chart
+Table
+Funnel
+Map
+
+Drag widgets to reorder.
+
+Resize widgets.
+
+Save dashboards.
+
+Example:
+
+Executive Dashboard
+
+Sales
+Gross margin
+Orders
+B2B revenue
+Inventory value
+New customers
+
+---
+
+# 39. MARKETS
+
+Allow merchants to manage international commerce.
+
+Country groups:
+
+Turkey
+European Union
+United Kingdom
+United States
+Middle East
+
+Each market can define:
+
+Currency
+Pricing
+Catalog
+Language
+Domain
+Tax
+Shipping
+Content
+
+---
+
+# 40. DISCOUNTS
+
+Discount types:
+
+Percentage
+Fixed amount
+Free shipping
+Buy X Get Y
+Volume discount
+Customer-specific
+Company-specific
+Catalog-specific
+
+Create a visual rule builder.
+
+Example:
+
+IF
+
+Company type = Wholesale
+
+AND
+
+Order value > €5,000
+
+THEN
+
+Apply 7% discount
+
+---
+
+# 41. MARKETING
+
+Campaign dashboard.
+
+Campaign cards:
+
+Email campaign
+Discount campaign
+Social campaign
+Affiliate campaign
+
+Show:
+
+Spend
+Revenue
+ROAS
+Orders
+Conversion
+
+---
+
+# 42. APPS ECOSYSTEM
+
+Create an internal app marketplace.
+
+Categories:
+
+Marketing
+Shipping
+Accounting
+Analytics
+B2B
+Inventory
+Customer support
+Automation
+Store design
+
+Installed apps should appear separately.
+
+Apps may request permissions.
+
+Example:
+
+This app can:
+
+Read products
+Modify orders
+Read customers
+
+---
+
+# 43. AUTOMATION BUILDER
+
+Create a visual workflow builder.
+
+Example:
+
+WHEN
+Order created
+
+IF
+Order total > ₺20,000
+
+THEN
+Tag customer "High Value"
+
+AND
+Notify sales team
+
+Use node-based workflows without making the interface unnecessarily technical.
+
+---
+
+# 44. ONLINE STORE AREA
+
+Create:
+
+Themes
+Pages
+Navigation
+Domains
+Preferences
+
+---
+
+# 45. THEME LIBRARY
+
+The platform must initially contain 10 professionally designed storefront templates.
+
+Display themes using large preview cards.
+
+Theme card:
+
+Theme preview
+
+Minimal
+Fashion / Lifestyle
+
+Current theme
+
+Actions:
+
+Customize
+Preview
+Duplicate
+Rename
+Export
+
+Other themes:
+
+Publish
+Customize
+Preview
+Delete
+
+---
+
+# 46. THEME EDITOR
+
+This is a critical feature.
+
+Create a professional visual website builder inspired by the best modern commerce editors.
+
+Layout:
+
+LEFT PANEL
+PAGE PREVIEW
+OPTIONAL RIGHT SETTINGS PANEL
+
+Top toolbar.
+
+---
+
+# 47. THEME EDITOR TOP TOOLBAR
+
+Left:
+
+Back to themes
+Theme name
+
+Center:
+
+Page selector
+
+Example:
+
+Home page
+Product
+Collection
+Cart
+Search
+Blog
+Custom page
+
+Market/context selector
+
+Example:
+
+Default
+Turkey
+Germany
+Wholesale
+
+Right:
+
+Undo
+Redo
+
+Desktop
+Tablet
+Mobile
+
+Preview
+
+Save
+
+Publish
+
+---
+
+# 48. EDITOR LEFT PANEL
+
+Tabs:
+
+Sections
+Theme settings
+Apps
+
+Sections display a hierarchical tree.
+
+Example:
+
+Header
+
+Announcement bar
+
+Hero
+Heading
+Text
+Button
+
+Featured collection
+Product grid
+
+Image banner
+
+Testimonials
+
+Newsletter
+
+Footer
+
+---
+
+# 49. SECTION INTERACTIONS
+
+Sections must support:
+
+drag and drop
+hide/show
+duplicate
+delete
+rename
+
+Hover actions should be contextual.
+
+Do not show every action permanently.
+
+Use a ⋯ menu.
+
+---
+
+# 50. ADD SECTION
+
+Button:
+
+* Add section
+
+Open a searchable section library.
+
+Categories:
+
+Hero
+Products
+Collections
+Images
+Text
+Video
+Social proof
+Forms
+Navigation
+B2B
+Custom
+
+Cards should show small visual previews.
+
+---
+
+# 51. BLOCK SYSTEM
+
+Sections contain blocks.
+
+Example Hero:
+
+Heading
+Paragraph
+Button
+Image
+
+Allow:
+
+Add block
+Move block
+Duplicate block
+Hide block
+Delete block
+
+Support nested blocks.
+
+---
+
+# 52. LIVE PREVIEW
+
+All changes must update the storefront preview instantly.
+
+No full page reload.
+
+Clicking an element inside the preview should select the corresponding section or block.
+
+Hovering a section should show a subtle outline.
+
+Example:
+
+Hero
+[Edit]
+
+Do not make the outline visually distracting.
+
+---
+
+# 53. RESPONSIVE EDITING
+
+Toolbar:
+
+Desktop
+Tablet
+Mobile
+
+Allow device-specific properties where necessary.
+
+Example:
+
+Desktop padding:
+80px
+
+Mobile padding:
+32px
+
+Allow hide-on-device options.
+
+---
+
+# 54. THEME SETTINGS
+
+Global controls:
+
+Logo
+Favicon
+Colors
+Typography
+Buttons
+Inputs
+Cards
+Borders
+Layout
+Spacing
+Animations
+Social links
+Cart behaviour
+
+---
+
+# 55. DESIGN TOKENS
+
+Use reusable design tokens.
+
+Colors:
+
+Background
+Surface
+Surface secondary
+Text primary
+Text secondary
+Border
+Brand
+Success
+Warning
+Danger
+
+Typography:
+
+Display
+Heading
+Body
+Small
+Caption
+
+Spacing system:
+
+4
+8
+12
+16
+20
+24
+32
+40
+48
+64
+80
+
+---
+
+# 56. COLOR EDITOR
+
+Create semantic color schemes.
+
+Example:
+
+Scheme 1
+Background
+Text
+Primary
+Secondary
+Border
+
+Sections can select a scheme.
+
+---
+
+# 57. TYPOGRAPHY
+
+Allow users to configure:
+
+Heading font
+Body font
+Font scale
+Heading weight
+Letter spacing
+Line height
+
+Show live preview.
+
+---
+
+# 58. TEMPLATE SYSTEM
+
+Support reusable templates.
+
+Example product templates:
+
+Default product
+Luxury product
+Wholesale product
+Pre-order product
+
+Pages can choose their template.
+
+Changes to a template update all pages using that template.
+
+---
+
+# 59. B2B STOREFRONT CONTEXT
+
+Allow different storefront experiences for:
+
+DTC customers
+B2B customers
+Specific markets
+Specific companies
+
+Example:
+
+Retail visitor sees:
+
+€120
+
+Wholesale customer sees:
+
+€82
+Minimum order: 10
+
+---
+
+# 60. PAGE BUILDER
+
+Allow merchants to create landing pages using the same block engine.
+
+Example:
+
+About
+FAQ
+Contact
+Wholesale application
+Campaign landing page
+
+---
+
+# 61. MEDIA LIBRARY
+
+Create a global media manager.
+
+Support:
+
+Images
+Videos
+Documents
+
+Features:
+
+Upload
+Search
+Folder
+Sort
+Metadata
+Alt text
+Copy URL
+Usage references
+
+Use a grid/list switch.
+
+---
+
+# 62. NOTIFICATIONS
+
+Create a notification center.
+
+Categories:
+
+Orders
+Payments
+Inventory
+B2B
+System
+Apps
+
+Allow notification preferences.
+
+---
+
+# 63. SETTINGS
+
+Settings information architecture:
+
+General
+Store details
+Plan
+Billing
+Users & permissions
+Payments
+Checkout
+Customer accounts
+Shipping & delivery
+Taxes
+Markets
+Domains
+Notifications
+Custom data
+Files
+API
+Security
+Activity log
+
+---
+
+# 64. USERS AND PERMISSIONS
+
+Create role-based access control.
+
+Example roles:
+
+Owner
+Administrator
+Store manager
+Warehouse manager
+Marketing manager
+B2B sales representative
+Accountant
+Developer
+
+Allow granular permissions.
+
+---
+
+# 65. ACTIVITY LOG
+
+Record important actions.
+
+Example:
+
+Emirhan changed catalog pricing.
+
+3 minutes ago
+
+System refunded Order #1052.
+
+12 minutes ago
+
+Sarah published theme "Minimal".
+
+1 hour ago
+
+Filters:
+
+User
+Action
+Date
+Resource
+
+---
+
+# 66. EMPTY STATES
+
+Create thoughtful empty states.
+
+Do not simply display:
+
+"No data."
+
+Example:
+
+No products yet
+
+Products are the foundation of your store.
+
+[Add your first product]
+
+[Import products]
+
+Include optional documentation links.
+
+---
+
+# 67. LOADING STATES
+
+Use skeleton loading.
+
+Do not use full-screen spinners for ordinary navigation.
+
+Tables should show row skeletons.
+
+Cards should preserve layout while loading.
+
+---
+
+# 68. ERROR STATES
+
+Errors must explain:
+
+What happened
+Why it matters
+What the user can do
+
+Example:
+
+Inventory couldn't be updated.
+
+Another staff member modified this product while you were editing it.
+
+[Reload latest version]
+
+---
+
+# 69. UNSAVED CHANGES
+
+When necessary show a floating save bar.
+
+Example:
+
+Unsaved changes
+
+[Discard]
+[Save]
+
+But prefer autosave where technically safe.
+
+---
+
+# 70. MODALS
+
+Avoid excessive modal usage.
+
+Use modal only for focused actions.
+
+For complex editing use:
+
+drawer
+dedicated page
+context panel
+
+---
+
+# 71. DRAWERS
+
+Use side drawers for lightweight editing.
+
+Example:
+
+Edit customer tags
+Edit inventory
+Edit shipping tracking
+Edit company payment terms
+
+Desktop width:
+
+420–560px.
+
+---
+
+# 72. TABLE UX
+
+Tables are extremely important.
+
+Support:
+
+Sorting
+Filtering
+Column selection
+Column resizing
+Pagination
+Bulk selection
+Saved views
+
+Sticky table header where appropriate.
+
+Allow users to customize visible columns.
+
+---
+
+# 73. FILTER SYSTEM
+
+Clicking Filters opens a clean filter builder.
+
+Example:
+
+Status
+is
+Active
+
+AND
+
+Inventory
+less than
+10
+
+Filters should appear as removable chips.
+
+Saved filters can become views.
+
+---
+
+# 74. COMMAND PALETTE
+
+Ctrl/Cmd + K.
+
+Results sections:
+
+Navigate
+Create
+Products
+Orders
+Customers
+Companies
+Settings
+
+Keyboard navigation must work.
+
+↑ ↓ Enter Esc
+
+---
+
+# 75. KEYBOARD SHORTCUTS
+
+Power users should be able to navigate quickly.
+
+Examples:
+
+G then O
+Orders
+
+G then P
+Products
+
+G then C
+Customers
+
+C then P
+Create product
+
+/
+
+Search
+
+---
+
+# 76. MOBILE ADMIN
+
+Create a responsive admin interface.
+
+Mobile navigation should use a drawer.
+
+Dashboard cards stack vertically.
+
+Tables transform into optimized row cards.
+
+Important actions remain accessible.
+
+Do not attempt to display desktop tables squeezed into mobile width.
+
+---
+
+# 77. ACCESSIBILITY
+
+Meet WCAG AA standards.
+
+Ensure:
+
+keyboard navigation
+focus states
+screen reader labels
+sufficient contrast
+semantic HTML
+accessible modals
+accessible tooltips
+accessible drag-and-drop alternatives
+
+---
+
+# 78. MOTION DESIGN
+
+Animations should feel fast and professional.
+
+Recommended duration:
+
+100ms–220ms.
+
+Use animation for:
+
+panel opening
+dropdowns
+hover feedback
+drag interactions
+page transitions
+AI assistant
+
+Avoid decorative motion.
+
+---
+
+# 79. ICONOGRAPHY
+
+Use one consistent icon family.
+
+Recommended:
+
+Lucide Icons
+
+Default sizes:
+
+16px
+18px
+20px
+
+Avoid huge icons inside admin pages.
+
+---
+
+# 80. TYPOGRAPHY
+
+Use a modern UI font stack.
+
+Recommended direction:
+
+Inter
+Geist
+system-ui
+
+Typography should prioritize readability.
+
+Suggested admin hierarchy:
+
+Page title:
+24–28px
+
+Section title:
+16–18px
+
+Body:
+14px
+
+Secondary text:
+13px
+
+Metadata:
+12px
+
+---
+
+# 81. DENSITY
+
+Desktop admin interfaces should use medium-high information density.
+
+Do not build enormous cards with one number in the middle.
+
+Instead of:
+
+[ giant card ]
+Revenue
+$45,000
+
+Prefer compact metric groups.
+
+Commerce operators need information, not decorative whitespace.
+
+---
+
+# 82. DARK MODE
+
+Build the architecture with dark mode support.
+
+However, light mode should be the primary default experience.
+
+Dark mode must not simply invert colors.
+
+Create proper semantic dark surfaces.
+
+---
+
+# 83. DESIGN SYSTEM
+
+Build reusable components.
+
+Core components:
+
+AppShell
+Sidebar
+NavItem
+PageHeader
+Breadcrumb
+Button
+IconButton
+ButtonGroup
+Card
+Section
+Badge
+Avatar
+Table
+DataGrid
+Input
+Textarea
+Select
+Combobox
+SearchField
+DatePicker
+DateRangePicker
+Checkbox
+Radio
+Switch
+Tabs
+Dropdown
+Popover
+Tooltip
+Modal
+Drawer
+Banner
+Toast
+EmptyState
+Skeleton
+Metric
+Chart
+Timeline
+CommandMenu
+
+---
+
+# 84. FRONT-END ARCHITECTURE
+
+Preferred stack:
+
+Next.js
+React
+TypeScript
+Tailwind CSS
+
+Use a scalable component architecture.
+
+Recommended structure:
+
+/app
+/components
+/components/ui
+/components/commerce
+/components/dashboard
+/components/theme-editor
+/lib
+/hooks
+/types
+/services
+/store
+
+Use server components where beneficial and client components where interaction requires them.
+
+---
+
+# 85. APPLICATION PERFORMANCE
+
+The UI must feel instantaneous.
+
+Use:
+
+optimistic updates
+skeleton loading
+prefetching
+lazy loading
+virtualized long tables
+local caching
+
+Avoid unnecessary full page refreshes.
+
+---
+
+# 86. UX RULE
+
+Every frequently used operation should ideally require:
+
+1–3 interactions.
+
+Avoid unnecessary confirmation screens.
+
+Examples:
+
+Mark order fulfilled.
+
+Adjust inventory.
+
+Assign catalog.
+
+Change payment term.
+
+Publish product.
+
+---
+
+# 87. CONTEXTUAL ACTIONS
+
+Actions should appear in context.
+
+Example:
+
+Select 4 products.
+
+Then display:
+
+4 products selected
+
+[Publish]
+[Archive]
+[Add to collection]
+[More]
+
+Do not permanently show all bulk actions.
+
+---
+
+# 88. STATUS SYSTEM
+
+Create semantic statuses.
+
+Neutral
+Information
+Success
+Warning
+Critical
+
+Examples:
+
+Active
+Draft
+Archived
+Paid
+Pending
+Overdue
+Fulfilled
+
+Avoid overly saturated colors.
+
+---
+
+# 89. ONBOARDING
+
+New merchant onboarding checklist:
+
+Add first product
+Customize storefront
+Configure payment
+Configure shipping
+Connect domain
+Test checkout
+Publish store
+
+Show onboarding progress.
+
+Example:
+
+4 of 7 completed
+
+57%
+
+Allow dismissing onboarding.
+
+---
+
+# 90. MULTI-STORE MANAGEMENT
+
+Allow organization-level merchants to manage multiple stores.
+
+Store switcher:
+
+Ocean Retail
+Ocean Wholesale
+Ocean Europe
+
+Organization page:
+
+Stores
+Users
+Billing
+Shared apps
+Shared assets
+
+---
+
+# 91. GLOBAL ENTITY RELATIONSHIPS
+
+Everything must be connected.
+
+Click customer from an order.
+
+Click company from a customer.
+
+Click catalog from company.
+
+Click product from order.
+
+Click order from analytics.
+
+Never trap users inside isolated modules.
+
+---
+
+# 92. URL STRUCTURE
+
+Use clean application routes.
+
+Examples:
+
+/admin
+
+/admin/orders
+
+/admin/orders/1054
+
+/admin/products
+
+/admin/products/modern-chair
+
+/admin/customers
+
+/admin/b2b/companies
+
+/admin/b2b/companies/acme
+
+/admin/catalogs
+
+/admin/analytics
+
+/admin/themes
+
+/admin/themes/editor
+
+/admin/settings
+
+---
+
+# 93. STOREFRONT DESIGN DIRECTION
+
+The customer-facing storefront should not visually resemble the admin.
+
+Storefront themes should provide full branding freedom.
+
+Themes should support:
+
+Luxury
+Minimal
+Fashion
+Technology
+Beauty
+Furniture
+Food
+Industrial B2B
+Wholesale
+Marketplace
+
+All must be responsive.
+
+---
+
+# 94. WHOLESALE STOREFRONT
+
+B2B customer portal navigation:
+
+Home
+Catalog
+Quick order
+Orders
+Quotes
+Invoices
+Account
+
+Header displays:
+
+Company
+ACME GmbH
+
+Location
+Berlin HQ
+
+Payment terms
+Net 30
+
+Available credit
+€32,500
+
+---
+
+# 95. B2B ACCOUNT DASHBOARD
+
+Show:
+
+Recent orders
+Open invoices
+Available credit
+Quotes
+Frequently ordered products
+Reorder suggestions
+
+---
+
+# 96. DESIGN QUALITY BAR
+
+The final product must feel like software built by a world-class product team.
+
+It must NOT look like:
+
+an admin template
+a Bootstrap dashboard
+a generic Tailwind template
+a Dribbble concept
+a crypto dashboard
+an AI-generated SaaS mockup
+
+Everything should look functional and intentional.
+
+---
+
+# 97. IMPORTANT VISUAL RULE
+
+Never sacrifice usability for visual decoration.
+
+Avoid:
+
+glassmorphism everywhere
+huge gradients
+oversized shadows
+excessive rounded cards
+random floating elements
+excessive animation
+neon colors
+unnecessary illustrations
+
+Prefer:
+
+structure
+hierarchy
+clarity
+speed
+consistency
+data density
+context
+
+---
+
+# 98. IMPLEMENTATION PRIORITY
+
+Build the application incrementally in this order:
+
+PHASE 1
+
+Design system
+Application shell
+Sidebar
+Header
+Command palette
+
+PHASE 2
+
+Dashboard
+Orders
+Products
+Customers
+
+PHASE 3
+
+B2B Companies
+Catalogs
+Custom pricing
+Payment terms
+Quotes
+
+PHASE 4
+
+Inventory
+Analytics
+Discounts
+Marketing
+
+PHASE 5
+
+Theme library
+Theme editor
+Section/block builder
+Responsive preview
+
+PHASE 6
+
+Settings
+Apps
+Automation system
+AI assistant
+
+---
+
+# 99. MOCK DATA
+
+Use realistic commerce data.
+
+Do not use:
+
+John Doe
+Product 1
+Company 1
+Lorem ipsum
+
+Use realistic examples.
+
+Products:
+
+Nordic Lounge Chair
+Aluminium Desk Lamp
+Essential Cotton Hoodie
+Industrial Storage Rack
+
+Companies:
+
+Atlas Retail GmbH
+Nova Distribution Ltd.
+Marmara Home A.Ş.
+Northstar Trading BV
+
+Orders:
+
+#1058
+#1059
+#1060
+
+Currencies:
+
+TRY
+EUR
+USD
+GBP
+
+---
+
+# 100. FINAL OBJECTIVE
+
+Build a commerce platform where a merchant can operate their entire business without feeling overwhelmed.
+
+The application should simultaneously work for:
+
+a small merchant
+a growing online brand
+a wholesale distributor
+a multi-location B2B company
+an enterprise commerce operation
+
+The UI should progressively reveal complexity.
+
+A beginner should understand the interface immediately.
+
+An advanced merchant should discover powerful tools without leaving the platform.
+
+The result should feel like a next-generation commerce operating system rather than simply another ecommerce dashboard.
+
+Every screen should be:
+
+fast
+clear
+consistent
+actionable
+responsive
+accessible
+production-ready.
+
+Start by establishing the design system and complete application shell.
+
+Then implement the main Dashboard using reusable components.
+
+After the Dashboard is complete, continue through the modules using the same visual system and interaction principles.
+
+Maintain design consistency across every page.
+
+Do not generate disconnected mockups.
+
+Build one coherent product.

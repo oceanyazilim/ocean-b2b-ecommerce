@@ -1,0 +1,1648 @@
+# GLOBAL LOCALIZATION, COUNTRY & TAX COMPLIANCE SYSTEM
+
+The commerce platform must be designed as a global multi-country system from day one.
+
+Do not assume that merchants operate only in Turkey, Europe or the United States.
+
+The architecture must support merchants, companies, customers and storefronts operating across virtually every country and territory.
+
+The system must dynamically adapt:
+
+* language
+* currency
+* taxation
+* company information
+* individual seller information
+* address structure
+* invoice requirements
+* tax identification fields
+* payment methods
+* checkout requirements
+* legal information
+* regional commerce rules
+
+based on the selected country.
+
+---
+
+# 1. ADMIN PANEL LANGUAGES
+
+The merchant/admin dashboard itself must support only two languages:
+
+* Turkish
+* English
+
+Admin language selector:
+
+Türkçe
+English
+
+Changing the admin language must affect:
+
+* sidebar
+* navigation
+* settings
+* forms
+* buttons
+* notifications
+* system messages
+* analytics labels
+* onboarding
+* errors
+* help text
+
+Do NOT automatically change the merchant's storefront language when changing the admin language.
+
+Admin language and storefront languages are completely independent.
+
+---
+
+# 2. STOREFRONT LANGUAGE SYSTEM
+
+The customer-facing storefront must support global localization.
+
+Merchants should be able to activate multiple storefront languages.
+
+Example:
+
+English
+Turkish
+German
+French
+Spanish
+Italian
+Portuguese
+Dutch
+Polish
+Romanian
+Russian
+Ukrainian
+Arabic
+Chinese
+Japanese
+Korean
+Hindi
+Indonesian
+Vietnamese
+Thai
+Swedish
+Norwegian
+Danish
+Finnish
+Greek
+Czech
+Hungarian
+Bulgarian
+Serbian
+Croatian
+Slovak
+Slovenian
+Lithuanian
+Latvian
+Estonian
+
+and additional languages through the localization system.
+
+The architecture must never hardcode a limited number of languages.
+
+Use locale-based architecture.
+
+Examples:
+
+en-US
+en-GB
+tr-TR
+de-DE
+de-AT
+fr-FR
+fr-CA
+pt-BR
+pt-PT
+es-ES
+es-MX
+ar-SA
+zh-CN
+zh-TW
+
+---
+
+# 3. RTL SUPPORT
+
+The storefront design engine must fully support RTL languages.
+
+Examples:
+
+Arabic
+Hebrew
+Persian
+
+When an RTL language is active:
+
+* page direction changes automatically
+* navigation direction changes
+* text alignment changes
+* icons that imply direction adapt
+* product grids remain visually correct
+* checkout remains usable
+* theme sections remain compatible
+
+Every theme must be tested for both:
+
+LTR
+RTL
+
+---
+
+# 4. LANGUAGE MANAGEMENT
+
+Create a page:
+
+Settings → Languages
+
+Example:
+
+Store Languages
+
+English
+Published
+Default
+
+German
+Published
+
+Turkish
+Published
+
+French
+Draft
+
+Arabic
+Draft
+
+Actions:
+
+Add language
+Publish
+Unpublish
+Edit translations
+Import translations
+Export translations
+
+---
+
+# 5. TRANSLATION MANAGEMENT
+
+Create a translation management interface.
+
+Navigation:
+
+Localization → Translations
+
+Allow translation of:
+
+Products
+Collections
+Pages
+Navigation
+Blog posts
+Theme content
+Checkout content
+System labels
+Custom fields
+SEO titles
+SEO descriptions
+
+Example:
+
+Product
+
+Original:
+Classic Linen Shirt
+
+German:
+Klassisches Leinenhemd
+
+French:
+Chemise classique en lin
+
+Turkish:
+Klasik Keten Gömlek
+
+---
+
+# 6. AI TRANSLATION
+
+Provide AI-assisted translation.
+
+Example button:
+
+Translate automatically
+
+User selects:
+
+Source language:
+English
+
+Target languages:
+German
+French
+Turkish
+Spanish
+
+AI generates translations.
+
+Merchant must be able to review translations before publishing.
+
+Show status:
+
+Not translated
+AI translated
+Reviewed
+Published
+
+---
+
+# 7. TRANSLATION MEMORY
+
+Build a translation memory system.
+
+If:
+
+"Add to cart"
+
+was previously translated as:
+
+Turkish:
+Sepete ekle
+
+the platform should reuse the translation across compatible contexts.
+
+Support glossary rules.
+
+Example:
+
+Brand terms must never be translated.
+
+"Ocean Pro"
+
+must always remain:
+
+Ocean Pro
+
+---
+
+# 8. MARKET-BASED LANGUAGE
+
+Languages can be assigned to markets.
+
+Example:
+
+Turkey
+
+Default:
+Turkish
+
+Additional:
+English
+
+Germany
+
+Default:
+German
+
+Additional:
+English
+
+France
+
+Default:
+French
+
+United Arab Emirates
+
+Default:
+Arabic
+
+Additional:
+English
+
+---
+
+# 9. AUTOMATIC CUSTOMER LANGUAGE
+
+Detect customer language using:
+
+browser locale
+market
+country
+previous preference
+
+Do not force automatic redirection if it harms user experience.
+
+Show a suggestion:
+
+It looks like you're visiting from Germany.
+
+Switch to:
+Deutsch / EUR
+
+[Switch]
+
+[Stay on current site]
+
+Remember the customer's choice.
+
+---
+
+# 10. GLOBAL COUNTRY ENGINE
+
+Create a centralized country configuration system.
+
+Every country must contain its own configuration profile.
+
+Example conceptual object:
+
+CountryProfile
+
+* ISO country code
+* official country name
+* supported currencies
+* supported languages
+* address schema
+* postal code rules
+* state/province requirement
+* tax system
+* tax ID formats
+* company registration fields
+* individual seller requirements
+* invoice requirements
+* checkout requirements
+* supported payment methods
+* tax terminology
+
+Do NOT create separate application code for every country.
+
+Use configurable country schemas.
+
+---
+
+# 11. MERCHANT COUNTRY ONBOARDING
+
+During merchant onboarding ask:
+
+Where is your business registered?
+
+Country / Region
+
+Example:
+
+Turkey
+
+After selecting the country the entire business-information form must adapt automatically.
+
+Never show irrelevant fields.
+
+---
+
+# 12. BUSINESS TYPE
+
+Ask:
+
+How are you operating?
+
+Options must adapt depending on country.
+
+Base conceptual options:
+
+Individual / Sole trader
+
+Registered business
+
+Corporation
+
+Partnership
+
+Non-profit
+
+Other legally supported entity
+
+The exact labels should be determined by the selected country.
+
+---
+
+# 13. TURKEY EXAMPLE
+
+If:
+
+Country = Turkey
+
+Provide relevant business options.
+
+Example entity types:
+
+Şahıs İşletmesi
+Limited Şirket
+Anonim Şirket
+Adi Ortaklık
+Kooperatif
+Dernek / Vakıf where applicable
+
+Possible fields may include:
+
+Legal business name
+Trade name
+VKN / TCKN
+Tax office
+MERSİS number
+Trade registry number
+Registered address
+City
+District
+Postal code
+Authorized representative
+Phone
+Email
+
+For individual merchants:
+
+Full legal name
+TCKN where legally required
+Tax office
+Business address
+Contact information
+
+Only display information that is relevant to the merchant's legal entity type.
+
+---
+
+# 14. UNITED STATES EXAMPLE
+
+If:
+
+Country = United States
+
+Entity options may include:
+
+Individual / Sole Proprietorship
+LLC
+Corporation
+Partnership
+Non-profit
+
+Country-specific fields may include:
+
+Legal business name
+DBA
+EIN
+State of formation
+Registration number where applicable
+Business address
+Authorized representative
+
+If an individual merchant is selected, use the appropriate individual onboarding flow instead.
+
+---
+
+# 15. UNITED KINGDOM EXAMPLE
+
+Possible entity options:
+
+Sole Trader
+Limited Company
+Partnership
+LLP
+Charity
+
+Possible fields:
+
+Legal business name
+Trading name
+Company number
+VAT number where applicable
+Registered address
+Business address
+Authorized representative
+
+---
+
+# 16. GERMANY EXAMPLE
+
+Possible fields:
+
+Legal company name
+Business type
+Handelsregisternummer where applicable
+VAT ID
+Tax number where applicable
+Registered address
+Authorized representative
+
+Entity terminology must follow local naming conventions.
+
+---
+
+# 17. COUNTRY-SPECIFIC FORM ENGINE
+
+Build forms dynamically from schemas.
+
+Example:
+
+businessProfileSchema["TR"]
+
+businessProfileSchema["DE"]
+
+businessProfileSchema["US"]
+
+businessProfileSchema["GB"]
+
+The frontend should generate the form automatically based on schema data.
+
+Each field can define:
+
+label
+description
+required
+optional
+validation
+input type
+format
+placeholder
+visibility rules
+entity type dependency
+
+---
+
+# 18. COUNTRY FIELD EXAMPLE
+
+Conceptual schema:
+
+Country:
+Turkey
+
+Entity:
+Limited Company
+
+Fields:
+
+Legal company name
+Required
+
+Tax number
+Required
+10-digit validation
+
+Tax office
+Required
+
+MERSIS number
+Conditional
+
+Trade registry number
+Conditional
+
+Registered address
+Required
+
+Authorized representative
+Required
+
+The exact regulatory validation rules must come from configurable compliance data rather than being permanently embedded into UI components.
+
+---
+
+# 19. ADDRESS ENGINE
+
+Addresses differ significantly by country.
+
+Do not use the exact same address form globally.
+
+Examples:
+
+United States:
+Address
+City
+State
+ZIP
+
+Turkey:
+Mahalle / Address
+District
+Province
+Postal Code
+
+United Kingdom:
+Address
+Town / City
+County where required
+Postcode
+
+Japan:
+Postal Code
+Prefecture
+City
+Address
+
+Create a dynamic address schema.
+
+---
+
+# 20. TAX ENGINE
+
+Create:
+
+Settings → Taxes & Duties
+
+The tax system should understand merchant nexus / registration / business location / customer location concepts.
+
+Do not assume:
+
+one country = one fixed tax percentage.
+
+Taxes can depend on:
+
+merchant location
+customer location
+product category
+tax registration
+market
+B2B/B2C status
+customer tax status
+transaction type
+
+---
+
+# 21. TAX REGISTRATIONS
+
+Create:
+
+Taxes → Registrations
+
+Example:
+
+Turkey
+VAT registration
+Active
+
+Germany
+VAT registration
+Active
+
+United Kingdom
+VAT registration
+Not registered
+
+United States
+Sales tax
+3 registrations
+
+Merchants can add and remove regional tax registrations.
+
+---
+
+# 22. TAX TERMINOLOGY
+
+UI terminology must change depending on country.
+
+Examples may include:
+
+VAT
+KDV
+GST
+Sales Tax
+
+Never universally display the word VAT.
+
+Tax labels should come from the selected market configuration.
+
+---
+
+# 23. TAX REGIONS
+
+Countries may contain sub-regional taxation.
+
+Therefore support:
+
+Country
+
+↓
+
+State / Province / Region
+
+Example:
+
+United States
+
+California
+Texas
+New York
+
+Canada
+
+Ontario
+Quebec
+British Columbia
+
+Regional taxation architecture must be supported.
+
+---
+
+# 24. TAX CLASSES
+
+Products should support tax categories.
+
+Example:
+
+Standard goods
+Digital services
+Food
+Books
+Clothing
+Medical products
+Tax exempt
+
+Do not make merchants manually enter every possible tax rate for every product.
+
+Build a tax-category system that can be mapped to the active tax engine.
+
+---
+
+# 25. TAX-EXEMPT CUSTOMERS
+
+Customer profiles can contain:
+
+Tax status
+
+Taxable
+Tax exempt
+
+For B2B companies:
+
+Tax registration number
+
+Example:
+
+VAT ID
+
+Allow validation state:
+
+Unverified
+Verified
+Invalid
+
+---
+
+# 26. B2B TAX INFORMATION
+
+Company profile:
+
+Tax information
+
+Country:
+Germany
+
+VAT ID:
+DE123456789
+
+Status:
+Verified
+
+Tax treatment:
+Reverse charge where applicable
+
+The platform must support country-specific B2B taxation logic.
+
+Actual tax determination must be handled by the tax/compliance engine rather than hardcoded visual rules.
+
+---
+
+# 27. COMPANY TAX IDs
+
+Different countries have different tax identifiers.
+
+Create dynamic field labels.
+
+Examples conceptually:
+
+Turkey:
+VKN
+
+European markets:
+VAT ID
+
+United States:
+EIN where applicable
+
+Australia:
+ABN
+
+Other countries:
+country-specific identifier
+
+Never create a single field called:
+
+Tax ID
+
+for every country without contextual localization.
+
+---
+
+# 28. INVOICING SYSTEM
+
+Create a global invoicing architecture.
+
+Invoice structure must adapt to the selected merchant country.
+
+Settings:
+
+Finance → Invoicing
+
+Possible configuration:
+
+Invoice prefix
+Invoice numbering
+Legal company name
+Tax identifiers
+Registered address
+Bank information
+Footer/legal notices
+Currency
+Language
+
+Invoice layouts can differ by market when required.
+
+---
+
+# 29. ELECTRONIC INVOICING
+
+Architecture must support country-specific electronic invoicing integrations.
+
+Create integration capability rather than hardcoding a single provider.
+
+Example conceptual categories:
+
+Electronic invoice provider
+
+Government tax platform integration
+
+Certified third-party provider
+
+Accounting platform
+
+Statuses:
+
+Connected
+Disconnected
+Action required
+
+---
+
+# 30. BUSINESS VERIFICATION
+
+Create:
+
+Settings → Business Verification
+
+Status:
+
+Verified
+
+or
+
+Action required
+
+Possible verification data:
+
+Business information
+Authorized representative
+Identity verification
+Tax information
+Address verification
+Banking information
+
+Only request data required by the selected country, payment provider or legal requirement.
+
+---
+
+# 31. INDIVIDUAL SELLER ONBOARDING
+
+If the merchant operates as an individual:
+
+Do not force company fields.
+
+Create an individual flow.
+
+Example categories:
+
+Legal name
+Date of birth where legally required
+Residence / business country
+Tax information
+Business address
+Identity verification
+Banking details
+
+Sensitive information must be handled securely.
+
+---
+
+# 32. COUNTRY CONFIGURATION PAGE
+
+Create internal platform architecture for:
+
+Platform Admin → Countries
+
+This is NOT visible to normal merchants.
+
+Platform administrators can manage country configuration.
+
+Example:
+
+Turkey
+
+Status:
+Active
+
+Admin language support:
+TR / EN
+
+Storefront locales:
+tr-TR
+en-US
+
+Default currency:
+TRY
+
+Tax engine:
+Configured
+
+Business schemas:
+5
+
+Address schema:
+Configured
+
+Invoice configuration:
+Configured
+
+---
+
+# 33. COUNTRY FEATURE FLAGS
+
+Some features may not exist in every country.
+
+Example:
+
+Cash on delivery
+
+Available:
+Turkey
+
+Unavailable:
+Country X
+
+Feature availability must be determined dynamically.
+
+Use feature flags.
+
+---
+
+# 34. COUNTRY PAYMENT METHODS
+
+Payment methods should adapt to markets.
+
+Example checkout:
+
+Turkey
+
+Credit / Debit Card
+Bank Transfer
+
+Another market may display different locally available payment methods.
+
+Payment providers must be modular integrations.
+
+---
+
+# 35. CURRENCY SYSTEM
+
+Storefront must support multi-currency.
+
+Currencies should be linked to markets.
+
+Example:
+
+Turkey
+TRY
+
+Germany
+EUR
+
+United States
+USD
+
+United Kingdom
+GBP
+
+Allow merchants to define:
+
+automatic conversion
+
+or
+
+fixed market pricing.
+
+---
+
+# 36. PRICE LIST LOCALIZATION
+
+Example:
+
+Product:
+
+Premium Chair
+
+Turkey:
+₺24,990
+
+Germany:
+€749
+
+United Kingdom:
+£679
+
+United States:
+$799
+
+Do not require prices to always be generated through exchange rates.
+
+Allow manually defined market pricing.
+
+---
+
+# 37. LOCAL NUMBER FORMATTING
+
+Formatting must follow locale.
+
+Example:
+
+English US:
+$1,249.99
+
+German:
+1.249,99 €
+
+Turkish:
+1.249,99 ₺
+
+Dates must also follow locale conventions.
+
+Use proper internationalization APIs.
+
+Never manually concatenate currency symbols.
+
+---
+
+# 38. DATE & TIME
+
+Support merchant timezone.
+
+Settings:
+
+Timezone:
+Europe/Istanbul
+
+Storefront times should appear in appropriate local context where required.
+
+Store timestamps internally using standard timezone-safe formats.
+
+---
+
+# 39. LOCALIZATION ARCHITECTURE
+
+Use centralized i18n architecture.
+
+Never write:
+
+<button>Save</button>
+
+directly inside components.
+
+Use translation keys.
+
+Example:
+
+common.save
+
+common.cancel
+
+orders.title
+
+products.add
+
+b2b.company
+
+Every UI string must be translatable.
+
+---
+
+# 40. ADMIN TRANSLATION STRUCTURE
+
+Example:
+
+/locales
+
+/en
+common.json
+orders.json
+products.json
+b2b.json
+settings.json
+
+/tr
+common.json
+orders.json
+products.json
+b2b.json
+settings.json
+
+The admin UI requires complete parity between Turkish and English.
+
+No partially translated pages.
+
+---
+
+# 41. STOREFRONT TRANSLATION STRUCTURE
+
+Storefront translations should be merchant-controlled.
+
+Base system translations can be included by default.
+
+Merchant content translations must remain separate.
+
+Example:
+
+System translation:
+"Add to cart"
+
+Merchant translation:
+Product title
+Product description
+Custom page content
+
+---
+
+# 42. MARKET SYSTEM
+
+Create:
+
+Settings → Markets
+
+Example:
+
+Turkey
+
+Status:
+Active
+
+Domains:
+example.com.tr
+
+Languages:
+Turkish
+English
+
+Currency:
+TRY
+
+Pricing:
+Custom
+
+Tax:
+Turkey configuration
+
+---
+
+Germany
+
+Status:
+Active
+
+Domain:
+de.example.com
+
+Languages:
+German
+English
+
+Currency:
+EUR
+
+Pricing:
+EU Catalog
+
+Tax:
+Germany configuration
+
+---
+
+# 43. MARKET CREATION
+
+When creating a market:
+
+Step 1:
+Countries
+
+Step 2:
+Languages
+
+Step 3:
+Currency
+
+Step 4:
+Pricing
+
+Step 5:
+Taxes
+
+Step 6:
+Domain
+
+Step 7:
+Shipping
+
+Step 8:
+Payment methods
+
+Step 9:
+Storefront customization
+
+Provide a review screen before activation.
+
+---
+
+# 44. COUNTRY-SPECIFIC CHECKOUT
+
+Checkout fields must adapt based on customer country.
+
+Do not show:
+
+State
+
+in countries where it is irrelevant.
+
+Do not require:
+
+Postal code
+
+where the market does not use one.
+
+Use the same CountryProfile system as merchant onboarding.
+
+---
+
+# 45. LOCALIZED CHECKOUT
+
+Checkout language should automatically follow storefront language.
+
+Customer may change it manually.
+
+Translate:
+
+Contact
+Delivery
+Payment
+Billing
+Order summary
+Errors
+Validation
+
+---
+
+# 46. LOCAL LEGAL CONTENT
+
+Allow market-specific legal pages.
+
+Example:
+
+Germany:
+
+Impressum
+Datenschutz
+Widerrufsbelehrung
+
+Turkey:
+
+Mesafeli Satış Sözleşmesi
+Ön Bilgilendirme Formu
+KVKK-related content where configured
+
+Other countries can have their own configured legal pages.
+
+Do not hardcode a global list.
+
+---
+
+# 47. COOKIE & PRIVACY ARCHITECTURE
+
+Build a regional consent framework.
+
+Consent requirements may differ depending on the market.
+
+Provide:
+
+Cookie categories
+Consent logging
+Market rules
+Third-party script controls
+
+The exact legal configuration should be maintained through regional compliance profiles.
+
+---
+
+# 48. GLOBAL MERCHANT SETTINGS
+
+Business Settings should display:
+
+Business
+
+Country / Region
+
+Legal entity
+
+Company information
+
+Tax registrations
+
+Business verification
+
+Invoice settings
+
+Banking
+
+Markets
+
+Languages
+
+Currencies
+
+Localization
+
+Merchant should always be able to understand:
+
+Which legal entity is operating the store?
+
+Where is the business registered?
+
+Which markets does it sell into?
+
+Where is it tax registered?
+
+---
+
+# 49. COMPLIANCE UPDATE ARCHITECTURE
+
+Country taxation and regulatory requirements can change.
+
+Therefore country rules must NOT be permanently embedded in frontend code.
+
+Create versioned configuration.
+
+Example:
+
+TurkeyComplianceProfile
+
+Version:
+2026.09
+
+Last updated:
+September 2026
+
+The platform architecture should allow country rules to be updated without rebuilding the entire commerce application.
+
+---
+
+# 50. EXTERNAL TAX PROVIDERS
+
+Design the tax engine so external services can be integrated.
+
+Provider abstraction:
+
+TaxProvider
+
+Methods conceptually:
+
+calculateTax()
+
+validateTaxID()
+
+getTaxRate()
+
+getProductTaxCategory()
+
+getTaxRegistrations()
+
+Do not make the UI dependent on one single tax provider.
+
+---
+
+# 51. FALLBACK MANUAL TAX RULES
+
+If no automatic provider exists for a market, merchants may configure manual rules.
+
+Example:
+
+Country
+
+Region
+
+Tax class
+
+Rate
+
+However clearly distinguish:
+
+Automatically calculated
+
+vs
+
+Manually configured
+
+---
+
+# 52. PLATFORM WARNING SYSTEM
+
+If the merchant enters a market without configured taxation:
+
+Display:
+
+Tax setup required
+
+You are selling to customers in Germany, but no tax configuration has been completed for this market.
+
+[Review tax settings]
+
+Do NOT silently assume zero tax.
+
+---
+
+# 53. GLOBAL DASHBOARD MARKET FILTER
+
+Dashboard analytics can be filtered by:
+
+All markets
+
+Turkey
+
+European Union
+
+United States
+
+United Kingdom
+
+Custom markets
+
+Show:
+
+Revenue
+
+Orders
+
+Tax collected
+
+Customers
+
+Conversion
+
+per market.
+
+---
+
+# 54. COUNTRY ANALYTICS
+
+Analytics:
+
+Sales by country
+
+Sales by market
+
+Revenue by currency
+
+Tax collected
+
+B2B revenue
+
+Refunds
+
+Average order value
+
+Provide map visualization where useful.
+
+---
+
+# 55. FINAL GLOBALIZATION PRINCIPLE
+
+The platform must never think in terms of:
+
+"One store = one country."
+
+Instead think:
+
+Merchant
+
+→ Legal Entity
+
+→ Tax Registrations
+
+→ Markets
+
+→ Countries
+
+→ Languages
+
+→ Currencies
+
+→ Catalogs
+
+→ Customers
+
+A single merchant can operate multiple markets from one platform.
+
+Example:
+
+Ocean Commerce
+
+Legal entity:
+Turkey
+
+Markets:
+
+Turkey
+TRY
+Turkish
+
+Germany
+EUR
+German
+
+United Kingdom
+GBP
+English
+
+United States
+USD
+English
+
+United Arab Emirates
+AED
+Arabic / English
+
+All managed from the same admin dashboard.
+
+---
+
+# 56. CRITICAL IMPLEMENTATION RULE
+
+Never hardcode regulatory information directly into visual components.
+
+Separate:
+
+UI Layer
+
+Country Configuration Layer
+
+Compliance Layer
+
+Tax Engine
+
+Localization Layer
+
+Translation Layer
+
+Payment Provider Layer
+
+Invoice Provider Layer
+
+This separation is mandatory for long-term scalability.
+
+---
+
+# 57. PRODUCT EXPERIENCE GOAL
+
+A merchant in Turkey should feel the platform was specifically designed for Turkish businesses.
+
+A merchant in Germany should feel the exact same platform was specifically designed for German businesses.
+
+A merchant in the United States should experience terminology and workflows appropriate for the United States.
+
+The global architecture should be invisible to the merchant.
+
+The platform simply adapts automatically based on:
+
+country
+business type
+market
+customer
+language
+tax configuration.
+
+Never overwhelm merchants with irrelevant international configuration.

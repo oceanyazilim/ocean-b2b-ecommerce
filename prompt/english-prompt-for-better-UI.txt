@@ -1,0 +1,3843 @@
+# MASTER PROMPT
+# GLOBAL COMMERCE PLATFORM — SHOPIFY-INSPIRED ADMIN, B2B, MARKETS, TAX, LOCALIZATION & STOREFRONT BUILDER
+
+You are designing and implementing a production-grade global commerce SaaS platform.
+
+The product must provide the simplicity, clarity and operational discipline users expect from Shopify Admin while introducing significantly stronger capabilities for:
+
+- B2B commerce
+- multi-country operations
+- multi-market selling
+- localization
+- country-specific merchant onboarding
+- tax registrations
+- business verification
+- catalog-based pricing
+- company accounts
+- quotations
+- invoicing
+- multi-currency
+- advanced analytics
+- storefront customization
+- theme building
+- AI-assisted commerce operations
+
+The final product must NOT look like a generic Tailwind dashboard template.
+
+It must NOT visually clone Shopify.
+
+Instead, preserve the product principles that make Shopify easy to use:
+
+- simple navigation
+- restrained visual design
+- excellent information hierarchy
+- table-first operational workflows
+- contextual actions
+- progressive disclosure
+- predictable page patterns
+- low cognitive load
+
+Then extend those principles into a more powerful global commerce operating system.
+
+The product should feel like:
+
+Shopify Admin simplicity
++
+Stripe-level financial clarity
++
+Linear-level interface discipline
++
+modern B2B commerce infrastructure.
+
+The result should feel calm, premium, trustworthy, fast and production-ready.
+
+==================================================
+1. PRODUCT IDENTITY
+==================================================
+
+The platform is not only an online store builder.
+
+It is a global commerce operating system.
+
+A merchant should be able to run:
+
+DTC commerce
+B2B commerce
+wholesale
+international markets
+inventory
+orders
+payments
+customers
+companies
+pricing
+catalogs
+quotes
+invoices
+tax configuration
+localization
+storefronts
+analytics
+marketing
+automation
+
+from one unified admin environment.
+
+The platform must support:
+
+small merchants
+
+growing brands
+
+wholesale distributors
+
+multi-country merchants
+
+B2B organizations
+
+enterprise commerce teams.
+
+The interface must progressively reveal complexity.
+
+A beginner should understand the platform immediately.
+
+A power user should be able to operate quickly without unnecessary navigation.
+
+==================================================
+2. CORE DESIGN PRINCIPLE
+==================================================
+
+Use this philosophy:
+
+70% Shopify-style admin discipline
+20% differentiated global/B2B commerce functionality
+10% premium product polish
+
+Do NOT create a visually experimental admin.
+
+Do NOT prioritize decoration over usability.
+
+Do NOT create a dashboard full of unrelated cards.
+
+Commerce operators need:
+
+clarity
+density
+speed
+context
+actionability.
+
+Every major piece of information should lead to an action.
+
+Every warning should be resolvable.
+
+Every metric should be explorable.
+
+Every entity should be connected to related entities.
+
+==================================================
+3. VISUAL DIRECTION
+==================================================
+
+Primary experience:
+
+Light mode.
+
+The admin should use:
+
+soft neutral-gray application background
+
+white primary surfaces
+
+subtle neutral borders
+
+very subtle shadows
+
+dark near-black primary text
+
+muted gray secondary text
+
+one restrained brand accent
+
+semantic success/warning/error colors.
+
+Avoid:
+
+glassmorphism
+
+neon colors
+
+heavy gradients
+
+oversized shadows
+
+giant rounded containers
+
+extreme whitespace
+
+decorative illustrations inside operational screens
+
+colorful analytics for no reason.
+
+Recommended border radius:
+
+inputs:
+6px
+
+buttons:
+6px to 8px
+
+cards:
+8px
+
+larger panels:
+10px maximum
+
+Avoid making everything pill-shaped.
+
+Use border hierarchy more than shadow hierarchy.
+
+==================================================
+4. TYPOGRAPHY
+==================================================
+
+Use:
+
+Inter
+or
+Geist
+
+with system-ui fallback.
+
+Recommended sizing:
+
+Page title:
+24px–28px
+
+Large metric:
+22px–28px
+
+Section title:
+16px–18px
+
+Primary body:
+14px
+
+Secondary:
+13px
+
+Metadata:
+12px
+
+Do not use oversized marketing typography inside the admin.
+
+Typography should feel compact and operational.
+
+==================================================
+5. ICONOGRAPHY
+==================================================
+
+Use one consistent icon family.
+
+Recommended:
+
+Lucide Icons.
+
+Typical sizes:
+
+16px
+18px
+20px
+
+Avoid oversized decorative icons.
+
+Icons must support recognition, not decoration.
+
+==================================================
+6. APPLICATION SHELL
+==================================================
+
+Build a persistent admin shell.
+
+Desktop structure:
+
+LEFT SIDEBAR
++
+MAIN WORKSPACE
++
+OPTIONAL CONTEXTUAL DRAWER
+
+Do NOT create a huge horizontal navigation bar.
+
+The sidebar should remain the primary application navigation.
+
+Recommended expanded width:
+
+232px–248px.
+
+Collapsed width:
+
+approximately 64px.
+
+Desktop support must look excellent at:
+
+1280px
+1366px
+1440px
+1600px
+1920px
+2560px.
+
+==================================================
+7. SIDEBAR
+==================================================
+
+At the top:
+
+merchant/store logo
+
+store name
+
+store/environment information
+
+store switcher.
+
+Example:
+
+Ocean Commerce
+Production
+
+Clicking opens:
+
+Switch store
+Create new store
+Organization settings
+Store settings.
+
+Below this show global search access.
+
+Then primary navigation.
+
+Recommended navigation:
+
+Home
+
+Orders
+- All Orders
+- Draft Orders
+- Returns
+- Fulfillment
+- Abandoned Checkouts
+
+Products
+- Products
+- Collections
+- Inventory
+- Purchase Orders
+- Transfers
+- Gift Cards
+
+Customers
+- Customers
+- Segments
+
+B2B
+- Companies
+- Company Locations
+- Contacts
+- Catalogs
+- Price Lists
+- Quotes
+- Invoices
+- Payment Terms
+- Purchase Orders
+
+Content
+- Pages
+- Blog
+- Media
+- Files
+- Navigation
+- Metaobjects / Custom Data
+
+Sales Channels
+- Online Store
+- POS
+- Marketplaces
+- Social Commerce
+
+Marketing
+- Campaigns
+- Automations
+- Email
+- Attribution
+
+Discounts
+
+Analytics
+- Overview
+- Sales
+- Products
+- Customers
+- B2B
+- Markets
+- Inventory
+
+Finance
+- Payments
+- Payouts
+- Transactions
+- Invoices
+- Taxes
+
+Markets
+- Markets
+- Countries
+- Languages
+- Currencies
+- Domains
+- Localization
+
+Apps
+
+Automation
+
+Settings
+
+Help & Support.
+
+The active state must be subtle.
+
+Do not use giant colored active backgrounds.
+
+Use:
+
+slightly stronger surface
+stronger icon
+stronger typography
+small accent when appropriate.
+
+Allow collapsing the sidebar.
+
+When collapsed, show tooltips.
+
+==================================================
+8. ADMIN LANGUAGE
+==================================================
+
+The admin dashboard supports ONLY:
+
+English
+Turkish
+
+These languages must have complete parity.
+
+Do not allow partially translated admin experiences.
+
+Changing admin language must affect:
+
+navigation
+
+buttons
+
+forms
+
+tables
+
+settings
+
+errors
+
+notifications
+
+analytics
+
+onboarding
+
+tooltips
+
+empty states.
+
+The admin language must remain completely independent from storefront language.
+
+==================================================
+9. STOREFRONT LANGUAGES
+==================================================
+
+The storefront must support global localization.
+
+The architecture must NOT hardcode a limited list of languages.
+
+Use locale-based localization.
+
+Examples:
+
+en-US
+en-GB
+tr-TR
+de-DE
+fr-FR
+fr-CA
+es-ES
+es-MX
+pt-PT
+pt-BR
+ar-SA
+zh-CN
+zh-TW
+ja-JP
+ko-KR.
+
+Support both:
+
+LTR
+RTL.
+
+RTL must work correctly for:
+
+navigation
+
+product grids
+
+forms
+
+checkout
+
+buttons
+
+directional icons
+
+theme sections.
+
+==================================================
+10. GLOBAL COMMAND SEARCH
+==================================================
+
+Provide global search in the top/admin area.
+
+Placeholder:
+
+Search orders, products, customers, companies...
+
+Shortcut:
+
+Ctrl + K
+Cmd + K
+
+The command palette must search:
+
+Orders
+
+Products
+
+Customers
+
+Companies
+
+Contacts
+
+Quotes
+
+Invoices
+
+Pages
+
+Markets
+
+Settings.
+
+Also support actions:
+
+Create Product
+
+Create Order
+
+Create Company
+
+Create Quote
+
+Create Discount
+
+Open Theme Editor
+
+Open Germany Market
+
+Open Tax Settings.
+
+Provide recent searches before typing.
+
+Keyboard controls:
+
+Arrow Up
+Arrow Down
+Enter
+Escape.
+
+==================================================
+11. PAGE STRUCTURE
+==================================================
+
+Every standard admin page should follow a consistent pattern:
+
+Application shell
+
+Page header
+
+Primary content
+
+Optional contextual secondary content.
+
+Page header:
+
+title
+
+optional description
+
+filters / view controls
+
+primary action
+
+secondary actions.
+
+Example:
+
+Products
+
+Manage products across your stores and markets.
+
+[Import] [Export] [+ Add product]
+
+Avoid inventing a different layout for every page.
+
+Consistency is critical.
+
+==================================================
+12. DASHBOARD PHILOSOPHY
+==================================================
+
+The dashboard is the operational home of the merchant.
+
+It must answer these questions within approximately 10 seconds:
+
+What happened?
+
+How is the business performing?
+
+What requires my attention?
+
+What should I do next?
+
+Do NOT create a graph gallery.
+
+Do NOT create a card gallery.
+
+Create a commerce control center.
+
+==================================================
+13. DASHBOARD MODES
+==================================================
+
+Create five dashboard views:
+
+Overview
+
+Operations
+
+Analytics
+
+B2B
+
+Finance.
+
+Keep the same overall shell.
+
+Each mode focuses on a specific operational domain.
+
+==================================================
+14. DASHBOARD — OVERVIEW
+==================================================
+
+Header:
+
+Dashboard
+
+Subtitle:
+
+Overview of your store performance and operations.
+
+Global filters:
+
+Date Range
+
+Market
+
+Currency
+
+Compare.
+
+Date options:
+
+Today
+
+Yesterday
+
+7 Days
+
+30 Days
+
+90 Days
+
+Year to Date
+
+Custom.
+
+Comparison:
+
+Previous Period
+
+Previous Year
+
+No Comparison.
+
+==================================================
+15. PRIMARY KPI STRIP
+==================================================
+
+Use compact metric cards.
+
+Do not create giant dashboard tiles.
+
+Display approximately:
+
+Gross Sales
+
+Net Sales
+
+Orders
+
+Average Order Value
+
+Conversion Rate
+
+Gross Profit.
+
+Each metric contains:
+
+current value
+
+percentage change
+
+comparison
+
+small trend visualization.
+
+Example:
+
+Net Sales
+₺791,240
+
+↑ 16.8%
+
+vs previous period.
+
+==================================================
+16. REVENUE OVERVIEW
+==================================================
+
+Create one large primary chart.
+
+Title:
+
+Revenue Overview.
+
+Selectable metrics:
+
+Gross Sales
+
+Net Sales
+
+Profit
+
+Orders
+
+Average Order Value
+
+Refunds.
+
+Allow comparison series.
+
+Time grouping:
+
+Hourly
+
+Daily
+
+Weekly
+
+Monthly.
+
+Hover state should show exact data.
+
+Keep chart visuals restrained.
+
+Do not use unnecessary 3D charts.
+
+==================================================
+17. REVENUE BREAKDOWN
+==================================================
+
+Create a clear financial summary.
+
+Example:
+
+Gross Sales
+
+Discounts
+
+Returns
+
+Taxes
+
+Payment Fees
+
+Net Revenue
+
+Estimated Gross Profit.
+
+Use visual hierarchy.
+
+Do not treat taxes as revenue.
+
+==================================================
+18. SALES CHANNELS
+==================================================
+
+Display:
+
+Online Store
+
+B2B
+
+Marketplace
+
+POS
+
+Social Commerce.
+
+For each show:
+
+Revenue
+
+Orders
+
+Average Order Value.
+
+Prefer simple bars and text over large pie charts.
+
+==================================================
+19. NEEDS ATTENTION
+==================================================
+
+Create an important operational section.
+
+Examples:
+
+12 products low in stock
+
+5 failed payments
+
+8 pending B2B approvals
+
+4 quotes awaiting review
+
+3 overdue invoices
+
+11 orders awaiting fulfillment.
+
+Use subtle severity states:
+
+Information
+
+Warning
+
+Critical.
+
+Every item must be clickable.
+
+Example:
+
+clicking
+
+12 products low in stock
+
+opens:
+
+Inventory filtered to low-stock products.
+
+==================================================
+20. ORDER OPERATIONS
+==================================================
+
+Show:
+
+New
+
+Processing
+
+Unfulfilled
+
+Partially Fulfilled
+
+Completed
+
+Returned.
+
+Each status should act as a shortcut into the relevant filtered view.
+
+==================================================
+21. RECENT ORDERS
+==================================================
+
+Columns:
+
+Order
+
+Date
+
+Customer / Company
+
+Market
+
+Channel
+
+Items
+
+Payment
+
+Fulfillment
+
+Total.
+
+Example:
+
+#1842
+
+Atlas Retail GmbH
+
+Germany
+
+B2B
+
+14 items
+
+Paid
+
+Unfulfilled
+
+€8,420.
+
+Rows must be clickable.
+
+==================================================
+22. ECOMMERCE FUNNEL
+==================================================
+
+Show:
+
+Sessions
+
+Product Views
+
+Added to Cart
+
+Reached Checkout
+
+Purchased.
+
+Show conversion between each stage.
+
+Also show overall conversion rate.
+
+Keep the funnel visually minimal.
+
+==================================================
+23. INVENTORY HEALTH
+==================================================
+
+Show:
+
+Low Stock
+
+Out of Stock
+
+Overstocked
+
+Inventory Value
+
+Estimated Stock Coverage.
+
+Predictive examples:
+
+Industrial Desk Lamp
+
+12 remaining
+
+Estimated 4 days of stock.
+
+==================================================
+24. CUSTOMER ANALYTICS
+==================================================
+
+Show:
+
+New Customers
+
+Returning Customers
+
+Returning Customer Rate
+
+Repeat Purchase Rate
+
+Average Customer Value
+
+Lifetime Value.
+
+Use meaningful visualizations.
+
+Avoid excessive cards.
+
+==================================================
+25. B2B DASHBOARD
+==================================================
+
+Show:
+
+B2B Revenue
+
+B2B Orders
+
+Active Companies
+
+Average B2B Order Value
+
+Open Quotes
+
+Outstanding Invoices
+
+Available / Used Credit where applicable.
+
+Top companies table:
+
+Company
+
+Market
+
+Revenue
+
+Orders
+
+Outstanding Balance.
+
+==================================================
+26. FINANCE DASHBOARD
+==================================================
+
+Create a finance-focused view.
+
+Show:
+
+Gross Sales
+
+Discounts
+
+Refunds
+
+Tax
+
+Payment Provider Fees
+
+Shipping Revenue
+
+Net Revenue
+
+Payouts
+
+Estimated Profit.
+
+Provide payout timeline.
+
+Provide upcoming payout information.
+
+==================================================
+27. OPERATIONS DASHBOARD
+==================================================
+
+Focus on:
+
+orders requiring action
+
+fulfillment
+
+returns
+
+inventory
+
+failed payments
+
+pending B2B approvals
+
+overdue invoices
+
+open quotes.
+
+Make this view highly actionable.
+
+==================================================
+28. ANALYTICS DASHBOARD
+==================================================
+
+Analytics may contain deeper data than Overview.
+
+Allow:
+
+Revenue trends
+
+Sales by Market
+
+Sales by Channel
+
+Product performance
+
+Customer cohorts
+
+Conversion
+
+Average Order Value
+
+Returns
+
+Discount impact
+
+Gross margin
+
+B2B vs DTC.
+
+==================================================
+29. DASHBOARD CUSTOMIZATION
+==================================================
+
+Allow:
+
+Customize Dashboard.
+
+Users can:
+
+reorder widgets
+
+resize supported widgets
+
+hide widgets
+
+add widgets.
+
+Save dashboard configuration per admin user.
+
+Maintain strong default layouts.
+
+Customization must not allow users to completely destroy usability.
+
+==================================================
+30. ORDERS
+==================================================
+
+Orders list:
+
+Saved views:
+
+All
+
+Unfulfilled
+
+Unpaid
+
+Open
+
+Closed
+
+Cancelled.
+
+Filters:
+
+Date
+
+Payment status
+
+Fulfillment status
+
+Market
+
+Channel
+
+Customer
+
+Company
+
+B2B / DTC.
+
+Table columns:
+
+Order
+
+Date
+
+Customer / Company
+
+Market
+
+Channel
+
+Payment
+
+Fulfillment
+
+Items
+
+Total.
+
+Bulk selection reveals contextual actions.
+
+Example:
+
+12 selected
+
+Mark fulfilled
+
+Capture payment
+
+Archive
+
+More.
+
+==================================================
+31. ORDER DETAIL
+==================================================
+
+Header:
+
+#1842
+
+Paid
+
+Unfulfilled.
+
+Actions:
+
+Refund
+
+Edit
+
+More.
+
+Main section:
+
+products
+
+quantity
+
+unit price
+
+discount
+
+tax
+
+subtotal
+
+total.
+
+Secondary column:
+
+customer
+
+company
+
+contact
+
+shipping
+
+billing
+
+market
+
+payment
+
+channel.
+
+Timeline:
+
+Order Created
+
+Payment Authorized
+
+Payment Captured
+
+Fulfillment Created
+
+Email Sent.
+
+==================================================
+32. PRODUCTS
+==================================================
+
+Products list:
+
+Image
+
+Product
+
+Status
+
+Inventory
+
+Category
+
+Vendor
+
+Channels
+
+Markets.
+
+Filters:
+
+Status
+
+Vendor
+
+Category
+
+Collection
+
+Inventory
+
+Market
+
+Channel.
+
+Provide saved views.
+
+==================================================
+33. PRODUCT DETAIL
+==================================================
+
+Use a clean editor.
+
+Primary content:
+
+Title
+
+Description
+
+Media
+
+Category
+
+Variants
+
+Pricing
+
+Inventory
+
+Shipping
+
+Custom Data
+
+SEO.
+
+Secondary contextual area:
+
+Status
+
+Publishing
+
+Sales Channels
+
+Markets
+
+Organization.
+
+Support autosave where technically safe.
+
+Show:
+
+Saved.
+
+==================================================
+34. VARIANTS
+==================================================
+
+Support complex variations:
+
+Color
+
+Size
+
+Material.
+
+Variant table:
+
+Variant
+
+SKU
+
+Price
+
+Cost
+
+Margin
+
+Inventory
+
+Barcode.
+
+Support bulk editing.
+
+==================================================
+35. INVENTORY
+==================================================
+
+Inventory table:
+
+Product
+
+Variant
+
+SKU
+
+Committed
+
+Available
+
+Incoming
+
+On Hand.
+
+Support multiple inventory locations.
+
+Example:
+
+Istanbul Warehouse
+
+Berlin Warehouse
+
+London Warehouse.
+
+Provide adjustment history.
+
+==================================================
+36. CUSTOMERS
+==================================================
+
+Customer list:
+
+Customer
+
+Location
+
+Orders
+
+Total Spent
+
+Last Order
+
+Segment
+
+Status.
+
+Customer detail:
+
+Overview
+
+Orders
+
+Addresses
+
+Notes
+
+Timeline
+
+Segments
+
+Marketing Consent
+
+B2B Relationship.
+
+==================================================
+37. B2B CORE MODEL
+==================================================
+
+Treat B2B as a first-class system.
+
+Data hierarchy:
+
+Company
+
+↓
+
+Company Locations
+
+↓
+
+Contacts
+
+↓
+
+Catalogs
+
+↓
+
+Pricing
+
+↓
+
+Payment Terms
+
+↓
+
+Quotes
+
+↓
+
+Orders
+
+↓
+
+Invoices.
+
+Do not model B2B simply as tagged retail customers.
+
+==================================================
+38. COMPANY DETAIL
+==================================================
+
+Header:
+
+Company Name
+
+Status
+
+Country
+
+Tax Registration
+
+Credit Information.
+
+Core metrics:
+
+Lifetime Value
+
+Outstanding Balance
+
+Orders
+
+Open Quotes.
+
+Tabs:
+
+Overview
+
+Locations
+
+Contacts
+
+Orders
+
+Catalogs
+
+Quotes
+
+Invoices
+
+Activity.
+
+==================================================
+39. COMPANY LOCATIONS
+==================================================
+
+A single company can have multiple purchasing locations.
+
+Example:
+
+Atlas GmbH
+
+Berlin HQ
+
+Munich Branch
+
+Hamburg Distribution Center.
+
+Each location may have independent:
+
+shipping address
+
+billing address
+
+catalog
+
+currency
+
+payment terms
+
+tax treatment
+
+shipping rules
+
+buyer permissions.
+
+==================================================
+40. COMPANY CONTACTS
+==================================================
+
+Roles:
+
+Owner
+
+Buyer
+
+Approver
+
+Accountant
+
+Viewer.
+
+Permissions:
+
+Place orders
+
+View pricing
+
+Approve orders
+
+Manage users
+
+View invoices.
+
+==================================================
+41. CATALOGS
+==================================================
+
+Catalog example:
+
+Germany Wholesale 2026.
+
+Show:
+
+Status
+
+Assigned Companies
+
+Assigned Locations
+
+Products
+
+Currency
+
+Pricing Adjustment
+
+Markets.
+
+Catalog sections:
+
+Products
+
+Pricing
+
+Companies
+
+Markets
+
+Rules.
+
+==================================================
+42. B2B PRICING
+==================================================
+
+Support:
+
+percentage adjustment
+
+fixed product pricing
+
+variant pricing
+
+company pricing
+
+location pricing
+
+market pricing.
+
+Example:
+
+Retail:
+
+€100
+
+Wholesale adjustment:
+
+-20%
+
+Wholesale:
+
+€80.
+
+==================================================
+43. VOLUME PRICING
+==================================================
+
+Example:
+
+1–9:
+€100
+
+10–49:
+€92
+
+50–99:
+€85
+
+100+:
+€78.
+
+Make tiers easy to edit.
+
+==================================================
+44. QUANTITY RULES
+==================================================
+
+Support:
+
+Minimum quantity
+
+Maximum quantity
+
+Increment.
+
+Example:
+
+Minimum:
+10
+
+Increment:
+5
+
+Maximum:
+500.
+
+==================================================
+45. PAYMENT TERMS
+==================================================
+
+Support:
+
+Due Immediately
+
+Net 7
+
+Net 15
+
+Net 30
+
+Net 45
+
+Net 60
+
+Net 90
+
+Custom.
+
+Allow combined terms such as:
+
+20% Deposit
+
+80% Net 30.
+
+==================================================
+46. QUOTES
+==================================================
+
+Statuses:
+
+Draft
+
+Sent
+
+Viewed
+
+Negotiating
+
+Accepted
+
+Rejected
+
+Expired.
+
+Allow:
+
+Quote
+
+→
+
+Draft Order
+
+→
+
+Order.
+
+Quote editor should use familiar commerce patterns.
+
+==================================================
+47. B2B APPROVALS
+==================================================
+
+Support approval workflow:
+
+Buyer submits order
+
+↓
+
+Company Approver
+
+↓
+
+Merchant Review when configured
+
+↓
+
+Order Created.
+
+Approval should be visible but not visually overwhelming.
+
+==================================================
+48. QUICK ORDER
+==================================================
+
+B2B buyers should have:
+
+Quick Order.
+
+Allow:
+
+SKU search
+
+barcode/SKU entry
+
+paste multiple SKUs
+
+CSV upload
+
+quantity entry.
+
+Optimized for orders containing many products.
+
+==================================================
+49. REORDER
+==================================================
+
+Allow previous orders to be reordered.
+
+Before adding:
+
+highlight unavailable product
+
+price changes
+
+minimum quantity changes
+
+catalog changes.
+
+==================================================
+50. MARKETS
+==================================================
+
+Markets are a first-class module.
+
+A Market can define:
+
+Countries
+
+Languages
+
+Currency
+
+Pricing
+
+Catalog
+
+Taxes
+
+Payments
+
+Shipping
+
+Domain
+
+Storefront content.
+
+Example:
+
+Germany
+
+Countries:
+Germany
+
+Languages:
+German / English
+
+Currency:
+EUR
+
+Catalog:
+EU Retail
+
+Tax:
+Configured
+
+Domain:
+de.example.com.
+
+==================================================
+51. MARKET SETUP FLOW
+==================================================
+
+Market creation:
+
+Countries
+
+Languages
+
+Currency
+
+Pricing
+
+Tax
+
+Domain
+
+Shipping
+
+Payments
+
+Storefront
+
+Review.
+
+Do not expose every advanced setting immediately.
+
+Use progressive setup.
+
+==================================================
+52. GLOBAL MERCHANT COUNTRY ENGINE
+==================================================
+
+Merchant onboarding must adapt based on merchant registration country.
+
+Ask:
+
+Where is your business registered?
+
+Then:
+
+How are you operating?
+
+Examples may include:
+
+Individual
+
+Sole Trader
+
+Registered Company
+
+Partnership
+
+Corporation
+
+other country-supported entities.
+
+Labels must adapt to the country.
+
+==================================================
+53. COUNTRY PROFILE ENGINE
+==================================================
+
+Create a configurable CountryProfile architecture.
+
+CountryProfile conceptually contains:
+
+ISO code
+
+Country name
+
+Locales
+
+Currencies
+
+Address Schema
+
+Postal Rules
+
+Region Rules
+
+Legal Entity Types
+
+Business Fields
+
+Tax Fields
+
+Tax Terminology
+
+Invoice Requirements
+
+Checkout Requirements
+
+Payment Capabilities
+
+Compliance Configuration.
+
+Never place country regulation directly inside UI components.
+
+==================================================
+54. COUNTRY-SPECIFIC BUSINESS FORMS
+==================================================
+
+Forms must dynamically adapt.
+
+Example:
+
+Turkey + Sole Proprietorship
+
+may require a different form from:
+
+Turkey + Limited Company.
+
+Likewise:
+
+United States + LLC
+
+United Kingdom + Limited Company
+
+Germany + GmbH
+
+must display appropriate fields.
+
+Build this through schema-driven forms.
+
+==================================================
+55. BUSINESS FORM SCHEMA
+==================================================
+
+Every field may define:
+
+key
+
+label
+
+input type
+
+required
+
+validation
+
+placeholder
+
+help text
+
+visibility rule
+
+legal entity dependency
+
+country dependency.
+
+UI components render schemas.
+
+Do not hardcode separate page implementations for every country.
+
+==================================================
+56. TAX & COMPLIANCE ARCHITECTURE
+==================================================
+
+Tax architecture must be modular.
+
+Separate:
+
+UI Layer
+
+Country Configuration
+
+Tax Engine
+
+Compliance Layer
+
+Invoice Layer
+
+Payment Layer.
+
+Tax rules change.
+
+Do not hardcode tax regulations into frontend presentation logic.
+
+==================================================
+57. TAX REGISTRATIONS
+==================================================
+
+Settings:
+
+Taxes & Duties
+
+Registrations.
+
+Example:
+
+Turkey
+Active
+
+Germany
+Active
+
+United Kingdom
+Not Registered
+
+United States
+3 active state registrations.
+
+Support regional tax registrations.
+
+==================================================
+58. TAX TERMINOLOGY
+==================================================
+
+Tax terminology must adapt.
+
+Examples:
+
+KDV
+
+VAT
+
+GST
+
+Sales Tax.
+
+Do not universally display "VAT".
+
+==================================================
+59. TAX WARNINGS
+==================================================
+
+If a merchant activates a market without completing required tax setup:
+
+show a clear warning.
+
+Example:
+
+Tax setup required.
+
+Germany is active, but tax configuration has not been completed.
+
+[Review tax settings]
+
+Never silently assume 0% tax.
+
+==================================================
+60. B2B TAX DATA
+==================================================
+
+Company profiles can contain:
+
+Tax Registration Number
+
+Verification Status
+
+Tax Treatment.
+
+Possible verification states:
+
+Unverified
+
+Verified
+
+Invalid.
+
+Actual tax treatment must be resolved by the compliance/tax engine.
+
+==================================================
+61. ADDRESS ENGINE
+==================================================
+
+Do not use one universal address form.
+
+Address forms should adapt by country.
+
+Examples:
+
+United States:
+
+Address
+
+City
+
+State
+
+ZIP.
+
+Turkey:
+
+Address
+
+District
+
+Province
+
+Postal Code.
+
+Japan:
+
+Postal Code
+
+Prefecture
+
+City
+
+Address.
+
+Use address schemas.
+
+==================================================
+62. LOCALIZATION MANAGEMENT
+==================================================
+
+Create:
+
+Markets → Languages
+
+or
+
+Localization → Languages.
+
+Show:
+
+Language
+
+Status
+
+Default Market
+
+Translation Status.
+
+Actions:
+
+Add Language
+
+Publish
+
+Unpublish
+
+Manage Translations.
+
+==================================================
+63. TRANSLATION MANAGER
+==================================================
+
+Allow translating:
+
+Products
+
+Collections
+
+Pages
+
+Navigation
+
+Theme Content
+
+Checkout
+
+SEO
+
+Blog
+
+Custom Data.
+
+Show source and translated version side by side.
+
+Status:
+
+Not Translated
+
+Machine Translated
+
+Reviewed
+
+Published.
+
+==================================================
+64. AI TRANSLATION
+==================================================
+
+Support AI-assisted translation.
+
+Merchant selects:
+
+Source Language
+
+Target Languages.
+
+AI generates draft translations.
+
+Merchant reviews before publishing.
+
+Support translation glossary.
+
+Example:
+
+brand names must never be translated.
+
+==================================================
+65. CURRENCY
+==================================================
+
+Support multi-currency by market.
+
+Example:
+
+Turkey:
+TRY
+
+Germany:
+EUR
+
+United Kingdom:
+GBP
+
+United States:
+USD.
+
+Allow:
+
+automatic currency conversion
+
+or
+
+manual fixed market pricing.
+
+==================================================
+66. LOCAL FORMATTING
+==================================================
+
+Use proper locale formatting.
+
+Examples:
+
+US:
+$1,249.99
+
+Germany:
+1.249,99 €
+
+Turkey:
+1.249,99 ₺.
+
+Also localize:
+
+dates
+
+time
+
+numbers
+
+percentages.
+
+Use internationalization APIs.
+
+==================================================
+67. FINANCE
+==================================================
+
+Finance must contain:
+
+Payments
+
+Payouts
+
+Transactions
+
+Invoices
+
+Taxes.
+
+Payment data should be clearly separated from accounting estimates.
+
+Provide transparent gross-to-net breakdowns.
+
+==================================================
+68. INVOICING
+==================================================
+
+Create configurable global invoice architecture.
+
+Invoice settings may contain:
+
+Legal Name
+
+Tax IDs
+
+Registered Address
+
+Invoice Prefix
+
+Invoice Numbering
+
+Bank Information
+
+Currency
+
+Language
+
+Legal Footer.
+
+Market-specific invoice templates may be supported.
+
+==================================================
+69. ELECTRONIC INVOICING
+==================================================
+
+Design integration architecture for:
+
+government systems
+
+certified e-invoice providers
+
+accounting systems
+
+third-party invoicing providers.
+
+Do not tie the UI to one specific provider.
+
+==================================================
+70. ONLINE STORE
+==================================================
+
+Online Store area:
+
+Themes
+
+Pages
+
+Navigation
+
+Domains
+
+Preferences.
+
+==================================================
+71. THEME LIBRARY
+==================================================
+
+Ship approximately 10 professionally designed storefront templates.
+
+Possible categories:
+
+Minimal
+
+Fashion
+
+Luxury
+
+Technology
+
+Beauty
+
+Furniture
+
+Food
+
+Industrial B2B
+
+Wholesale
+
+Marketplace.
+
+Theme card:
+
+Preview
+
+Theme Name
+
+Category.
+
+Actions:
+
+Customize
+
+Preview
+
+Duplicate
+
+Rename
+
+Export
+
+Publish
+
+Delete where allowed.
+
+==================================================
+72. THEME EDITOR
+==================================================
+
+Theme Editor layout:
+
+LEFT SECTION TREE
+
+CENTER LIVE PREVIEW
+
+OPTIONAL RIGHT SETTINGS PANEL.
+
+Top toolbar.
+
+Keep familiar ecommerce editor behavior.
+
+==================================================
+73. THEME EDITOR TOOLBAR
+==================================================
+
+Left:
+
+Back
+
+Theme Name.
+
+Center:
+
+Page Selector
+
+Market / Context Selector.
+
+Page selector:
+
+Homepage
+
+Product
+
+Collection
+
+Cart
+
+Search
+
+Blog
+
+Page
+
+B2B Pages.
+
+Market/context:
+
+Default
+
+Turkey
+
+Germany
+
+Wholesale
+
+B2B Company Context.
+
+Right:
+
+Undo
+
+Redo
+
+Desktop
+
+Tablet
+
+Mobile
+
+Preview
+
+Save
+
+Publish.
+
+==================================================
+74. THEME SECTION TREE
+==================================================
+
+Example:
+
+Header
+
+Announcement Bar
+
+Hero
+
+Featured Collection
+
+Image Banner
+
+Testimonials
+
+Newsletter
+
+Footer.
+
+Sections support:
+
+reorder
+
+hide/show
+
+duplicate
+
+rename
+
+delete.
+
+Use contextual actions.
+
+==================================================
+75. BLOCK SYSTEM
+==================================================
+
+Sections contain blocks.
+
+Example Hero:
+
+Heading
+
+Text
+
+Button
+
+Image.
+
+Allow:
+
+Add Block
+
+Move
+
+Duplicate
+
+Hide
+
+Delete.
+
+==================================================
+76. LIVE PREVIEW
+==================================================
+
+Changes update immediately.
+
+Do not reload the full preview.
+
+Clicking a component inside the preview should select the corresponding section/block.
+
+Use subtle selection outlines.
+
+==================================================
+77. THEME SETTINGS
+==================================================
+
+Global theme controls:
+
+Logo
+
+Favicon
+
+Colors
+
+Typography
+
+Buttons
+
+Inputs
+
+Layout
+
+Spacing
+
+Borders
+
+Animations
+
+Social Links
+
+Cart Behavior.
+
+==================================================
+78. B2B STOREFRONT
+==================================================
+
+B2B customer portal:
+
+Home
+
+Catalog
+
+Quick Order
+
+Orders
+
+Quotes
+
+Invoices
+
+Account.
+
+Show relevant company context.
+
+Example:
+
+Atlas GmbH
+
+Berlin HQ
+
+Net 30
+
+Available Credit:
+€32,500.
+
+==================================================
+79. B2B STOREFRONT PRICING
+==================================================
+
+Retail visitor may see:
+
+€120.
+
+B2B buyer may see:
+
+€82
+
+Minimum Order:
+10.
+
+The storefront should respect:
+
+company
+
+location
+
+catalog
+
+market
+
+currency
+
+quantity rules.
+
+==================================================
+80. ANALYTICS
+==================================================
+
+Provide:
+
+Sales Analytics
+
+Product Analytics
+
+Customer Analytics
+
+B2B Analytics
+
+Inventory Analytics
+
+Market Analytics
+
+Marketing Attribution.
+
+Do not overload default views.
+
+Use drill-down exploration.
+
+==================================================
+81. TABLE SYSTEM
+==================================================
+
+Tables are a critical interaction primitive.
+
+Support:
+
+Sorting
+
+Filtering
+
+Saved Views
+
+Pagination
+
+Bulk Selection
+
+Column Visibility
+
+Column Reordering where useful
+
+Column Resizing where useful.
+
+Sticky headers where appropriate.
+
+==================================================
+82. FILTER SYSTEM
+==================================================
+
+Use structured filters.
+
+Example:
+
+Status
+is
+Active
+
+AND
+
+Inventory
+less than
+10.
+
+Display active filters as removable chips.
+
+Allow saved views.
+
+==================================================
+83. DRAWERS
+==================================================
+
+Use drawers for lightweight contextual editing.
+
+Examples:
+
+Edit Tags
+
+Adjust Inventory
+
+Edit Payment Terms
+
+Add Tracking
+
+Edit Contact.
+
+Suggested desktop width:
+
+420px–560px.
+
+Do not use modals for every operation.
+
+==================================================
+84. MODALS
+==================================================
+
+Use modals only for focused actions.
+
+Avoid long forms inside modals.
+
+Complex operations belong on dedicated pages or drawers.
+
+==================================================
+85. STATUS DESIGN
+==================================================
+
+Status colors should be subtle.
+
+Semantic levels:
+
+Neutral
+
+Information
+
+Success
+
+Warning
+
+Critical.
+
+Examples:
+
+Active
+
+Draft
+
+Paid
+
+Pending
+
+Overdue
+
+Fulfilled
+
+Unfulfilled.
+
+Avoid neon badge colors.
+
+==================================================
+86. EMPTY STATES
+==================================================
+
+Do not show only:
+
+No data.
+
+Provide:
+
+context
+
+next action.
+
+Example:
+
+No companies yet.
+
+Create a company to begin managing B2B customers, catalogs and payment terms.
+
+[Create company]
+
+==================================================
+87. LOADING
+==================================================
+
+Use skeleton states.
+
+Do not use full-page spinners for normal navigation.
+
+Preserve page layout while loading.
+
+==================================================
+88. ERROR STATES
+==================================================
+
+Explain:
+
+What happened?
+
+What is affected?
+
+How can the user recover?
+
+Example:
+
+Inventory could not be updated.
+
+This item was modified by another user.
+
+[Reload latest version]
+
+==================================================
+89. UNSAVED CHANGES
+==================================================
+
+Prefer autosave where safe.
+
+For workflows requiring explicit save:
+
+show a compact contextual save bar.
+
+Unsaved changes
+
+[Discard]
+
+[Save].
+
+==================================================
+90. ACCESSIBILITY
+==================================================
+
+Meet WCAG AA.
+
+Support:
+
+Keyboard navigation
+
+Visible focus states
+
+Semantic HTML
+
+Screen reader labels
+
+Accessible forms
+
+Accessible dialogs
+
+Accessible tooltips
+
+Accessible drag-and-drop alternatives
+
+Sufficient contrast.
+
+==================================================
+91. RESPONSIVENESS
+==================================================
+
+Desktop is the primary operational environment.
+
+Tablet and mobile must remain usable.
+
+On mobile:
+
+sidebar becomes drawer
+
+tables transform intelligently
+
+primary actions remain accessible
+
+content stacks cleanly.
+
+Do not simply squeeze desktop tables onto mobile screens.
+
+==================================================
+92. PERFORMANCE
+==================================================
+
+The admin should feel instantaneous.
+
+Use:
+
+prefetching
+
+optimistic updates
+
+lazy loading
+
+skeletons
+
+virtualization
+
+caching
+
+server-side data fetching where appropriate.
+
+Avoid unnecessary full page refreshes.
+
+==================================================
+93. AI COMMERCE ASSISTANT
+==================================================
+
+Provide a floating AI assistant.
+
+Do not permanently consume a large right sidebar.
+
+Example prompts:
+
+Show products likely to run out this week.
+
+Why did German revenue decline?
+
+Create a wholesale catalog for Germany.
+
+Draft a 10% discount for inactive B2B customers.
+
+Show unpaid invoices over €5,000.
+
+Create a campaign for abandoned carts.
+
+AI must preview impactful actions before execution.
+
+Example:
+
+Create Catalog
+
+Germany Wholesale 2026
+
+482 Products
+
+Pricing Adjustment:
+-20%
+
+[Cancel]
+
+[Create].
+
+Never silently execute destructive actions.
+
+==================================================
+94. ACTIVITY LOG
+==================================================
+
+Record important actions.
+
+Example:
+
+Emirhan changed Germany catalog pricing.
+
+3 minutes ago.
+
+System refunded Order #1842.
+
+12 minutes ago.
+
+Sarah published theme Minimal.
+
+1 hour ago.
+
+Filters:
+
+User
+
+Action
+
+Resource
+
+Date.
+
+==================================================
+95. USERS & PERMISSIONS
+==================================================
+
+Roles may include:
+
+Owner
+
+Administrator
+
+Store Manager
+
+Warehouse Manager
+
+Marketing Manager
+
+B2B Sales
+
+Accountant
+
+Developer.
+
+Support granular permissions.
+
+==================================================
+96. ONBOARDING
+==================================================
+
+New merchant onboarding:
+
+Create Business Profile
+
+Add Product
+
+Configure Payments
+
+Configure Shipping
+
+Configure Tax
+
+Create Market
+
+Customize Storefront
+
+Connect Domain
+
+Test Checkout
+
+Publish Store.
+
+Show progress.
+
+Allow dismissal after core setup.
+
+==================================================
+97. MULTI-STORE
+==================================================
+
+Support organizations managing multiple stores.
+
+Example:
+
+Ocean Retail
+
+Ocean Wholesale
+
+Ocean Europe.
+
+Organization-level settings:
+
+Stores
+
+Users
+
+Billing
+
+Shared Apps
+
+Shared Assets
+
+Security.
+
+==================================================
+98. ENTITY CONNECTIVITY
+==================================================
+
+The system should never feel like disconnected modules.
+
+From an order:
+
+open customer
+
+open company
+
+open market
+
+open product.
+
+From company:
+
+open catalogs
+
+orders
+
+quotes
+
+invoices.
+
+From analytics:
+
+open corresponding products/orders/customers.
+
+Use relational navigation naturally.
+
+==================================================
+99. FRONTEND ARCHITECTURE
+==================================================
+
+Preferred stack:
+
+Next.js
+
+React
+
+TypeScript
+
+Tailwind CSS.
+
+Use a scalable component architecture.
+
+Example:
+
+/app
+
+/components
+
+/components/ui
+
+/components/admin
+
+/components/commerce
+
+/components/dashboard
+
+/components/b2b
+
+/components/markets
+
+/components/theme-editor
+
+/components/analytics
+
+/lib
+
+/hooks
+
+/services
+
+/store
+
+/types
+
+/i18n
+
+/config/countries.
+
+Use Server Components when useful.
+
+Use Client Components only where interaction requires them.
+
+==================================================
+100. INTERNATIONALIZATION ARCHITECTURE
+==================================================
+
+Never hardcode user-facing admin strings in components.
+
+Do NOT write:
+
+<button>Save</button>
+
+Use translation keys.
+
+Example:
+
+common.save
+
+common.cancel
+
+orders.title
+
+products.create
+
+companies.title.
+
+Admin locales:
+
+/locales/en
+
+/locales/tr.
+
+Storefront localization remains independent.
+
+==================================================
+101. COUNTRY CONFIGURATION ARCHITECTURE
+==================================================
+
+Use something conceptually equivalent to:
+
+/config/countries/TR
+
+/config/countries/DE
+
+/config/countries/US
+
+/config/countries/GB.
+
+But keep regulation data separate from UI.
+
+Country configuration should be versionable.
+
+Tax/compliance updates should not require redesigning UI components.
+
+==================================================
+102. DESIGN TOKENS
+==================================================
+
+Create a reusable design token system.
+
+Spacing:
+
+4
+
+8
+
+12
+
+16
+
+20
+
+24
+
+32
+
+40
+
+48
+
+64.
+
+Semantic colors:
+
+Background
+
+Surface
+
+Surface Secondary
+
+Text Primary
+
+Text Secondary
+
+Border
+
+Brand
+
+Success
+
+Warning
+
+Danger
+
+Information.
+
+Typography:
+
+Display
+
+Heading
+
+Body
+
+Small
+
+Caption.
+
+==================================================
+103. REUSABLE COMPONENTS
+==================================================
+
+Create reusable components:
+
+AppShell
+
+Sidebar
+
+SidebarGroup
+
+NavItem
+
+PageHeader
+
+Breadcrumb
+
+Button
+
+IconButton
+
+ButtonGroup
+
+Card
+
+Panel
+
+Section
+
+Badge
+
+Avatar
+
+DataTable
+
+DataGrid
+
+Input
+
+Textarea
+
+Select
+
+Combobox
+
+SearchInput
+
+Checkbox
+
+Radio
+
+Switch
+
+Tabs
+
+Dropdown
+
+Popover
+
+Tooltip
+
+Modal
+
+Drawer
+
+Banner
+
+Toast
+
+EmptyState
+
+Skeleton
+
+Metric
+
+Sparkline
+
+Chart
+
+Timeline
+
+CommandPalette
+
+DateRangePicker
+
+MarketSelector
+
+CurrencySelector.
+
+Do not create duplicated one-off components if a reusable pattern exists.
+
+==================================================
+104. URL STRUCTURE
+==================================================
+
+Use clean routes.
+
+Examples:
+
+/admin
+
+/admin/orders
+
+/admin/orders/[id]
+
+/admin/products
+
+/admin/products/[id]
+
+/admin/customers
+
+/admin/customers/[id]
+
+/admin/b2b/companies
+
+/admin/b2b/companies/[id]
+
+/admin/b2b/catalogs
+
+/admin/b2b/quotes
+
+/admin/analytics
+
+/admin/finance
+
+/admin/markets
+
+/admin/markets/[id]
+
+/admin/themes
+
+/admin/themes/editor
+
+/admin/settings
+
+/admin/settings/taxes
+
+/admin/settings/business.
+
+==================================================
+105. MOCK DATA
+==================================================
+
+Use realistic commerce data.
+
+Never use:
+
+Product 1
+
+Customer 1
+
+Company 1
+
+Lorem Ipsum
+
+John Doe everywhere.
+
+Use examples such as:
+
+Products:
+
+Nordic Lounge Chair
+
+Industrial Desk Lamp
+
+Essential Cotton Hoodie
+
+Modular Storage System.
+
+Companies:
+
+Atlas Retail GmbH
+
+Nova Distribution Ltd.
+
+Marmara Home A.Ş.
+
+Northstar Trading BV.
+
+Use realistic:
+
+SKUs
+
+orders
+
+currencies
+
+markets
+
+inventory
+
+quotes
+
+payments.
+
+==================================================
+106. DESIGN QUALITY TEST
+==================================================
+
+Before considering a page finished, ask:
+
+Does this look like production software?
+
+Does this feel consistent with the rest of the admin?
+
+Does this feel closer to Shopify Admin than a dashboard template?
+
+Is every major action easy to find?
+
+Are we displaying unnecessary information?
+
+Can an operator understand the page quickly?
+
+Does the interface still work with large datasets?
+
+Is B2B treated as a first-class workflow?
+
+Does localization feel native instead of bolted on?
+
+Does country-specific complexity remain hidden until required?
+
+==================================================
+107. DO NOT DO THIS
+==================================================
+
+Do not:
+
+create random dashboards
+
+use different visual languages across modules
+
+overuse cards
+
+overuse colored backgrounds
+
+overuse pills
+
+create huge charts by default
+
+hide important operations behind multiple layers
+
+turn every page into analytics
+
+create separate disconnected B2B design styles
+
+hardcode countries
+
+hardcode taxes
+
+hardcode languages
+
+hardcode currency formatting
+
+copy Shopify pixel-for-pixel.
+
+==================================================
+108. FINAL UX PRINCIPLE
+==================================================
+
+The product should feel familiar within the first minute.
+
+A user familiar with Shopify should immediately understand:
+
+navigation
+
+orders
+
+products
+
+customers
+
+settings
+
+tables
+
+filters.
+
+But after exploring deeper, they should discover that this platform provides significantly stronger systems for:
+
+B2B
+
+Companies
+
+Catalogs
+
+Pricing
+
+Markets
+
+Tax
+
+Localization
+
+International operations
+
+Theme customization
+
+Automation
+
+AI.
+
+The complexity must exist underneath the interface, not on top of it.
+
+==================================================
+109. IMPLEMENTATION ORDER
+==================================================
+
+Do not attempt to build every screen at once.
+
+Implement in this order:
+
+PHASE 1
+
+Design System
+
+App Shell
+
+Sidebar
+
+Global Search
+
+Page Header
+
+Core Tables
+
+Filters
+
+Dashboard Overview.
+
+PHASE 2
+
+Orders
+
+Order Detail
+
+Products
+
+Product Detail
+
+Inventory
+
+Customers.
+
+PHASE 3
+
+B2B Companies
+
+Company Detail
+
+Locations
+
+Contacts
+
+Catalogs
+
+Pricing
+
+Quotes
+
+Payment Terms.
+
+PHASE 4
+
+Markets
+
+Localization
+
+Currencies
+
+Country Configuration
+
+Tax Setup
+
+Business Profiles.
+
+PHASE 5
+
+Analytics
+
+Finance
+
+Invoices
+
+Payments
+
+Advanced Dashboard Modes.
+
+PHASE 6
+
+Themes
+
+Theme Library
+
+Theme Editor
+
+Page Builder
+
+B2B Storefront.
+
+PHASE 7
+
+Apps
+
+Automations
+
+AI Assistant
+
+Advanced Integrations.
+
+==================================================
+110. STARTING TASK
+==================================================
+
+Start by creating the complete admin foundation.
+
+First define:
+
+1. Design tokens
+2. Typography
+3. Color system
+4. Component system
+5. Sidebar information architecture
+6. App shell
+7. Page header system
+8. Data table system
+9. Filter system
+10. Dashboard layout.
+
+Then build the Dashboard Overview.
+
+The first implementation should visually demonstrate the final quality bar of the product.
+
+Do not rush into building dozens of unfinished screens.
+
+Create one highly polished system first, then reuse it consistently throughout the product.
+
+The first dashboard should include:
+
+Dashboard Header
+
+Global Filters
+
+KPI Strip
+
+Revenue Overview
+
+Revenue Breakdown
+
+Needs Attention
+
+Order Operations
+
+Recent Orders
+
+Sales Channels
+
+Inventory Health
+
+B2B Summary
+
+Markets Summary.
+
+After the foundation is visually approved, continue to the next modules.
+
+Maintain the exact same product language across the entire platform.
+
+The final outcome must feel like one coherent global commerce product built by a world-class product team.

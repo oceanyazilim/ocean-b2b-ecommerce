@@ -1,0 +1,3394 @@
+ANA GELİŞTİRME PROMPTU
+Kurumsal B2B E-Ticaret SaaS Platformu — Shopify Seviyesinde Mimari, Mağaza Oluşturucu, Tema Editörü, Commerce Engine ve Multi-Tenant Operasyon
+
+Sen; Principal Software Architect, Staff Full-Stack Developer, SaaS Product Architect, UX System Designer, Database Architect, DevOps Engineer, Security Engineer ve B2B Commerce Product Strategist rollerini birlikte üstleniyorsun.
+
+Görevin, üretim ortamına uygun, kurumsal seviyede, ölçeklenebilir ve multi-tenant B2B e-ticaret SaaS platformu tasarlamak ve aşamalı olarak geliştirmektir.
+
+Platform, kapsam ve kullanıcı deneyimi açısından Shopify benzeri modern hosted commerce platformları seviyesinde çalışmalı; ancak ürünün çekirdeği özellikle şu ihtiyaçlar üzerine kurulmalıdır:
+
+B2B e-ticaret
+Toptan satış
+DTC satış
+Firma hesapları
+Firmaya özel kataloglar
+Müşteriye özel fiyatlar
+Hacim/adet bazlı fiyatlandırma
+Teklif/RFQ süreçleri
+Kredi limitleri
+Vadeli ödeme
+Sipariş onay süreçleri
+Stok yönetimi
+Çoklu depo/lokasyon
+Tema özelleştirme
+Canlı mağaza editörü
+Özel domain
+API
+Entegrasyon
+Analytics
+SaaS abonelikleri
+Platform yönetimi
+
+Bu proje tek bir e-ticaret sitesi değildir.
+
+Bu sistem, binlerce bağımsız firmanın kendi mağazasını oluşturabildiği, özelleştirebildiği ve yönetebildiği bir:
+
+Multi-Tenant SaaS Commerce Platformudur.
+
+1. ANA ÜRÜN VİZYONU
+
+Platformdaki bir merchant şu işlemleri yapabilmelidir:
+
+Kayıt olmak.
+Organization oluşturmak.
+Bir veya birden fazla Store oluşturmak.
+Firma bilgilerini ayarlamak.
+Ürün eklemek.
+Ürün varyantları oluşturmak.
+Medya yüklemek.
+Stok yönetmek.
+Koleksiyon/kategori oluşturmak.
+Müşteri gruplarını yönetmek.
+B2B Company oluşturmak.
+Company Location oluşturmak.
+Buyer eklemek.
+Özel katalog oluşturmak.
+Price List oluşturmak.
+Hacim fiyatları belirlemek.
+Ödeme vadeleri belirlemek.
+Kredi limitleri belirlemek.
+Sipariş onay kuralları oluşturmak.
+Teklif yönetmek.
+Sipariş yönetmek.
+Ödeme yönetmek.
+Gönderi yönetmek.
+Fatura yönetmek.
+İade/refund yönetmek.
+Storefront teması seçmek.
+Temayı görsel editörden değiştirmek.
+Değişiklikleri canlı görmek.
+Temayı yayınlamak.
+Özel domain bağlamak.
+Vergi ayarlamak.
+Kargo ayarlamak.
+Entegrasyon bağlamak.
+Analytics görmek.
+Personel yetkilerini yönetmek.
+API kullanmak.
+Uygulamalar kurmak.
+SaaS aboneliğini yönetmek.
+Mağazayı yayına almak.
+
+Merchant, ticari operasyonunun büyük bölümünü tek bir panelden yönetebilmelidir.
+
+2. ÜRÜN YÜZEYLERİ
+
+Sistemi birbirine bağlı ancak sorumlulukları ayrılmış uygulamalar şeklinde tasarla.
+
+2.1 Platform Marketing Website
+
+Platformun herkese açık SaaS sitesi.
+
+Örnek sayfalar:
+
+/
+/features
+/commerce
+/b2b
+/wholesale
+/themes
+/integrations
+/pricing
+/enterprise
+/partners
+/developers
+/customers
+/resources
+/blog
+/help
+/status
+/login
+/signup
+/legal/privacy
+/legal/terms
+/legal/cookies
+
+Amaç:
+
+Ürünü tanıtmak
+Merchant kazanmak
+Kayıt sağlamak
+Dokümantasyon sunmak
+3. MERCHANT ADMIN
+
+Ana yönetim paneli.
+
+Örnek domain:
+
+admin.platform.com
+
+Ana menü:
+
+Home
+Orders
+Products
+Inventory
+Customers
+Companies
+Catalogs
+Pricing
+Quotes
+Finance
+Discounts
+Content
+Storefront
+Markets
+Analytics
+Marketing
+Apps
+Settings
+
+Panel; binlerce ürün ve yüksek sipariş hacmi yöneten firmalar için de rahat kullanılmalıdır.
+
+4. STOREFRONT
+
+Her mağazanın storefront'u olacaktır.
+
+Varsayılan:
+
+magaza.platform.com
+
+Özel domain:
+
+firma.com
+
+veya:
+
+shop.firma.com
+
+Storefront yalnızca Commerce API üzerinden veri tüketmelidir.
+
+Pricing, tax, inventory, credit ve authorization gibi kritik işlemler storefront içinde hesaplanmamalıdır.
+
+5. B2B CUSTOMER PORTAL
+
+Firma müşterileri için ayrı authenticated alan oluştur.
+
+Destekle:
+
+Firma dashboard
+Firma bilgileri
+Lokasyonlar
+Ekip
+Buyers
+Approvers
+Siparişler
+Sipariş geçmişi
+Reorder
+Teklifler
+Faturalar
+Ekstre
+Kredi durumu
+Ödeme vadesi
+Adresler
+Saved cart
+Quick order
+Purchase order
+Account manager
+6. PLATFORM SUPER ADMIN
+
+Platform operasyon ekibinin kullanacağı ayrı uygulama.
+
+Merchant panelinden tamamen ayrı tutulmalıdır.
+
+Yönetilecek alanlar:
+
+Organizations
+Stores
+Users
+Merchants
+Plans
+Subscriptions
+Billing
+Themes
+Apps
+Domains
+Support
+Risk
+Security
+Webhooks
+Jobs
+Audit logs
+Feature flags
+Incidents
+Platform metrics
+7. TENANT YAPISI
+
+Temel hierarchy:
+
+Platform
+
+→ Organization
+
+→ Store
+
+→ Store Users
+
+→ Store Data
+
+Bir Organization birden fazla Store sahibi olabilir.
+
+Kesinlikle:
+
+Organization = Store
+
+varsayımı yapılmamalıdır.
+
+Örnek:
+
+ABC Holding
+
+Stores:
+
+ABC Wholesale
+ABC Retail
+ABC Germany
+
+Bu ayrım sistemin ilk sürümünden itibaren bulunmalıdır.
+
+8. MULTI-TENANT GÜVENLİK
+
+Tenant'a ait tüm kaynaklar güvenli şekilde scope edilmelidir.
+
+Tablolarda gerektiğinde:
+
+organization_id
+store_id
+
+bulunmalıdır.
+
+Frontend kısıtlamalarına güvenme.
+
+Tenant izolasyonunu şu seviyelerde uygula:
+
+API
+Service
+Database query
+Cache
+Search index
+File storage
+Background jobs
+Analytics
+
+Gerekli yerlerde PostgreSQL Row Level Security değerlendirilebilir.
+
+Tenant isolation kritik güvenlik gereksinimidir.
+
+9. AUTHENTICATION
+
+Destekle:
+
+E-mail/password
+E-mail verification
+Password reset
+Session management
+MFA
+TOTP
+Recovery codes
+Session revoke
+Login history
+Suspicious login detection
+
+Gelecekte desteklenebilecek şekilde mimari hazırla:
+
+Google
+Microsoft
+SAML
+OIDC
+Enterprise SSO
+
+Kullanıcı kimliği ile Store üyeliğini birbirinden ayır.
+
+Bir kullanıcı birden fazla Organization veya Store üyesi olabilir.
+
+10. RBAC VE YETKİLER
+
+Merchant rolleri:
+
+Store Owner
+Admin
+Manager
+Product Manager
+Order Manager
+Marketing
+Finance
+Developer
+Viewer
+
+B2B müşteri rolleri:
+
+Company Admin
+Buyer
+Approver
+Finance
+Viewer
+
+Permission örnekleri:
+
+products.read
+products.write
+products.delete
+orders.read
+orders.write
+orders.refund
+customers.read
+companies.write
+finance.read
+analytics.read
+themes.edit
+themes.publish
+apps.install
+settings.write
+users.manage
+
+UI içine hard-code edilmiş rol kontrolü yapma.
+
+Proper permission engine kullan.
+
+11. ONBOARDING
+
+Akış:
+
+Kayıt
+
+→ E-mail doğrulama
+
+→ Organization oluştur
+
+→ Store oluştur
+
+→ İş modeli seç
+
+→ Sektör seç
+
+→ Tema seç
+
+→ Firma bilgileri
+
+→ İlk ürünü ekle
+
+→ Ödeme ayarları
+
+→ Kargo ayarları
+
+→ Vergi
+
+→ Domain
+
+→ Yayınla
+
+Dashboard üzerinde onboarding checklist göster.
+
+12. ADMIN DASHBOARD
+
+Metricler:
+
+Gross Sales
+Net Sales
+GMV
+Orders
+AOV
+Conversion
+Sessions
+Returning customers
+Outstanding receivables
+
+Operasyon kartları:
+
+Fulfillment bekleyen sipariş
+Ödeme bekleyen
+Bekleyen teklifler
+Firma başvuruları
+Stok uyarıları
+İadeler
+Refund
+Başarısız ödeme
+Süresi dolmak üzere olan teklifler
+
+Date range:
+
+Today
+Yesterday
+Last 7 days
+Last 30 days
+This month
+Previous month
+Custom
+
+Global command palette ekle:
+
+Ctrl / Cmd + K
+
+13. ÜRÜN SİSTEMİ
+
+Ürünler:
+
+Title
+Handle
+Description
+Rich content
+Vendor
+Brand
+Product type
+Category
+Collection
+Tags
+SEO
+Status
+Sales channels
+Media
+Images
+Videos
+Files
+Specifications
+Metafields
+
+Status:
+
+Draft
+Active
+Archived
+14. PRODUCT VARIANTS
+
+Variant:
+
+SKU
+Barcode
+Option
+Price
+Compare at
+Cost
+Weight
+Dimensions
+Taxable
+Inventory
+Shipping
+
+Option isimlerini hard-code etme.
+
+Merchant istediği option'ları oluşturabilsin:
+
+Size
+Color
+Material
+Package
+Length
+Voltage
+15. COLLECTIONS
+
+Manual Collection
+
+ve
+
+Automated Collection.
+
+Rule örnekleri:
+
+Product type
+Vendor
+Tag
+Price
+Inventory
+Category
+
+AND / OR grupları desteklenmelidir.
+
+16. METAFIELDS
+
+Custom data sistemi oluştur.
+
+Desteklenen field tipleri:
+
+string
+integer
+decimal
+boolean
+date
+JSON
+URL
+product reference
+collection reference
+file reference
+17. INVENTORY
+
+Ürün üzerinde tek bir stock number tutma.
+
+Model:
+
+Product Variant
+
+→ Inventory Item
+
+→ Inventory Level
+
+→ Location
+
+Location örnekleri:
+
+Warehouse
+Store
+Supplier
+Fulfillment Center
+
+Değerler:
+
+On hand
+Available
+Reserved
+Incoming
+Damaged
+Committed
+
+Inventory movement ledger tut.
+
+18. INVENTORY TRANSFERS
+
+Transfer lifecycle:
+
+Draft
+
+→ Requested
+
+→ Shipped
+
+→ Partially Received
+
+→ Received
+
+→ Cancelled
+
+19. CUSTOMER SİSTEMİ
+
+Customer:
+
+Personal details
+Contact
+Addresses
+Notes
+Tags
+Orders
+LTV
+Marketing consent
+Account status
+
+Individual Customer ile Company Buyer ayrımı yap.
+
+20. B2B COMPANY
+
+Company first-class entity olmalıdır.
+
+Alanlar:
+
+Legal name
+Display name
+Tax number
+Tax office
+Industry
+Currency
+Status
+Notes
+Account manager
+Credit settings
+
+Company:
+
+→ Company Locations
+
+Örnek:
+
+ACME LTD
+
+→ İstanbul HQ
+
+→ Ankara Branch
+
+→ İzmir Branch
+
+Her lokasyonun farklı:
+
+Address
+Buyer
+Catalog
+Price list
+Payment terms
+Credit
+Currency
+Tax
+Shipping
+Approval
+
+ayarları olabilir.
+
+21. COMPANY USERS
+
+Roller:
+
+Company Admin
+Buyer
+Approver
+Finance
+Viewer
+
+Buyer sipariş oluşturabilir.
+
+Approver siparişi onaylayabilir.
+
+Finance yalnızca finans belgelerine erişebilir.
+
+22. B2B BAŞVURU
+
+Storefront:
+
+Wholesale account başvurusu
+
+→ Firma
+
+→ Vergi
+
+→ Yetkili
+
+→ Belgeler
+
+→ Submit
+
+Admin:
+
+Pending
+
+→ Review
+
+→ Approve / Reject
+
+→ Catalog
+
+→ Pricing
+
+→ Payment Terms
+
+→ Activate
+
+23. CATALOG ENGINE
+
+Catalog, firmanın görebileceği ve satın alabileceği ürünleri belirler.
+
+Frontend'de sadece gizleme yapma.
+
+Server-side access kontrolü zorunludur.
+
+24. PRICING ENGINE
+
+Pricing ayrı domain olmalıdır.
+
+Fiyat şunlara göre değişebilir:
+
+Product
+Variant
+Company
+Company Location
+Catalog
+Price List
+Market
+Currency
+Quantity
+Discounts
+Contract price
+
+Örnek priority:
+
+Company Override
+
+→ Location Override
+
+→ Catalog
+
+→ Price List
+
+→ Volume Pricing
+
+→ Automatic Discount
+
+→ Market Adjustment
+
+→ Base Price
+
+Checkout her fiyatı backend'de yeniden hesaplamalıdır.
+
+Browser tarafından gönderilen fiyatlara güvenme.
+
+25. VOLUME PRICING
+
+Örnek:
+
+1–9:
+100 TRY
+
+10–49:
+92 TRY
+
+50–99:
+85 TRY
+
+100+:
+78 TRY
+
+26. QUANTITY RULES
+
+Destek:
+
+Minimum
+Maximum
+Increment
+Multiple
+Case pack
+
+Örnek:
+
+Minimum: 12
+
+Increment: 6
+
+Geçerli:
+
+12, 18, 24, 30
+
+27. QUOTE / RFQ
+
+Müşteri:
+
+Ürün
+Adet
+Not
+Dosya
+
+ile teklif isteyebilmeli.
+
+Merchant:
+
+Fiyat değiştirebilir
+Quantity değiştirebilir
+Discount
+Shipping
+Payment terms
+Expiration
+Note
+
+ekleyebilir.
+
+Lifecycle:
+
+Draft
+
+→ Requested
+
+→ Under Review
+
+→ Sent
+
+→ Negotiation
+
+→ Accepted
+
+→ Converted
+
+→ Expired
+
+→ Rejected
+
+Accepted:
+
+Quote
+
+→ Draft Order
+
+→ Order
+
+→ Invoice
+
+28. QUICK ORDER
+
+B2B için ayrı sayfa:
+
+SKU
+Product Search
+Barcode
+Quantity
+Bulk Add
+CSV
+Spreadsheet-like interface
+Saved list
+29. SAVED LIST
+
+Firma kullanıcıları:
+
+Weekly Restock
+Monthly Purchase
+Office Supplies
+
+gibi listeler oluşturabilmelidir.
+
+Listeler tek tıkla cart'a aktarılmalıdır.
+
+30. ORDERS
+
+Lifecycle:
+
+Draft
+
+→ Pending Approval
+
+→ Confirmed
+
+→ Payment Pending
+
+→ Paid / Terms
+
+→ Processing
+
+→ Partially Fulfilled
+
+→ Fulfilled
+
+→ Delivered
+
+Ek:
+
+Cancelled
+Returned
+Partially Returned
+Refunded
+Partially Refunded
+
+Order alanları:
+
+Items
+Discounts
+Taxes
+Shipping
+Notes
+Customer
+Company
+Company Location
+Currency
+Payment Status
+Fulfillment Status
+Source
+PO Number
+31. DRAFT ORDERS
+
+Merchant manuel sipariş oluşturabilmelidir.
+
+Kullanım:
+
+Telefon siparişi
+Satış temsilcisi
+Offline satış
+B2B anlaşma
+
+Draft Order:
+
+→ Send Invoice
+
+veya:
+
+→ Convert to Order
+
+32. ORDER APPROVAL
+
+Örnek kurallar:
+
+10.000 TRY üzeri sipariş onay gerektirir.
+
+Buyer A maksimum 50.000 TRY sipariş verebilir.
+
+Restricted ürünler onay gerektirir.
+
+Status:
+
+Pending
+
+→ Approved
+
+veya:
+
+→ Rejected
+
+33. PAYMENT TERMS
+
+Destek:
+
+Immediate
+Net 7
+Net 15
+Net 30
+Net 45
+Net 60
+Net 90
+
+Gelecek:
+
+Deposit
+Partial
+Scheduled
+
+Örnek:
+
+20% Deposit
+
+80% Net 30
+
+34. CREDIT
+
+Company veya Location:
+
+Credit Limit
+Used Credit
+Available Credit
+
+Örnek:
+
+Limit:
+500.000 TRY
+
+Used:
+380.000
+
+Available:
+120.000
+
+Limit aşılırsa:
+
+Reject
+Approval
+Immediate Payment
+
+seçenekleri configurable olmalıdır.
+
+35. ACCOUNTS RECEIVABLE
+
+Finance:
+
+Outstanding
+Due Date
+Aging
+Paid
+Partially Paid
+Overdue
+
+Aging:
+
+0–30
+31–60
+61–90
+90+
+36. PAYMENT ARCHITECTURE
+
+İlk aşamada raw kart bilgisi saklama.
+
+Provider adapter sistemi kullan.
+
+Commerce Platform
+
+→ Payment Adapter
+
+→ PSP
+
+→ Merchant Account
+
+Interface:
+
+createPayment
+authorize
+capture
+cancel
+refund
+getStatus
+tokenize
+webhook
+37. IDEMPOTENCY
+
+Özellikle:
+
+Checkout
+Payment
+Capture
+Refund
+Order creation
+Webhook
+
+işlemlerinde idempotency zorunludur.
+
+38. SHIPPING
+
+Domain:
+
+Shipping Zone
+Shipping Profile
+Shipping Rate
+Carrier
+Shipment
+Fulfillment
+Tracking
+
+Rate:
+
+Flat
+Free
+Weight
+Price
+Carrier
+Custom
+
+B2B:
+
+Pallet
+Freight
+Pickup
+Customer carrier
+Negotiated
+39. FULFILLMENT
+
+Siparişler partial fulfill desteklemelidir.
+
+Bir sipariş birden fazla shipment olabilir.
+
+40. RETURNS
+
+Lifecycle:
+
+Requested
+
+→ Approved
+
+→ Received
+
+→ Inspected
+
+→ Refund / Exchange / Credit
+
+41. TAX
+
+Configurable Tax Engine oluştur.
+
+Destek:
+
+Tax inclusive
+Tax exclusive
+Country tax
+Region tax
+Product tax class
+Tax exempt customers
+
+Tax sistemini checkout içine hard-code etme.
+
+42. MARKETS
+
+Market ayarları:
+
+Country
+Currency
+Language
+Domain
+Pricing adjustment
+Tax
+Catalog availability
+43. DISCOUNTS
+
+Discount Code
+
+ve:
+
+Automatic Discount.
+
+Tip:
+
+Percentage
+Fixed
+Free shipping
+Buy X Get Y
+Product
+Collection
+Order
+
+Condition:
+
+Customer
+Company
+Catalog
+Minimum spend
+Quantity
+Date
+Usage limit
+44. CMS
+
+Destek:
+
+Pages
+Blogs
+Articles
+Menus
+Files
+Redirects
+SEO
+45. STOREFRONT ROUTES
+/
+/collections
+/collections/
+/products/
+/search
+/cart
+/checkout
+/pages/
+/blogs
+/blogs/
+/blogs//
+/contact
+/account
+/account/orders
+/account/invoices
+/account/quotes
+/account/company
+/account/team
+/account/addresses
+/quick-order
+46. THEME PLATFORM
+
+Tema sistemi projenin çekirdek modüllerinden biri olacaktır.
+
+10 ayrı bağımsız storefront kodu oluşturma.
+
+Tek bir:
+
+Theme Engine
+
+oluştur.
+
+Temel terimler:
+
+Theme:
+Komple tasarım sistemi.
+
+Template:
+Sayfa layout'u.
+
+Section:
+Büyük component.
+
+Block:
+Section içindeki component.
+
+Setting:
+Merchant'ın değiştirebildiği değer.
+
+Hierarchy:
+
+Page
+
+→ Template
+
+→ Section
+
+→ Block
+
+→ Setting
+
+47. BAŞLANGIÇ TEMALARI
+
+Uzun vadede:
+
+Foundation
+Wholesale Pro
+Industrial
+Supply
+Build
+Techline
+Atelier
+Essentials
+Market
+Prestige
+
+Ancak development:
+
+Foundation
+
+ve:
+
+Wholesale Pro
+
+ile başlamalıdır.
+
+Engine stabilize olmadan 10 temanın tamamını geliştirme.
+
+48. THEME PACKAGE
+
+Örnek:
+
+themes/
+wholesale-pro/
+manifest.json
+
+templates/
+  home.json
+  product.json
+  collection.json
+  cart.json
+
+sections/
+  hero.tsx
+  featured-products.tsx
+  collection-grid.tsx
+  image-text.tsx
+
+blocks/
+  heading.tsx
+  text.tsx
+  button.tsx
+
+schema/
+  theme-settings.json
+
+locales/
+  en.json
+  tr.json
+
+assets/
+  theme.css
+
+Normal merchant TSX değiştiremez.
+
+Merchant yalnızca izin verilen schema/configuration değerlerini değiştirir.
+
+49. THEME MANIFEST
+
+Alanlar:
+
+id
+name
+version
+author
+description
+category
+screenshot
+capabilities
+minimum platform version
+
+Capability örnekleri:
+
+b2b
+quick-order
+volume-pricing
+quotes
+mega-menu
+50. TEMPLATE TYPES
+Home
+Product
+Collection
+Search
+Cart
+Blog
+Article
+Page
+Contact
+Login
+Register
+Account
+Orders
+Order Detail
+Company
+Quotes
+Quick Order
+404
+51. ALTERNATE TEMPLATE
+
+Product için:
+
+Default
+Wholesale
+Luxury
+Pre-order
+Technical
+
+gibi birden fazla template bulunabilmelidir.
+
+Her product ilgili template'i seçebilmelidir.
+
+52. SECTION SYSTEM
+
+Her section:
+
+Component
+Schema
+Settings
+Blocks
+Presets
+Availability
+
+içermelidir.
+
+Hero:
+
+Heading
+Text
+Image
+Video
+Alignment
+Height
+Overlay
+Buttons
+Spacing
+Animation
+53. SECTION LIBRARY
+
+Commerce:
+
+Featured Product
+Product Grid
+Product Carousel
+Collection Grid
+Recommendations
+Recently Viewed
+Brands
+Quick Add
+
+Content:
+
+Rich Text
+Image
+Image + Text
+Video
+Gallery
+Slideshow
+Tabs
+Accordion
+FAQ
+Blog Posts
+
+Marketing:
+
+Hero
+Banner
+Countdown
+Promo
+Logo Cloud
+Newsletter
+Testimonials
+Stats
+
+B2B:
+
+Quick Order
+Request Quote
+Volume Pricing
+Wholesale Categories
+Company Benefits
+Download Catalog
+Contact Sales
+B2B Registration
+Account Manager
+54. BLOCK SYSTEM
+
+Product Information örneği:
+
+Vendor
+Title
+SKU
+Rating
+Price
+Volume Pricing
+Stock
+Variant Picker
+Quantity
+Buy Button
+Quote Button
+Description
+Specifications
+Shipping
+
+Block sırası değiştirilebilir olmalıdır.
+
+Nested block desteklenebilir.
+
+İlk aşamada maksimum 3 derinlik kullan.
+
+55. SETTING TYPES
+
+Destek:
+
+text
+textarea
+rich_text
+number
+range
+checkbox
+radio
+select
+color
+gradient
+image
+video
+file
+URL
+product
+collection
+menu
+font
+icon
+alignment
+spacing
+date
+dynamic source
+56. GLOBAL THEME SETTINGS
+
+Brand:
+
+Logo
+Mobile logo
+Favicon
+
+Colors:
+
+Background
+Text
+Primary
+Secondary
+Accent
+Border
+Success
+Warning
+Error
+
+Typography:
+
+Heading Font
+Body Font
+H1
+H2
+H3
+Body
+Letter spacing
+Line height
+
+Layout:
+
+Page width
+Container
+Grid
+Spacing
+
+Buttons:
+
+Radius
+Border
+Height
+Font
+Hover
+
+Product Cards:
+
+Image ratio
+Vendor
+Price
+Rating
+Quick add
+Secondary image
+Badges
+
+Animations:
+
+None
+Subtle
+Standard
+Enhanced
+57. HEADER BUILDER
+
+Header blockları:
+
+Logo
+Navigation
+Search
+Account
+Cart
+Language
+Currency
+CTA
+
+Ayarlar:
+
+Sticky
+Transparent
+Logo position
+Menu alignment
+Height
+Search style
+Mega menu
+58. MEGA MENU
+
+Destek:
+
+Columns
+Navigation
+Images
+Promotion
+Featured Products
+Featured Collections
+59. FOOTER BUILDER
+
+Destek:
+
+Logo
+Firma bilgisi
+Navigation
+Newsletter
+Social
+Payment methods
+Language
+Currency
+Copyright
+Legal links
+60. LIVE THEME EDITOR
+
+Layout:
+
+Sol:
+
+Page Tree
+
+Orta:
+
+Live Preview
+
+Sağ:
+
+Settings
+
+Üst:
+
+Exit
+Page selector
+Market
+Language
+Undo
+Redo
+Desktop
+Tablet
+Mobile
+Save
+Publish
+61. LIVE PREVIEW
+
+Preferably iframe.
+
+Theme Editor
+
+→ postMessage
+
+→ Storefront Preview
+
+→ Theme Runtime
+
+Setting değişince preview anında güncellenmelidir.
+
+Mümkün olduğunca full page reload yapma.
+
+62. CANVAS SELECTION
+
+Preview üzerinde section hover edilince highlight göster.
+
+Tıklanınca section seçilsin.
+
+Action:
+
+Edit
+Move
+Hide
+Duplicate
+
+Settings sağ panelde açılsın.
+
+63. DRAG DROP
+
+Section ve Block sıraları sürükle-bırak ile değiştirilebilmelidir.
+
+Unique component ID korunmalıdır.
+
+64. RESPONSIVE EDITING
+
+Preview:
+
+Desktop
+Tablet
+Mobile
+
+Bazı ayarlar breakpoint'e göre ayrı olabilir.
+
+Örnek:
+
+Hero Height:
+
+desktop: 720
+
+tablet: 600
+
+mobile: 480
+
+65. DYNAMIC SOURCES
+
+Setting:
+
+Product Title
+
+Product Vendor
+
+Product Description
+
+Product Metafield
+
+Collection
+
+Company Name
+
+Credit Limit
+
+Payment Terms
+
+gibi kaynaklara bağlanabilmelidir.
+
+Veriler güvenli API üzerinden çözülmelidir.
+
+66. B2B DYNAMIC CONTENT
+
+Örnek storefront:
+
+Welcome back, ACME LTD.
+
+Account Manager:
+Ahmet
+
+Available Credit:
+120.000 TRY
+
+Payment Terms:
+Net 30
+
+Cross-company veri sızıntısı kesinlikle olmamalıdır.
+
+67. DRAFT / PUBLISHED
+
+Theme editleri direkt production'a gitmez.
+
+Draft Version
+
+ve:
+
+Published Version
+
+ayrı tutulur.
+
+Akış:
+
+Edit
+
+→ Autosave
+
+→ Preview
+
+→ Validate
+
+→ Publish
+
+→ Snapshot
+
+→ Cache invalidate
+
+68. AUTOSAVE
+
+State önce local'de güncellenmeli.
+
+Daha sonra debounce ile backend'e yazılmalı.
+
+UI:
+
+Saving...
+
+Saved
+
+Failed
+
+Retry
+
+69. VERSION HISTORY
+
+Örnek:
+
+Version 49
+Today
+Published by User A
+
+Version 48
+Yesterday
+User B
+
+Destek:
+
+View
+Restore
+Republish
+70. UNDO / REDO
+
+Command türleri:
+
+CHANGE_SETTING
+ADD_SECTION
+REMOVE_SECTION
+MOVE_SECTION
+DUPLICATE_SECTION
+ADD_BLOCK
+MOVE_BLOCK
+REMOVE_BLOCK
+71. THEME LIBRARY
+
+Merchant:
+
+Current Theme
+
+Installed Themes
+
+görmelidir.
+
+Actions:
+
+Customize
+Preview
+Duplicate
+Rename
+Publish
+Remove
+72. PREVIEW LINK
+
+Signed URL oluştur.
+
+İçermeli:
+
+Store
+Theme
+Version
+Expiration
+
+Opsiyonel password.
+
+Tahmin edilebilir query param ile unpublished theme erişimi verme.
+
+73. SCHEDULED PUBLISH
+
+Desteklenecek şekilde mimari hazırla:
+
+Publish Now
+
+Schedule Publish
+
+74. THEME DATA SEPARATION
+
+Ürünler, müşteriler, koleksiyonlar ve siparişler Theme Data değildir.
+
+Theme değiştirilince business data kaybolmamalıdır.
+
+Her theme kendi configuration'ını saklamalıdır.
+
+75. THEME RENDERER
+
+Akış:
+
+Template JSON
+
+→ Section Registry
+
+→ Section Component
+
+→ Blocks
+
+→ Output
+
+Registry:
+
+hero → HeroSection
+
+featured_collection → FeaturedCollection
+
+image_text → ImageText
+
+Arbitrary merchant code execute etme.
+
+76. THEME SECURITY
+
+Normal merchant arbitrary JavaScript çalıştıramamalıdır.
+
+Önle:
+
+XSS
+Token theft
+Checkout hijacking
+Data exfiltration
+DOM injection
+
+Developer Mode ileride sandbox ile yapılabilir.
+
+77. THEME DEVELOPER SDK
+
+Gelecekte CLI:
+
+platform theme init
+
+platform theme dev
+
+platform theme pull
+
+platform theme push
+
+platform theme validate
+
+platform theme publish
+
+78. APP BLOCKS
+
+App:
+
+Reviews
+
+→ Theme Extension
+
+→ Reviews Block
+
+Merchant:
+
+Add Block
+
+→ Reviews
+
+App'lerin theme source'u doğrudan değiştirmesine gerek kalmamalıdır.
+
+79. THEME VE COMMERCE CORE AYRIMI
+
+Theme:
+
+Display yapar.
+
+Commerce Core:
+
+Gerçek fiyatı, stoku ve yetkiyi belirler.
+
+Theme:
+
+→ Storefront API
+
+→ Commerce Core
+
+Theme hiçbir zaman trusted fiyat hesaplamamalıdır.
+
+80. STOREFRONT API
+
+Destek:
+
+Products
+Collections
+Search
+Cart
+Pricing
+Customer
+Company
+Availability
+Localization
+
+B2B kişisel fiyatlarının cache üzerinden başka müşteriye sızmasını engelle.
+
+81. CART
+
+Destek:
+
+Guest
+Authenticated
+B2B company
+Location
+Custom pricing
+Discount
+Notes
+PO Number
+82. CHECKOUT
+
+Akış:
+
+Customer
+
+→ Company
+
+→ Catalog Validation
+
+→ Pricing
+
+→ Inventory
+
+→ Discounts
+
+→ Shipping
+
+→ Tax
+
+→ Payment / Terms
+
+→ Order
+
+Client tarafından gelen total değerlerine güvenme.
+
+83. CHECKOUT CUSTOMIZATION
+
+İlk sürümde full checkout code editing verme.
+
+Yalnızca:
+
+Logo
+Colors
+Typography
+Banner
+84. DOMAIN
+
+Default:
+
+store.platform.com
+
+Custom:
+
+firma.com
+
+shop.firma.com
+
+Lifecycle:
+
+Add Domain
+
+→ DNS
+
+→ Verify
+
+→ SSL
+
+→ Routing
+
+→ Activate
+
+85. MEDIA
+
+Media Library:
+
+Images
+Video
+Files
+PDF
+Theme assets
+
+S3-compatible storage kullan.
+
+CDN üzerinden servis et.
+
+86. IMAGE OPTIMIZATION
+
+Destek:
+
+WebP
+AVIF
+Responsive sizes
+Lazy loading
+CDN transformation
+87. SEARCH
+
+Dedicated search engine planla.
+
+Alanlar:
+
+Title
+SKU
+Vendor
+Tag
+Description
+Category
+Barcode
+
+Filter:
+
+Category
+Price
+Availability
+Brand
+Attribute
+
+Catalog visibility kurallarına uy.
+
+88. ANALYTICS
+
+Merchant:
+
+Revenue
+GMV
+Orders
+AOV
+Conversion
+Customers
+Returning
+Top products
+Channels
+
+B2B:
+
+Revenue by company
+Revenue by location
+Account manager
+Quote conversion
+Reorder rate
+Average payment time
+Outstanding
+Credit utilization
+Catalog performance
+89. EVENT PIPELINE
+
+Event örnekleri:
+
+product_viewed
+search_performed
+cart_created
+item_added
+checkout_started
+order_created
+payment_completed
+quote_requested
+
+Analytics transactional DB'den her seferinde ağır query çekmemelidir.
+
+90. NOTIFICATION
+
+Kanallar:
+
+Email
+In-App
+Webhook
+
+Gelecekte:
+
+SMS
+WhatsApp
+
+Event:
+
+New order
+Payment
+Quote
+Inventory
+Company application
+Shipment
+Overdue invoice
+91. EMAIL TEMPLATES
+
+Örnek:
+
+Order confirmation
+Invoice
+Shipment
+Quote
+Password reset
+Company invitation
+
+Merchant güvenli branding ayarı yapabilmelidir.
+
+92. SAAS PLAN
+
+Örnek:
+
+Starter
+
+Business
+
+Advanced
+
+Enterprise
+
+Plan logic'i code içine dağınık hard-code etme.
+
+Entitlement engine kullan.
+
+Örnek:
+
+stores.max
+staff.max
+products.max
+api.requests
+advanced_b2b
+custom_domain
+quotes
+multiple_locations
+theme_versions
+93. PLATFORM BILLING
+
+Platform merchant'tan abonelik ücreti almalıdır.
+
+Destek:
+
+Subscription
+Trial
+Upgrade
+Downgrade
+Cancel
+Invoice
+Failed payment
+Grace period
+
+Gelecekte:
+
+Transaction fee
+App fee
+Usage billing
+
+Store customer payment ile platform subscription billing'i birbirinden ayır.
+
+94. API
+
+Katmanlar:
+
+Admin API
+
+Storefront API
+
+Platform API
+
+Future Developer API
+
+95. API STANDARDI
+
+Kullan:
+
+Versioning
+Consistent errors
+Pagination
+Filtering
+Sorting
+Idempotency
+Rate limits
+Request ID
+Auditability
+
+REST veya GraphQL seçimini bilinçli yap.
+
+Rastgele karıştırma.
+
+96. WEBHOOK
+
+Event:
+
+product.created
+product.updated
+order.created
+order.updated
+customer.created
+inventory.updated
+refund.created
+company.created
+
+Sistem:
+
+Signing
+Retry
+Dead letter
+Logs
+Replay
+
+desteklemelidir.
+
+97. APP PLATFORM
+
+Flow:
+
+Merchant
+
+→ Install App
+
+→ OAuth
+
+→ Scopes
+
+→ API
+
+→ Webhooks
+
+Scope:
+
+read_products
+write_products
+read_orders
+write_orders
+read_customers
+read_inventory
+write_inventory
+
+Least privilege uygula.
+
+98. INTEGRATIONS
+
+Kategori:
+
+ERP
+CRM
+Accounting
+Shipping
+Warehouse
+Marketing
+Analytics
+Support
+PIM
+
+Adapter yapısı kullan.
+
+99. PLATFORM SUPER ADMIN
+
+Yetkiler:
+
+Merchant ara
+Organization incele
+Store incele
+Billing
+Domain
+Webhook failures
+Audit
+Jobs
+Feature flags
+
+Support impersonation çok kontrollü olmalıdır.
+
+Her impersonation:
+
+Permission
+Audit
+Visible indicator
+Expiration
+
+gerektirir.
+
+100. AUDIT LOG
+
+Kaydet:
+
+Actor
+Action
+Resource
+Old value
+New value
+Time
+IP
+Session
+Metadata
+
+Örnek event:
+
+Login
+Product delete
+Price update
+Refund
+Credit change
+Role change
+Theme publish
+Domain update
+App install
+101. BACKGROUND JOBS
+
+Queue kullan:
+
+Imports
+Exports
+Email
+Search indexing
+Analytics
+Webhooks
+Image processing
+Theme publishing
+Cache invalidation
+Domain provisioning
+
+Uzun işlerde HTTP request bloklama.
+
+102. IMPORT / EXPORT
+
+CSV:
+
+Products
+Inventory
+Customers
+Companies
+Pricing
+Catalog assignments
+
+Progress UI:
+
+2.481 / 5.000
+
+49%
+
+Validation errors göster.
+
+103. TEKNİK STACK
+
+Başlangıç önerisi:
+
+Frontend:
+Next.js
+
+Language:
+TypeScript
+
+Admin:
+React / Next.js
+
+Storefront:
+Next.js
+
+Backend:
+NestJS veya benzer structured TypeScript framework
+
+Database:
+PostgreSQL
+
+ORM:
+Prisma veya Drizzle
+
+Cache:
+Redis
+
+Queue:
+BullMQ veya managed queue
+
+Storage:
+S3-compatible
+
+Search:
+Meilisearch, daha büyük ölçekte OpenSearch
+
+CDN:
+Cloudflare veya benzeri
+
+Containers:
+Docker
+
+Observability:
+OpenTelemetry
+
+CI/CD:
+Automated pipeline
+
+104. MİMARİ YAKLAŞIM
+
+Başlangıçta onlarca microservice oluşturma.
+
+Modular Monolith ile başla.
+
+Modules:
+
+auth
+
+organizations
+
+stores
+
+users
+
+permissions
+
+products
+
+collections
+
+inventory
+
+customers
+
+companies
+
+catalogs
+
+pricing
+
+quotes
+
+carts
+
+checkout
+
+orders
+
+payments
+
+shipping
+
+returns
+
+taxes
+
+markets
+
+discounts
+
+content
+
+themes
+
+analytics
+
+apps
+
+webhooks
+
+billing
+
+İleride extract edilebilir:
+
+Search
+Pricing
+Checkout
+Payments
+Analytics
+105. DATABASE
+
+PostgreSQL kullan.
+
+Kullan:
+
+Foreign key
+Unique constraints
+Indexes
+Transactions
+Proper timestamps
+UUID/appropriate IDs
+
+Ana tablolar:
+
+users
+
+organizations
+
+organization_members
+
+stores
+
+store_members
+
+roles
+
+permissions
+
+products
+
+product_variants
+
+product_options
+
+product_media
+
+collections
+
+inventory_items
+
+inventory_locations
+
+inventory_levels
+
+inventory_movements
+
+customers
+
+companies
+
+company_locations
+
+company_users
+
+catalogs
+
+catalog_products
+
+price_lists
+
+price_rules
+
+quantity_rules
+
+quotes
+
+quote_items
+
+carts
+
+cart_items
+
+orders
+
+order_items
+
+payments
+
+transactions
+
+refunds
+
+fulfillments
+
+shipments
+
+returns
+
+invoices
+
+credit_accounts
+
+discounts
+
+markets
+
+tax_rules
+
+pages
+
+blogs
+
+articles
+
+menus
+
+themes
+
+theme_releases
+
+store_themes
+
+store_theme_versions
+
+theme_template_versions
+
+domains
+
+apps
+
+app_installations
+
+webhooks
+
+subscriptions
+
+plans
+
+entitlements
+
+audit_logs
+
+jobs
+
+events
+
+106. THEME DATABASE
+
+themes
+
+id
+name
+slug
+description
+category
+status
+
+theme_releases
+
+id
+theme_id
+version
+manifest
+released_at
+
+store_themes
+
+id
+store_id
+theme_id
+theme_release_id
+status
+published_at
+
+store_theme_versions
+
+id
+store_theme_id
+version
+global_settings JSONB
+status
+created_by
+created_at
+
+theme_template_versions
+
+id
+theme_version_id
+template_type
+template_name
+configuration JSONB
+107. THEME CONFIGURATION
+
+Örnek:
+
+{
+"sections": {
+"hero_01": {
+"type": "hero",
+"settings": {
+"heading": "Wholesale made simple",
+"height": "large"
+},
+"blocks": {
+"button_01": {
+"type": "button",
+"settings": {
+"label": "Shop now",
+"url": "/collections/all"
+}
+}
+}
+}
+},
+"order": [
+"hero_01"
+]
+}
+
+Stable ID kullan.
+
+Schema validation uygula.
+
+108. SECURITY
+
+Zorunlu:
+
+Strong auth
+Tenant isolation
+RBAC
+MFA
+Secure session
+CSRF protection
+XSS prevention
+SQL injection prevention
+Rate limiting
+Brute-force protection
+Encrypted secrets
+Signed webhooks
+API key rotation
+Secure headers
+Audit logs
+Backup
+Disaster recovery
+
+Raw card data saklama.
+
+109. PRIVACY
+
+Planla:
+
+GDPR
+KVKK
+Cookie consent
+Data export
+Customer deletion
+Retention
+Consent history
+110. OBSERVABILITY
+
+Kullan:
+
+Structured logs
+Request ID
+Metrics
+Tracing
+Error monitoring
+Queue monitoring
+DB monitoring
+
+İzle:
+
+API latency
+Checkout errors
+Payment failures
+Storefront uptime
+Job failures
+Webhook failures
+Theme errors
+111. PERFORMANCE
+
+Kullan:
+
+CDN
+Cache
+Edge cache
+Image optimization
+Query optimization
+Indexes
+Lazy loading
+Code splitting
+
+Public storefront cache-friendly olmalıdır.
+
+B2B custom pricing public cache'e karışmamalıdır.
+
+112. ACCESSIBILITY
+
+Theme componentleri varsayılan olarak accessible olmalıdır.
+
+Semantic HTML
+Keyboard
+Focus
+Label
+ARIA
+Contrast
+Alt Text
+
+Merchant visual editor ile accessibility'yi kolayca bozamamalıdır.
+
+113. I18N
+
+Platform ve Storefront çok dilli olmalıdır.
+
+Platform UI translation
+
+ile:
+
+Store Content translation
+
+ayrı tutulmalıdır.
+
+RTL desteği geleceğe hazır olmalıdır.
+
+114. FEATURE FLAGS
+
+Destek:
+
+Progressive rollout
+Beta
+Enterprise
+Testing
+Emergency disable
+
+Tenant targeting olmalıdır.
+
+115. TEST STRATEJİSİ
+Unit
+Integration
+API
+E2E
+Security
+
+Kritik E2E:
+
+Signup
+
+Create Store
+
+Create Product
+
+Company
+
+Catalog
+
+Pricing
+
+Cart
+
+Checkout
+
+Order
+
+Payment
+
+Refund
+
+Quote
+
+Theme Customize
+
+Theme Publish
+
+Theme Rollback
+
+116. ENVIRONMENTS
+Local
+Development
+Staging
+Production
+
+Migration planı kullan.
+
+Production üzerinde rastgele schema değişikliği yapma.
+
+117. CODE QUALITY
+
+Zorunlu:
+
+TypeScript strict
+Domain boundaries
+Küçük/modüler dosyalar
+Reusable components
+Merkezi validation
+Consistent errors
+Clear naming
+
+Kaçın:
+
+God Service
+God Component
+Hard-coded tenant
+Hard-coded plan
+Hard-coded currency
+UI içinde business logic
+Theme içinde business logic
+118. DESIGN SYSTEM
+
+Tek platform design system oluştur.
+
+Components:
+
+Button
+Input
+Select
+Combobox
+Modal
+Drawer
+Popover
+Tooltip
+Table
+Data Grid
+Badge
+Card
+Tabs
+Pagination
+Command Menu
+Toast
+Empty State
+Skeleton
+Date Picker
+File Picker
+Color Picker
+119. DATA TABLES
+
+Destek:
+
+Search
+Filter
+Sort
+Column visibility
+Bulk actions
+Saved views
+Pagination
+Selection
+120. SAVED ADMIN VIEWS
+
+Örnek:
+
+Orders:
+
+Unfulfilled
+Awaiting Payment
+High Value
+B2B
+Overdue
+121. COMMAND PALETTE
+
+Global search:
+
+Orders
+Products
+Customers
+Companies
+Settings
+
+Quick actions:
+
+New Product
+New Order
+New Quote
+122. MOBILE ADMIN
+
+Admin tablet ve mobilde kritik işlemleri desteklemelidir.
+
+Desktop-only tasarım yapma.
+
+123. MVP
+
+İlk MVP:
+
+Authentication
+Organization
+Store
+RBAC foundation
+Products
+Variants
+Collections
+Inventory
+Customers
+Companies
+Locations
+Catalogs
+Pricing
+Cart
+Checkout
+Orders
+Basic payment
+Basic shipping
+Storefront
+Theme Engine
+Theme Editor
+Foundation Theme
+Wholesale Pro Theme
+Custom domain foundation
+Basic analytics
+Subscription foundation
+124. DEVELOPMENT PHASES
+Phase 0
+
+Architecture
+
+Monorepo
+
+CI
+
+Database
+
+Design System
+
+Auth Foundation
+
+Phase 1
+
+Users
+
+Organizations
+
+Stores
+
+Membership
+
+RBAC
+
+Phase 2
+
+Products
+
+Variants
+
+Collections
+
+Media
+
+Metafields
+
+Phase 3
+
+Inventory
+
+Locations
+
+Movement
+
+Phase 4
+
+Customers
+
+Companies
+
+Locations
+
+Buyers
+
+Phase 5
+
+Catalog
+
+Pricing
+
+Volume pricing
+
+Quantity rules
+
+Phase 6
+
+Cart
+
+Checkout
+
+Orders
+
+Phase 7
+
+Payment
+
+Shipping
+
+Fulfillment
+
+Phase 8
+
+Storefront API
+
+Storefront
+
+Phase 9
+
+Theme Engine
+
+Manifest
+
+Template
+
+Section
+
+Block
+
+Setting
+
+Renderer
+
+Phase 10
+
+Theme Editor
+
+Preview
+
+Tree
+
+Settings
+
+Drag Drop
+
+Responsive
+
+Autosave
+
+Draft Publish
+
+Phase 11
+
+Theme Versions
+
+History
+
+Undo Redo
+
+Preview URL
+
+Rollback
+
+Phase 12
+
+Advanced B2B
+
+Quotes
+
+Credit
+
+Terms
+
+Approvals
+
+Quick Order
+
+Phase 13
+
+Analytics
+
+Events
+
+Reports
+
+Phase 14
+
+SaaS Billing
+
+Plans
+
+Entitlements
+
+Subscriptions
+
+Phase 15
+
+Developer Platform
+
+API
+
+Webhooks
+
+OAuth
+
+Apps
+
+Phase 16
+
+Enterprise
+
+SSO
+
+Advanced RBAC
+
+Audit
+
+Scale
+
+125. DEVELOPMENT METHOD
+
+Her modülü şu sırayla geliştir:
+
+Amaç
+Dependencies
+Data Model
+API
+Service
+UI
+Validation
+Permission
+Tests
+Implementation
+
+Her geliştirme sonrasında:
+
+Type check
+Test
+Lint
+Migration check
+Tenant isolation
+Responsive check
+Error states
+Loading states
+Empty states
+Security review
+126. UX PRENSİPLERİ
+
+Platform:
+
+Premium
+Fast
+Professional
+Calm
+Enterprise-grade
+Modern
+Consistent
+
+hissettirmelidir.
+
+Dashboard'ı gereksiz dekorasyonla doldurma.
+
+Commerce operasyonlarında clarity önceliklidir.
+
+127. ERROR UX
+
+Mümkün olduğunda:
+
+“Something went wrong.”
+
+kullanma.
+
+Örneğin:
+
+“Requested quantity exceeds available inventory.”
+
+gibi anlamlı hata göster.
+
+Destek:
+
+Inline error
+Toast
+Retry
+Error boundary
+128. EMPTY STATES
+
+Örnek Products:
+
+“Henüz ürün bulunmuyor.”
+
+CTA:
+
+“İlk ürününü ekle”
+
+Secondary:
+
+“Ürünleri içe aktar”
+
+129. LOADING
+
+Skeleton tercih et.
+
+Gereksiz full-screen spinner kullanma.
+
+Layout shift oluşturma.
+
+130. DESTRUCTIVE ACTIONS
+
+Açık confirmation gerektir:
+
+Delete store
+Delete product
+Remove domain
+Cancel subscription
+Refund
+Delete company
+131. CONCURRENCY
+
+Aynı kaydı iki kişinin düzenlemesi durumunu düşün.
+
+Kullan:
+
+updated_at
+optimistic locking
+conflict warning
+
+Theme editor da concurrency açısından güvenli olmalıdır.
+
+132. CACHE SECURITY
+
+Özellikle:
+
+B2B prices
+Company data
+Credit
+Customer data
+
+shared public cache üzerinden başka tenant'a sızmamalıdır.
+
+133. FUTURE
+
+Platform ileride destekleyebilecek şekilde tasarlansın:
+
+POS
+Marketplace
+Dropshipping
+Subscription Commerce
+Headless
+AI Merchandising
+AI Store Builder
+Mobile App
+Multi-brand
+Supplier Portal
+Procurement
+ERP
+EDI
+PunchOut
+App Marketplace
+Theme Marketplace
+
+Bunları şimdi geliştirme ancak mimariyi kapatma.
+
+134. AI STORE BUILDER
+
+Gelecekte AI:
+
+Homepage oluşturabilir
+Section seçebilir
+Product description
+Navigation
+Theme Settings
+Page generation
+
+Örnek prompt:
+
+“Create a modern industrial B2B storefront for a construction material distributor.”
+
+AI yalnızca Theme Engine schema'sına uygun configuration üretmelidir.
+
+Kontrolsüz application code üretmemelidir.
+
+135. TEMEL PLATFORM PRENSİBİ
+
+Bu sorumlulukları kesinlikle ayır:
+
+Commerce Core:
+
+Gerçek veri
+Validation
+Pricing
+Inventory
+Orders
+Payments
+Authorization
+
+Theme Engine:
+
+Presentation
+Layout
+Visual configuration
+
+Admin:
+
+Operations
+
+Apps:
+
+Extensions
+
+Analytics:
+
+Reporting
+
+Bu sınırları bozma.
+
+136. SENDEN BEKLENEN İLK ÇIKTI
+
+Production koduna başlamadan önce bana şunları çıkar:
+
+Full system architecture
+Monorepo structure
+Backend modules
+Frontend applications
+Theme Engine architecture
+Theme Editor architecture
+PostgreSQL database plan
+Authentication
+RBAC
+Multi-tenant architecture
+API conventions
+Event architecture
+Queue architecture
+Cache strategy
+Security
+Deployment
+Development phases
+Testing strategy
+
+Daha sonra kontrollü şekilde implementasyona başla.
+
+Büyük projeyi tek seferde rastgele kodlama.
+
+Architecture-first yaklaşımı uygula.
+
+Her geliştirmede bu master architecture ile tutarlılığı koru.
+
+Ortaya çıkan ürün birbirine sonradan bağlanmış paneller topluluğu gibi görünmemelidir.
+
+Tek ve bütünleşik bir:
+
+Commerce Operating System
+
+gibi çalışmalıdır.
+
+Öncelik sırası:
+
+Correctness
+Security
+Extensibility
+Performance
+Scale
+Ecosystem
+
+Tenant güvenliği, ödeme bütünlüğü, fiyat bütünlüğü ve veri izolasyonu hiçbir koşulda geliştirme hızına feda edilmemelidir.
